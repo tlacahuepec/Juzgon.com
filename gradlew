@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if ! command -v gradle >/dev/null 2>&1; then
+  echo "Gradle is required in PATH for this lightweight wrapper." >&2
+  exit 1
+fi
+
+exec gradle "$@"
