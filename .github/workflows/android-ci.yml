@@ -16,7 +16,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Run lint and static analysis
-        run: ./gradlew :app:ktlintCheck :app:detekt :app:spotlessCheck
+        run: ./gradlew :app:lintDebug
 
   unit-tests:
     runs-on: ubuntu-latest

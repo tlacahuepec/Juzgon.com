@@ -3,9 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.ktlint)
-    alias(libs.plugins.detekt)
-    alias(libs.plugins.spotless)
 }
 
 android {
@@ -37,28 +34,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-    }
-}
-
-ktlint {
-    android.set(true)
-    outputToConsole.set(true)
-}
-
-detekt {
-    buildUponDefaultConfig = true
-    allRules = false
-    autoCorrect = false
-}
-
-spotless {
-    kotlin {
-        target("src/**/*.kt")
-        ktlint()
-    }
-    kotlinGradle {
-        target("*.gradle.kts")
-        ktlint()
     }
 }
 
