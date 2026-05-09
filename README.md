@@ -47,6 +47,16 @@ Or open the project in Android Studio and click **Run** (Shift+F10).
 ## Troubleshooting
 - See [docs/troubleshooting](docs/troubleshooting/README.md) for reusable guides covering build, CI, Gradle, Kotlin, and tooling issues.
 
+## Git workflow (optional: Git Town)
+
+From the repository root, you can sync your branch stack with:
+
+```powershell
+git-town sync
+```
+
+If PowerShell reports `git-town` as not recognized, see [docs/android-studio-windows-ssh-setup.md](docs/android-studio-windows-ssh-setup.md).
+
 ## Change records
 - See [docs/changes](docs/changes/README.md) for a log of significant changes, with context, verification, and follow-ups.
 

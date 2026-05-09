@@ -331,6 +331,29 @@ Gradle X.X
 ------------------------------------------------------------
 ```
 
+## Issue 9: `git-town` command is not recognized in PowerShell
+
+### Symptoms
+
+Running Git Town commands from PowerShell fails with:
+
+```text
+git-town : The term 'git-town' is not recognized as the name of a cmdlet, function,
+script file, or operable program.
+```
+
+### Root cause
+
+Git Town is not installed, or the installed executable is not on the current PowerShell `PATH`.
+
+### Fix
+
+Follow the Windows setup guide for installation and verification steps:
+
+- [`docs/android-studio-windows-ssh-setup.md`](../android-studio-windows-ssh-setup.md)
+
+That guide includes package-manager install options, command verification, and the repository-root `git-town sync` workflow.
+
 ## Verification
 
 Run the same quality command used by CI:

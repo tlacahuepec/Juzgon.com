@@ -137,6 +137,30 @@ If you want `gh` available in PowerShell:
 winget install --id GitHub.cli
 ```
 
+## Optional: Install Git Town on Windows
+
+If your team uses Git Town, install it in PowerShell:
+
+```powershell
+winget install git-town.git-town
+# or
+choco install git-town
+# or
+scoop install git-town
+```
+
+Verify installation:
+
+```powershell
+git-town --version
+```
+
+Use Git Town from the repository root:
+
+```powershell
+git-town sync
+```
+
 ## Clone the repository into Windows
 
 Once SSH works, clone into the Windows filesystem:
@@ -187,4 +211,15 @@ Run PowerShell as Administrator.
 ### `gh : The term 'gh' is not recognized`
 
 Install GitHub CLI with `winget`, or add the SSH key through GitHub’s website.
+
+### `git-town : The term 'git-town' is not recognized`
+
+Install Git Town using the commands in the **Optional: Install Git Town on Windows** section above.
+
+If it is installed but still not recognized, start a new PowerShell session and run:
+
+```powershell
+Get-Command git-town -All
+git-town --version
+```
 
