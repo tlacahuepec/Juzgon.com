@@ -257,6 +257,80 @@ The adaptive icon XML files should define a background and foreground drawable:
 </adaptive-icon>
 ```
 
+## Issue 8: Gradle wrapper distribution cannot be downloaded
+
+### Symptoms
+
+Running any Gradle command (including `./gradlew`) fails with:
+
+```text
+Could not install Gradle distribution from 'https://services.gradle.org/distributions/gradle-X.X-XXX.zip'.
+Reason: java.lang.RuntimeException: Could not create parent directory for lock file /home/.gradle/wrapper/dists/gradle-X.X-XXX/hash/gradle-X.X-XXX.zip.lck
+```
+
+### Root cause
+
+The Gradle wrapper cache directory (`~/.gradle/wrapper/dists/`) does not exist or is not writable by the current user. This commonly happens when:
+
+1. The home directory or `.gradle` folder has restrictive permissions.
+2. Running Gradle inside WSL when the home directory is mounted from Windows with limited permissions.
+3. Running Gradle as a different user than who owns `~/.gradle/`.
+
+### Fix
+
+**Option 1: Create and fix permissions (preferred)**
+
+```bash
+mkdir -p ~/.gradle/wrapper/dists
+chmod 755 ~/.gradle
+chmod 755 ~/.gradle/wrapper
+chmod 755 ~/.gradle/wrapper/dists
+```
+
+**Option 2: Clean the Gradle cache and retry**
+
+```bash
+rm -rf ~/.gradle
+./gradlew --version
+```
+
+This will re-download the wrapper distribution with correct permissions.
+
+**Option 3: WSL-specific fix**
+
+If running inside WSL and the home directory is on Windows, ensure the mount uses Unix-friendly permissions:
+
+```bash
+# In /etc/wsl.conf (if it exists, create if needed)
+[interop]
+appendWindowsPath=true
+
+[automount]
+options = "metadata,umask=0022"
+```
+
+Then restart WSL:
+
+```bash
+wsl --terminate Ubuntu
+```
+
+### Verification
+
+After applying the fix, verify by running:
+
+```bash
+./gradlew --version
+```
+
+Expected result:
+
+```text
+------------------------------------------------------------
+Gradle X.X
+------------------------------------------------------------
+```
+
 ## Verification
 
 Run the same quality command used by CI:
