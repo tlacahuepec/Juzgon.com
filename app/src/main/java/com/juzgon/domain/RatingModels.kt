@@ -15,6 +15,9 @@ data class RatingSystem(
 ) {
     init {
         require(attributes.isNotEmpty()) { "Rating system must define at least one attribute" }
+        require(attributes.map { it.id }.distinct().size == attributes.size) {
+            "Rating system attributes must have unique ids"
+        }
     }
 }
 
@@ -33,5 +36,8 @@ data class RatedItem(
 ) {
     init {
         require(id.isNotBlank()) { "Rated item id cannot be blank" }
+        require(scores.map { it.attribute.id }.distinct().size == scores.size) {
+            "Rated item scores must not contain duplicate attribute ids"
+        }
     }
 }

@@ -57,4 +57,25 @@ class ScoreAggregationServiceTest {
 
         assertEquals(8.0, result, 0.0001)
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `rejects duplicate rating system attribute ids`() {
+        RatingSystem(
+            attributes = listOf(
+                Attribute("quality", weight = 0.6),
+                Attribute("quality", weight = 0.4)
+            )
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `rejects duplicate rated item score attribute ids`() {
+        RatedItem(
+            id = "item-3",
+            scores = listOf(
+                ScoreEntry(Attribute("quality"), 8),
+                ScoreEntry(Attribute("quality"), 6)
+            )
+        )
+    }
 }
