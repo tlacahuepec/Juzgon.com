@@ -1,5 +1,8 @@
 package com.juzgon.domain
 
+private const val MIN_SCORE = 1
+private const val MAX_SCORE = 10
+
 data class Attribute(
     val id: String,
     val weight: Double = 1.0,
@@ -26,7 +29,7 @@ data class ScoreEntry(
     val score: Int,
 ) {
     init {
-        require(score in 1..10) { "Score must be between 1 and 10" }
+        require(score in MIN_SCORE..MAX_SCORE) { "Score must be between 1 and 10" }
     }
 }
 
