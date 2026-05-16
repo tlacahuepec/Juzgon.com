@@ -44,3 +44,8 @@ data class RatedItem(
         }
     }
 }
+
+data class Category(
+    val name: String,
+    val attributes: List<String>,
+)
