@@ -16,7 +16,11 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
         AttributeEntity(id = attributeId, categoryName = name)
     }
 
-fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category = Category(name = name, attributes = attributes.map { it.id })
+fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
+    Category(
+        name = name,
+        attributes = attributes.map { it.id },
+    )
 
 fun RatedItem.toItemEntity(): ItemEntity = ItemEntity(id = id)
 
