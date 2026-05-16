@@ -14,6 +14,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Run lint and static analysis
         run: ./gradlew :app:ktlintCheck :app:detekt :app:spotlessCheck
@@ -26,6 +27,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest
