@@ -28,8 +28,9 @@ class ValidateRatingsUseCase
             }
 
             requiredAttributeBounds.forEach { bound ->
-                val score = scoresByAttributeId[bound.attributeId]
-                    ?: throw IllegalArgumentException("Missing score for required attribute '${bound.attributeId}'")
+                val score =
+                    scoresByAttributeId[bound.attributeId]
+                        ?: throw IllegalArgumentException("Missing score for required attribute '${bound.attributeId}'")
 
                 require(score in bound.minScore..bound.maxScore) {
                     "Score for attribute '${bound.attributeId}' must be between ${bound.minScore} and ${bound.maxScore}"
