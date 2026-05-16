@@ -12,7 +12,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RatingEntityMappersTest {
-
     @Test
     fun categoryRoundTrip_preservesDomainValues() {
         val category = Category(name = "Food", attributes = listOf("taste", "service"))
@@ -27,13 +26,15 @@ class RatingEntityMappersTest {
 
     @Test
     fun ratedItemRoundTrip_preservesDomainValues() {
-        val ratedItem = RatedItem(
-            id = "item-1",
-            scores = listOf(
-                ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 8),
-                ScoreEntry(attribute = Attribute(id = "service", weight = 1.0), score = 6),
-            ),
-        )
+        val ratedItem =
+            RatedItem(
+                id = "item-1",
+                scores =
+                    listOf(
+                        ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 8),
+                        ScoreEntry(attribute = Attribute(id = "service", weight = 1.0), score = 6),
+                    ),
+            )
 
         val itemEntity = ratedItem.toItemEntity()
         val ratingEntities = ratedItem.toRatingEntities()
