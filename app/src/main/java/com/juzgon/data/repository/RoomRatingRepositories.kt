@@ -16,6 +16,7 @@ import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.RankRatedItemsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 class RoomCategoryRepository(
@@ -24,14 +25,18 @@ class RoomCategoryRepository(
     private val categoryDao = database.categoryDao()
 
     override fun observeCategories(): Flow<List<Category>> =
-        categoryDao.observeCategoriesWithAttributes().map { categories ->
-            categories.map { it.toDomain() }
-        }
+        categoryDao
+            .observeCategoriesWithAttributes()
+            .map { categories ->
+                categories.map { it.toDomain() }
+            }.distinctUntilChanged()
 
     override fun observeCategory(name: String): Flow<Category?> =
-        categoryDao.observeCategoryWithAttributes(name).map { category ->
-            category?.toDomain()
-        }
+        categoryDao
+            .observeCategoryWithAttributes(name)
+            .map { category ->
+                category?.toDomain()
+            }.distinctUntilChanged()
 
     override suspend fun saveCategory(category: Category) {
         database.withTransaction {
@@ -69,7 +74,7 @@ class RoomRatedItemRepository(
         ) { items, attributes ->
             val attributesById = attributes.associate { it.id to it.toDomain() }
             items.map { item -> item.toDomain(attributesById) }
-        }
+        }.distinctUntilChanged()
 
     override fun observeRatedItem(id: String): Flow<RatedItem?> =
         combine(
@@ -78,7 +83,7 @@ class RoomRatedItemRepository(
         ) { item, attributes ->
             val attributesById = attributes.associate { it.id to it.toDomain() }
             item?.toDomain(attributesById)
-        }
+        }.distinctUntilChanged()
 
     override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> =
         combine(
@@ -100,7 +105,7 @@ class RoomRatedItemRepository(
                     }
                 rankRatedItemsUseCase(ratingSystem, ratedItems)
             }
-        }
+        }.distinctUntilChanged()
 
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
