@@ -16,8 +16,8 @@ import com.juzgon.data.local.entity.RatingEntity
         ItemEntity::class,
         RatingEntity::class,
     ],
-    version = 1,
-    exportSchema = false,
+    version = 2,
+    exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao

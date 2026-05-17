@@ -6,7 +6,10 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.androidx.room)
 }
+
+val roomSchemaDir = "$projectDir/schemas"
 
 android {
     namespace = "com.juzgon"
@@ -40,6 +43,18 @@ android {
             isIncludeAndroidResources = true
         }
     }
+    sourceSets {
+        getByName("debug") {
+            assets.directories.add(roomSchemaDir)
+        }
+        getByName("test") {
+            assets.directories.add(roomSchemaDir)
+        }
+    }
+}
+
+room {
+    schemaDirectory(roomSchemaDir)
 }
 
 kotlin {
