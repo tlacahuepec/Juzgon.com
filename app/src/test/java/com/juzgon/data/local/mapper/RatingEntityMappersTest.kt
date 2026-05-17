@@ -13,19 +13,20 @@ import org.junit.Test
 
 class RatingEntityMappersTest {
     @Test
-    fun categoryRoundTrip_preservesDomainValues() {
+    fun categoryRoundTrip_preservesDomainValuesWithStableAttributeOrder() {
         val category = Category(name = "Food", attributes = listOf("taste", "service"))
+        val expected = Category(name = "Food", attributes = listOf("service", "taste"))
 
         val entity = category.toEntity()
         val attributeEntities = category.toAttributeEntities()
 
         val mappedBack = entity.toDomain(attributeEntities)
 
-        assertEquals(category, mappedBack)
+        assertEquals(expected, mappedBack)
     }
 
     @Test
-    fun ratedItemRoundTrip_preservesDomainValues() {
+    fun ratedItemRoundTrip_preservesDomainValuesWithStableScoreOrder() {
         val ratedItem =
             RatedItem(
                 id = "item-1",
@@ -35,6 +36,15 @@ class RatingEntityMappersTest {
                         ScoreEntry(attribute = Attribute(id = "service", weight = 1.0), score = 6),
                     ),
             )
+        val expected =
+            RatedItem(
+                id = "item-1",
+                scores =
+                    listOf(
+                        ScoreEntry(attribute = Attribute(id = "service", weight = 1.0), score = 6),
+                        ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 8),
+                    ),
+            )
 
         val itemEntity = ratedItem.toItemEntity()
         val ratingEntities = ratedItem.toRatingEntities()
@@ -42,7 +52,7 @@ class RatingEntityMappersTest {
 
         val mappedBack = itemEntity.toDomain(ratingEntities, attributesById)
 
-        assertEquals(ratedItem, mappedBack)
+        assertEquals(expected, mappedBack)
     }
 
     @Test

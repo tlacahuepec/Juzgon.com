@@ -21,7 +21,7 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
 fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
     Category(
         name = name,
-        attributes = attributes.map { it.id },
+        attributes = attributes.sortedBy { it.id }.map { it.id },
     )
 
 fun CategoryWithAttributes.toDomain(): Category = category.toDomain(attributes)
@@ -38,7 +38,7 @@ fun ItemEntity.toDomain(
     attributesById: Map<String, Attribute>,
 ): RatedItem {
     val scoreEntries =
-        ratings.map { rating ->
+        ratings.sortedBy { it.attributeId }.map { rating ->
             val attribute =
                 checkNotNull(attributesById[rating.attributeId]) {
                     "Missing Attribute mapping for id=${rating.attributeId}"
