@@ -45,6 +45,11 @@ data class RatedItem(
     }
 }
 
+data class RankedRatedItem(
+    val item: RatedItem,
+    val aggregateScore: Double,
+)
+
 data class Category(
     val name: String,
     val attributes: List<String>,

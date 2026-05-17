@@ -1,6 +1,7 @@
 package com.juzgon.domain.repository
 
 import com.juzgon.domain.Category
+import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import kotlinx.coroutines.flow.Flow
 
@@ -18,6 +19,8 @@ interface RatedItemRepository {
     fun observeRatedItems(): Flow<List<RatedItem>>
 
     fun observeRatedItem(id: String): Flow<RatedItem?>
+
+    fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>>
 
     suspend fun saveRatedItem(ratedItem: RatedItem)
 

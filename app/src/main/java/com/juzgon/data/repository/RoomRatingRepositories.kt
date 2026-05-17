@@ -8,9 +8,12 @@ import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
 import com.juzgon.data.local.mapper.toRatingEntities
 import com.juzgon.domain.Category
+import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
+import com.juzgon.domain.RatingSystem
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.usecase.RankRatedItemsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -57,6 +60,7 @@ class RoomRatedItemRepository(
 ) : RatedItemRepository {
     private val categoryDao = database.categoryDao()
     private val itemDao = database.itemDao()
+    private val rankRatedItemsUseCase = RankRatedItemsUseCase()
 
     override fun observeRatedItems(): Flow<List<RatedItem>> =
         combine(
@@ -74,6 +78,28 @@ class RoomRatedItemRepository(
         ) { item, attributes ->
             val attributesById = attributes.associate { it.id to it.toDomain() }
             item?.toDomain(attributesById)
+        }
+
+    override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> =
+        combine(
+            itemDao.observeRankedItemsForCategory(categoryName),
+            categoryDao.observeAttributes(),
+        ) { rankedItems, attributes ->
+            val categoryAttributes = attributes.filter { it.categoryName == categoryName }
+            if (categoryAttributes.isEmpty()) {
+                emptyList()
+            } else {
+                val attributesById = categoryAttributes.associate { it.id to it.toDomain() }
+                val ratingSystem = RatingSystem(attributesById.values.toList())
+                val ratedItems =
+                    rankedItems.map { rankedItem ->
+                        rankedItem.item.toDomain(
+                            ratings = rankedItem.ratings.filter { it.attributeId in attributesById },
+                            attributesById = attributesById,
+                        )
+                    }
+                rankRatedItemsUseCase(ratingSystem, ratedItems)
+            }
         }
 
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
