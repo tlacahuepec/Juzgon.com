@@ -1,5 +1,6 @@
 package com.juzgon.data.local.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Query
@@ -25,6 +26,18 @@ data class CategoryWithAttributes(
 data class ItemWithRatings(
     @Embedded
     val item: ItemEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "item_id",
+    )
+    val ratings: List<RatingEntity>,
+)
+
+data class RankedItemWithRatings(
+    @Embedded
+    val item: ItemEntity,
+    @ColumnInfo(name = "aggregate_score")
+    val aggregateScore: Double,
     @Relation(
         parentColumn = "id",
         entityColumn = "item_id",
@@ -90,6 +103,22 @@ interface ItemDao {
     @Transaction
     @Query("SELECT * FROM items WHERE id = :id")
     fun observeItemWithRatings(id: String): Flow<ItemWithRatings?>
+
+    @Transaction
+    @Query(
+        """
+        SELECT
+            items.id AS id,
+            ROUND(SUM(ratings.score * attributes.weight) / SUM(attributes.weight), 1) AS aggregate_score
+        FROM items
+        INNER JOIN ratings ON ratings.item_id = items.id
+        INNER JOIN attributes ON attributes.id = ratings.attribute_id
+        WHERE attributes.category_name = :categoryName
+        GROUP BY items.id
+        ORDER BY aggregate_score DESC, items.id ASC
+        """,
+    )
+    fun observeRankedItemsForCategory(categoryName: String): Flow<List<RankedItemWithRatings>>
 
     @Query("SELECT * FROM ratings WHERE item_id = :itemId")
     fun getRatingsForItem(itemId: String): List<RatingEntity>
