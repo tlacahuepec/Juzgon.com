@@ -8,6 +8,7 @@ import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.RatingEntity
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -42,56 +43,60 @@ class RatingDaoTest {
     }
 
     @Test
-    fun getCategoryWithAttributes_returnsCompleteGraph() {
-        categoryDao.insertCategory(CategoryEntity(name = CATEGORY_NAME))
-        categoryDao.insertAttributes(foodAttributes())
+    fun getCategoryWithAttributes_returnsCompleteGraph() =
+        runTest {
+            categoryDao.upsertCategory(CategoryEntity(name = CATEGORY_NAME))
+            categoryDao.upsertAttributes(foodAttributes())
 
-        val result = categoryDao.getCategoryWithAttributes(CATEGORY_NAME)
+            val result = categoryDao.getCategoryWithAttributes(CATEGORY_NAME)
 
-        assertNotNull(result)
-        assertEquals(CATEGORY_NAME, result?.category?.name)
-        assertEquals(listOf("service", "taste"), result?.attributes?.map { it.id }?.sorted())
-    }
-
-    @Test
-    fun getItemWithRatings_returnsCompleteGraph() {
-        insertFoodCategoryWithAttributes()
-        itemDao.insertItem(ItemEntity(id = ITEM_ID))
-        itemDao.insertRatings(foodRatings())
-
-        val result = itemDao.getItemWithRatings(ITEM_ID)
-
-        assertNotNull(result)
-        assertEquals(ITEM_ID, result?.item?.id)
-        assertEquals(
-            listOf("service:6", "taste:8"),
-            result?.ratings?.map { it.toScorePair() }?.sorted(),
-        )
-    }
+            assertNotNull(result)
+            assertEquals(CATEGORY_NAME, result?.category?.name)
+            assertEquals(listOf("service", "taste"), result?.attributes?.map { it.id }?.sorted())
+        }
 
     @Test
-    fun deleteCategory_cascadesToAttributes() {
-        insertFoodCategoryWithAttributes()
+    fun getItemWithRatings_returnsCompleteGraph() =
+        runTest {
+            insertFoodCategoryWithAttributes()
+            itemDao.upsertItem(ItemEntity(id = ITEM_ID))
+            itemDao.upsertRatings(foodRatings())
 
-        categoryDao.deleteCategory(CategoryEntity(name = CATEGORY_NAME))
+            val result = itemDao.getItemWithRatings(ITEM_ID)
 
-        assertEquals(emptyList<AttributeEntity>(), categoryDao.getAttributesForCategory(CATEGORY_NAME))
-    }
+            assertNotNull(result)
+            assertEquals(ITEM_ID, result?.item?.id)
+            assertEquals(
+                listOf("service:6", "taste:8"),
+                result?.ratings?.map { it.toScorePair() }?.sorted(),
+            )
+        }
 
     @Test
-    fun deleteItem_cascadesToRatings() {
-        insertFoodCategoryWithAttributes()
-        itemDao.insertItem(ItemEntity(id = ITEM_ID))
-        itemDao.insertRatings(foodRatings())
+    fun deleteCategory_cascadesToAttributes() =
+        runTest {
+            insertFoodCategoryWithAttributes()
 
-        itemDao.deleteItem(ItemEntity(id = ITEM_ID))
+            categoryDao.deleteCategoryByName(CATEGORY_NAME)
 
-        assertEquals(emptyList<RatingEntity>(), itemDao.getRatingsForItem(ITEM_ID))
-    }
+            assertEquals(emptyList<AttributeEntity>(), categoryDao.getAttributesForCategory(CATEGORY_NAME))
+        }
 
-    private fun insertFoodCategoryWithAttributes() {
-        categoryDao.insertCategory(CategoryEntity(name = CATEGORY_NAME))
-        categoryDao.insertAttributes(foodAttributes())
+    @Test
+    fun deleteItem_cascadesToRatings() =
+        runTest {
+            insertFoodCategoryWithAttributes()
+            itemDao.upsertItem(ItemEntity(id = ITEM_ID))
+            itemDao.upsertRatings(foodRatings())
+
+            itemDao.deleteItemById(ITEM_ID)
+
+            assertEquals(emptyList<RatingEntity>(), itemDao.getRatingsForItem(ITEM_ID))
+        }
+
+    private suspend fun insertFoodCategoryWithAttributes() {
+        categoryDao.upsertCategory(CategoryEntity(name = CATEGORY_NAME))
+        categoryDao.upsertAttributes(foodAttributes())
     }
 
     private fun foodAttributes(): List<AttributeEntity> =
