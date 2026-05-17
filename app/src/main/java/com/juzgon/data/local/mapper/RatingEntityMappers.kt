@@ -1,5 +1,7 @@
 package com.juzgon.data.local.mapper
 
+import com.juzgon.data.local.dao.CategoryWithAttributes
+import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
@@ -22,6 +24,8 @@ fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
         attributes = attributes.map { it.id },
     )
 
+fun CategoryWithAttributes.toDomain(): Category = category.toDomain(attributes)
+
 fun RatedItem.toItemEntity(): ItemEntity = ItemEntity(id = id)
 
 fun RatedItem.toRatingEntities(): List<RatingEntity> =
@@ -43,5 +47,7 @@ fun ItemEntity.toDomain(
         }
     return RatedItem(id = id, scores = scoreEntries)
 }
+
+fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById)
 
 fun AttributeEntity.toDomain(): Attribute = Attribute(id = id, weight = weight)

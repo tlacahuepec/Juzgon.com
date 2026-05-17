@@ -1,0 +1,179 @@
+package com.juzgon.data.repository
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import app.cash.turbine.test
+import com.juzgon.data.local.JuzgonDatabase
+import com.juzgon.domain.Attribute
+import com.juzgon.domain.Category
+import com.juzgon.domain.RatedItem
+import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.repository.CategoryRepository
+import com.juzgon.domain.repository.RatedItemRepository
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class RoomRatingRepositoryTest {
+    private lateinit var database: JuzgonDatabase
+    private lateinit var categoryRepository: CategoryRepository
+    private lateinit var ratedItemRepository: RatedItemRepository
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(context, JuzgonDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+        categoryRepository = RoomCategoryRepository(database)
+        ratedItemRepository = RoomRatedItemRepository(database)
+    }
+
+    @After
+    fun tearDown() {
+        database.close()
+    }
+
+    @Test
+    fun observeCategories_emitsAfterSaveAndUpdate() =
+        runTest {
+            categoryRepository.observeCategories().test {
+                assertEquals(emptyList<Category>(), awaitItem())
+
+                categoryRepository.saveCategory(foodCategory())
+                assertCategoryListEquals(listOf(foodCategory()), awaitItem())
+
+                categoryRepository.saveCategory(updatedFoodCategory())
+                assertCategoryListEquals(listOf(updatedFoodCategory()), awaitItem())
+            }
+        }
+
+    @Test
+    fun observeCategory_emitsNullAfterDelete() =
+        runTest {
+            categoryRepository.observeCategory(CATEGORY_NAME).test {
+                assertEquals(null, awaitItem())
+
+                categoryRepository.saveCategory(foodCategory())
+                assertCategoryEquals(foodCategory(), awaitItem())
+
+                categoryRepository.deleteCategory(CATEGORY_NAME)
+                assertEquals(null, awaitItem())
+            }
+        }
+
+    @Test
+    fun observeRatedItems_emitsAfterSaveAndUpdate() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+
+            ratedItemRepository.observeRatedItems().test {
+                assertEquals(emptyList<RatedItem>(), awaitItem())
+
+                ratedItemRepository.saveRatedItem(foodItem())
+                assertRatedItemListEquals(listOf(foodItem()), awaitItem())
+
+                ratedItemRepository.saveRatedItem(updatedFoodItem())
+                assertRatedItemListEquals(listOf(updatedFoodItem()), awaitItem())
+            }
+        }
+
+    @Test
+    fun observeRatedItem_emitsNullAfterDelete() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+
+            ratedItemRepository.observeRatedItem(ITEM_ID).test {
+                assertEquals(null, awaitItem())
+
+                ratedItemRepository.saveRatedItem(foodItem())
+                assertRatedItemEquals(foodItem(), awaitItem())
+
+                ratedItemRepository.deleteRatedItem(ITEM_ID)
+                assertEquals(null, awaitItem())
+            }
+        }
+
+    private fun assertCategoryListEquals(
+        expected: List<Category>,
+        actual: List<Category>,
+    ) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (expectedCategory, actualCategory) ->
+            assertCategoryEquals(expectedCategory, actualCategory)
+        }
+    }
+
+    private fun assertCategoryEquals(
+        expected: Category,
+        actual: Category?,
+    ) {
+        assertEquals(expected.name, actual?.name)
+        assertEquals(expected.attributes.sorted(), actual?.attributes?.sorted())
+    }
+
+    private fun assertRatedItemListEquals(
+        expected: List<RatedItem>,
+        actual: List<RatedItem>,
+    ) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (expectedItem, actualItem) ->
+            assertRatedItemEquals(expectedItem, actualItem)
+        }
+    }
+
+    private fun assertRatedItemEquals(
+        expected: RatedItem,
+        actual: RatedItem?,
+    ) {
+        assertEquals(expected.id, actual?.id)
+        assertEquals(expected.toScorePairs(), actual?.toScorePairs())
+    }
+
+    private fun RatedItem.toScorePairs(): List<String> =
+        scores
+            .map { scoreEntry ->
+                "${scoreEntry.attribute.id}:${scoreEntry.score}:${scoreEntry.attribute.weight}"
+            }.sorted()
+
+    private fun foodCategory(): Category = category(listOf("service", "taste"))
+
+    private fun updatedFoodCategory(): Category = category(listOf("ambience", "taste"))
+
+    private fun category(attributes: List<String>): Category = Category(CATEGORY_NAME, attributes)
+
+    private fun foodItem(): RatedItem =
+        RatedItem(
+            id = ITEM_ID,
+            scores =
+                listOf(
+                    ScoreEntry(attribute = Attribute(id = "taste"), score = 8),
+                    ScoreEntry(attribute = Attribute(id = "service"), score = 6),
+                ),
+        )
+
+    private fun updatedFoodItem(): RatedItem =
+        RatedItem(
+            id = ITEM_ID,
+            scores =
+                listOf(
+                    ScoreEntry(attribute = Attribute(id = "taste"), score = 9),
+                    ScoreEntry(attribute = Attribute(id = "service"), score = 7),
+                ),
+        )
+
+    private companion object {
+        const val CATEGORY_NAME = "Food"
+        const val ITEM_ID = "item-1"
+    }
+}
