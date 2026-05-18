@@ -36,8 +36,9 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { Text("Home route") },
+                    homeContent = { _, _ -> Text("Home route") },
                     createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, _ -> Text("Detail route $categoryName") },
                 )
             }
         }
@@ -57,7 +58,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { onCreateCategory ->
+                    homeContent = { onCreateCategory, _ ->
                         Button(onClick = onCreateCategory) {
                             Text("Open create")
                         }
@@ -67,6 +68,7 @@ class JuzgonNavigationTest {
                             Text("Back home")
                         }
                     },
+                    categoryDetailContent = { categoryName, _ -> Text("Detail route $categoryName") },
                 )
             }
         }
@@ -77,6 +79,42 @@ class JuzgonNavigationTest {
         }
 
         composeRule.onNodeWithText("Back home").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun homeRouteCanOpenEncodedCategoryDetailRouteAndReturn() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, onOpenCategory ->
+                        Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
+                            Text("Open detail")
+                        }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, onBack ->
+                        Button(onClick = onBack) {
+                            Text("Detail route $categoryName")
+                        }
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open detail").performClick()
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
+        }
+
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
         }

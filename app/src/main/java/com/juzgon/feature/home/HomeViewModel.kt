@@ -60,4 +60,10 @@ class HomeViewModel
                 mutableNavigationEvents.emit(HomeNavigationEvent.CreateCategory)
             }
         }
+
+        fun onCategoryClick(categoryName: String) {
+            viewModelScope.launch {
+                mutableNavigationEvents.emit(HomeNavigationEvent.OpenCategory(categoryName))
+            }
+        }
     }
