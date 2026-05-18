@@ -8,6 +8,10 @@ enum class HomeSortOption {
     Name,
 }
 
+sealed interface HomeNavigationEvent {
+    data object CreateCategory : HomeNavigationEvent
+}
+
 data class HomeCategoryUiModel(
     val name: String,
     val attributeCount: Int,

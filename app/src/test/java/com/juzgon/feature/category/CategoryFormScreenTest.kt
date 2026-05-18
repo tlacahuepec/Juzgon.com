@@ -7,9 +7,12 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.Category
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,7 +84,24 @@ class CategoryFormScreenTest {
         composeRule.onNodeWithText("Save category").assertIsEnabled()
     }
 
-    private fun setContent(state: CategoryFormUiState) {
+    @Test
+    fun backButtonInvokesCallback() {
+        var backClicked = false
+        setContent(
+            state = CategoryFormReducer.createState(),
+            onBackClick = { backClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Back").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Back").performClick()
+
+        assertTrue(backClicked)
+    }
+
+    private fun setContent(
+        state: CategoryFormUiState,
+        onBackClick: () -> Unit = {},
+    ) {
         composeRule.setContent {
             MaterialTheme {
                 CategoryFormScreen(
@@ -94,6 +114,7 @@ class CategoryFormScreenTest {
                     onMoveAttributeUp = {},
                     onMoveAttributeDown = {},
                     onSaveClick = {},
+                    onBackClick = onBackClick,
                 )
             }
         }
