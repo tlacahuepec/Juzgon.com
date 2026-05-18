@@ -81,6 +81,15 @@ fun CategoryFormScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val nameError = if (state.showValidationErrors) state.nameError else null
+    val formError = if (state.showValidationErrors) state.formError else null
+    val attributeErrors =
+        if (state.showValidationErrors) {
+            state.attributeErrors
+        } else {
+            List(state.attributes.size) { CategoryAttributeValidationError() }
+        }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,10 +127,10 @@ fun CategoryFormScreen(
                 value = state.name,
                 onValueChange = onNameChange,
                 label = { Text("Category name") },
-                isError = state.nameError != null,
+                isError = nameError != null,
                 supportingText = {
-                    state.nameError?.let { nameError ->
-                        Text(nameError)
+                    nameError?.let { error ->
+                        Text(error)
                     }
                 },
                 singleLine = true,
@@ -133,9 +142,9 @@ fun CategoryFormScreen(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            state.formError?.let { formError ->
+            formError?.let { error ->
                 Text(
-                    text = formError,
+                    text = error,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -144,7 +153,7 @@ fun CategoryFormScreen(
             state.attributes.forEachIndexed { index, attribute ->
                 CategoryAttributeRow(
                     attribute = attribute,
-                    validationError = state.attributeErrors[index],
+                    validationError = attributeErrors[index],
                     isFirst = index == 0,
                     isLast = index == state.attributes.lastIndex,
                     onNameChange = onAttributeNameChange,
