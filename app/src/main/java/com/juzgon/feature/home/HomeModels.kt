@@ -10,11 +10,22 @@ enum class HomeSortOption {
 
 sealed interface HomeNavigationEvent {
     data object CreateCategory : HomeNavigationEvent
+
+    data class OpenCategory(
+        val categoryName: String,
+    ) : HomeNavigationEvent
 }
 
 data class HomeCategoryUiModel(
     val name: String,
     val attributeCount: Int,
+)
+
+data class HomeScreenActions(
+    val onSearchQueryChange: (String) -> Unit,
+    val onSortOptionSelected: (HomeSortOption) -> Unit,
+    val onCreateCategoryClick: () -> Unit,
+    val onCategoryClick: (String) -> Unit,
 )
 
 data class HomeUiState(

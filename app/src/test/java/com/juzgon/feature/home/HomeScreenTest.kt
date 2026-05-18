@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -27,9 +28,13 @@ class HomeScreenTest {
             MaterialTheme {
                 HomeScreen(
                     state = HomeUiState(),
-                    onSearchQueryChange = {},
-                    onSortOptionSelected = {},
-                    onCreateCategoryClick = { createClicked = true },
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = { createClicked = true },
+                            onCategoryClick = {},
+                        ),
                 )
             }
         }
@@ -44,6 +49,7 @@ class HomeScreenTest {
     @Test
     fun homeScreenShowsContentState() {
         var createClicked = false
+        var openedCategory = ""
 
         composeRule.setContent {
             MaterialTheme {
@@ -56,9 +62,13 @@ class HomeScreenTest {
                                     HomeCategoryUiModel(name = "Travel", attributeCount = 1),
                                 ),
                         ),
-                    onSearchQueryChange = {},
-                    onSortOptionSelected = {},
-                    onCreateCategoryClick = { createClicked = true },
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = { createClicked = true },
+                            onCategoryClick = { openedCategory = it },
+                        ),
                 )
             }
         }
@@ -74,5 +84,8 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Create category").performClick()
 
         assertTrue(createClicked)
+        composeRule.onNodeWithText("Food").performClick()
+
+        assertEquals("Food", openedCategory)
     }
 }

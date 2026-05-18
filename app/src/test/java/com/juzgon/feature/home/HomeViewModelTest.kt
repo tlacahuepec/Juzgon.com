@@ -104,6 +104,16 @@ class HomeViewModelTest {
             }
         }
 
+    @Test
+    fun categoryClickEmitsNavigationEvent() =
+        runTest {
+            viewModel.navigationEvents.test {
+                viewModel.onCategoryClick("Cars")
+
+                assertEquals(HomeNavigationEvent.OpenCategory("Cars"), awaitItem())
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val categories = MutableStateFlow(emptyList<Category>())
 

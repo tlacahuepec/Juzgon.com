@@ -2,6 +2,7 @@
 
 package com.juzgon.feature.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 @Composable
 fun HomeRoute(
     onNavigateToCreateCategory: () -> Unit,
+    onNavigateToCategory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -45,29 +47,32 @@ fun HomeRoute(
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 HomeNavigationEvent.CreateCategory -> onNavigateToCreateCategory()
+                is HomeNavigationEvent.OpenCategory -> onNavigateToCategory(event.categoryName)
             }
         }
     }
 
     HomeScreen(
         state = state,
-        onSearchQueryChange = viewModel::onSearchQueryChanged,
-        onSortOptionSelected = viewModel::onSortOptionSelected,
-        onCreateCategoryClick = viewModel::onCreateCategoryClick,
+        actions =
+            HomeScreenActions(
+                onSearchQueryChange = viewModel::onSearchQueryChanged,
+                onSortOptionSelected = viewModel::onSortOptionSelected,
+                onCreateCategoryClick = viewModel::onCreateCategoryClick,
+                onCategoryClick = viewModel::onCategoryClick,
+            ),
     )
 }
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
-    onSearchQueryChange: (String) -> Unit,
-    onSortOptionSelected: (HomeSortOption) -> Unit,
-    onCreateCategoryClick: () -> Unit,
+    actions: HomeScreenActions,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateCategoryClick) {
+            FloatingActionButton(onClick = actions.onCreateCategoryClick) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Create category",
@@ -78,9 +83,7 @@ fun HomeScreen(
     ) { innerPadding ->
         HomeContent(
             state = state,
-            onSearchQueryChange = onSearchQueryChange,
-            onSortOptionSelected = onSortOptionSelected,
-            onCreateCategoryClick = onCreateCategoryClick,
+            actions = actions,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -89,9 +92,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     state: HomeUiState,
-    onSearchQueryChange: (String) -> Unit,
-    onSortOptionSelected: (HomeSortOption) -> Unit,
-    onCreateCategoryClick: () -> Unit,
+    actions: HomeScreenActions,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -108,7 +109,7 @@ private fun HomeContent(
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = state.searchQuery,
-            onValueChange = onSearchQueryChange,
+            onValueChange = actions.onSearchQueryChange,
             label = { Text("Search categories") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -116,12 +117,13 @@ private fun HomeContent(
         Spacer(modifier = Modifier.height(12.dp))
         HomeSortControls(
             selectedOption = state.sortOption,
-            onSortOptionSelected = onSortOptionSelected,
+            onSortOptionSelected = actions.onSortOptionSelected,
         )
         Spacer(modifier = Modifier.height(16.dp))
         HomeCategoryContent(
             state = state,
-            onCreateCategoryClick = onCreateCategoryClick,
+            onCreateCategoryClick = actions.onCreateCategoryClick,
+            onCategoryClick = actions.onCategoryClick,
         )
     }
 }
@@ -156,6 +158,7 @@ private fun HomeSortControls(
 private fun HomeCategoryContent(
     state: HomeUiState,
     onCreateCategoryClick: () -> Unit,
+    onCategoryClick: (String) -> Unit,
 ) {
     if (state.isEmpty) {
         HomeEmptyState(
@@ -171,7 +174,10 @@ private fun HomeCategoryContent(
                 items = state.categories,
                 key = { category -> category.name },
             ) { category ->
-                CategoryRow(category = category)
+                CategoryRow(
+                    category = category,
+                    onCategoryClick = onCategoryClick,
+                )
             }
         }
     }
@@ -210,7 +216,10 @@ private fun HomeEmptyState(
 }
 
 @Composable
-private fun CategoryRow(category: HomeCategoryUiModel) {
+private fun CategoryRow(
+    category: HomeCategoryUiModel,
+    onCategoryClick: (String) -> Unit,
+) {
     ListItem(
         headlineContent = { Text(category.name) },
         supportingContent = {
@@ -223,5 +232,6 @@ private fun CategoryRow(category: HomeCategoryUiModel) {
                     },
             )
         },
+        modifier = Modifier.clickable { onCategoryClick(category.name) },
     )
 }
