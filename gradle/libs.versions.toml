@@ -55,6 +55,8 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+androidx-sqlite = { group = "androidx.sqlite", name = "sqlite", version = "2.6.0" }
+androidx-sqlite-framework = { group = "androidx.sqlite", name = "sqlite-framework", version = "2.6.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
