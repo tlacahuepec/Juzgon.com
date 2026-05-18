@@ -37,8 +37,19 @@ class CategoryFormScreenTest {
     }
 
     @Test
-    fun validationErrorsAreVisible() {
+    fun validationErrorsAreHiddenBeforeSaveAttempt() {
         setContent(CategoryFormReducer.createState())
+
+        composeRule.onNodeWithText("Category name").assertIsDisplayed()
+        composeRule.onNodeWithText("Attribute name").assertIsDisplayed()
+        composeRule.onNodeWithText("Save category").assertIsNotEnabled()
+        composeRule.onAllNodesWithText("Category name is required").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Attribute name is required").assertCountEquals(0)
+    }
+
+    @Test
+    fun validationErrorsAreVisibleAfterSaveAttempt() {
+        setContent(CategoryFormReducer.createState().copy(showValidationErrors = true))
 
         composeRule.onNodeWithText("Category name is required").assertIsDisplayed()
         composeRule.onNodeWithText("Attribute name is required").assertIsDisplayed()
