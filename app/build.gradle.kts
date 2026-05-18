@@ -14,6 +14,7 @@ val roomSchemaDir = "$projectDir/schemas"
 android {
     namespace = "com.juzgon"
     compileSdk = 36
+    buildToolsVersion = "36.1.0"
 
     defaultConfig {
         applicationId = "com.juzgon"
