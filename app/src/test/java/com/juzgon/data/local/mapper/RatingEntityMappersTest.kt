@@ -14,15 +14,22 @@ import org.junit.Test
 class RatingEntityMappersTest {
     @Test
     fun categoryRoundTrip_preservesDomainValuesWithStableAttributeOrder() {
-        val category = Category(name = "Food", attributes = listOf("taste", "service"))
-        val expected = Category(name = "Food", attributes = listOf("service", "taste"))
+        val category =
+            Category(
+                name = "Food",
+                attributes =
+                    listOf(
+                        Attribute(id = "taste", weight = 1.5),
+                        Attribute(id = "service", weight = 1.0),
+                    ),
+            )
 
         val entity = category.toEntity()
         val attributeEntities = category.toAttributeEntities()
 
         val mappedBack = entity.toDomain(attributeEntities)
 
-        assertEquals(expected, mappedBack)
+        assertEquals(category, mappedBack)
     }
 
     @Test

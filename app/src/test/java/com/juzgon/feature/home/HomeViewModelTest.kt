@@ -1,6 +1,7 @@
 package com.juzgon.feature.home
 
 import app.cash.turbine.test
+import com.juzgon.domain.Attribute
 import com.juzgon.domain.Category
 import com.juzgon.domain.repository.CategoryRepository
 import kotlinx.coroutines.Dispatchers
@@ -106,15 +107,22 @@ class HomeViewModelTest {
             error("HomeViewModel does not save categories")
         }
 
+        override suspend fun renameCategory(
+            originalName: String,
+            category: Category,
+        ) {
+            error("HomeViewModel does not rename categories")
+        }
+
         override suspend fun deleteCategory(name: String) {
             error("HomeViewModel does not delete categories")
         }
     }
 
     private companion object {
-        val foodCategory = Category(name = "Food", attributes = listOf("taste", "service"))
-        val musicCategory = Category(name = "Music", attributes = listOf("sound"))
-        val travelCategory = Category(name = "Travel", attributes = listOf("comfort"))
+        val foodCategory = Category(name = "Food", attributes = listOf(Attribute("taste"), Attribute("service")))
+        val musicCategory = Category(name = "Music", attributes = listOf(Attribute("sound")))
+        val travelCategory = Category(name = "Travel", attributes = listOf(Attribute("comfort")))
     }
 }
 

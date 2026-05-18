@@ -35,6 +35,8 @@ data class AttributeEntity(
     val categoryName: String,
     @ColumnInfo(name = "weight")
     val weight: Double = 1.0,
+    @ColumnInfo(name = "position")
+    val position: Int = 0,
 )
 
 @Entity(

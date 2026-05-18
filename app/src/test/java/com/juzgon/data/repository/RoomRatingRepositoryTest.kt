@@ -11,6 +11,7 @@ import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -73,6 +74,26 @@ class RoomRatingRepositoryTest {
         }
 
     @Test
+    fun renameCategory_movesCategoryWithOrderedWeightedAttributes() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+
+            val renamedCategory =
+                Category(
+                    name = RENAMED_CATEGORY_NAME,
+                    attributes =
+                        listOf(
+                            Attribute("taste", weight = 2.0),
+                            Attribute("service", weight = 1.5),
+                        ),
+                )
+            categoryRepository.renameCategory(CATEGORY_NAME, renamedCategory)
+
+            assertEquals(null, categoryRepository.observeCategory(CATEGORY_NAME).first())
+            assertCategoryEquals(renamedCategory, categoryRepository.observeCategory(RENAMED_CATEGORY_NAME).first())
+        }
+
+    @Test
     fun observeRatedItems_emitsAfterSaveAndUpdate() =
         runTest {
             categoryRepository.saveCategory(foodCategory())
@@ -119,7 +140,7 @@ class RoomRatingRepositoryTest {
         actual: Category?,
     ) {
         assertEquals(expected.name, actual?.name)
-        assertEquals(expected.attributes.sorted(), actual?.attributes?.sorted())
+        assertEquals(expected.attributes, actual?.attributes)
     }
 
     private fun assertRatedItemListEquals(
@@ -146,18 +167,30 @@ class RoomRatingRepositoryTest {
                 "${scoreEntry.attribute.id}:${scoreEntry.score}:${scoreEntry.attribute.weight}"
             }.sorted()
 
-    private fun foodCategory(): Category = category(listOf("service", "taste"))
+    private fun foodCategory(): Category = category(foodAttributes())
 
-    private fun updatedFoodCategory(): Category = category(listOf("ambience", "taste"))
+    private fun updatedFoodCategory(): Category = category(updatedFoodAttributes())
 
-    private fun category(attributes: List<String>): Category = Category(CATEGORY_NAME, attributes)
+    private fun foodAttributes(): List<Attribute> =
+        listOf(
+            Attribute("service"),
+            Attribute("taste", weight = 1.5),
+        )
+
+    private fun updatedFoodAttributes(): List<Attribute> =
+        listOf(
+            Attribute("ambience"),
+            Attribute("taste", weight = 2.0),
+        )
+
+    private fun category(attributes: List<Attribute>): Category = Category(CATEGORY_NAME, attributes)
 
     private fun foodItem(): RatedItem =
         RatedItem(
             id = ITEM_ID,
             scores =
                 listOf(
-                    ScoreEntry(attribute = Attribute(id = "taste"), score = 8),
+                    ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 8),
                     ScoreEntry(attribute = Attribute(id = "service"), score = 6),
                 ),
         )
@@ -167,13 +200,14 @@ class RoomRatingRepositoryTest {
             id = ITEM_ID,
             scores =
                 listOf(
-                    ScoreEntry(attribute = Attribute(id = "taste"), score = 9),
+                    ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 9),
                     ScoreEntry(attribute = Attribute(id = "service"), score = 7),
                 ),
         )
 
     private companion object {
         const val CATEGORY_NAME = "Food"
+        const val RENAMED_CATEGORY_NAME = "Dining"
         const val ITEM_ID = "item-1"
     }
 }

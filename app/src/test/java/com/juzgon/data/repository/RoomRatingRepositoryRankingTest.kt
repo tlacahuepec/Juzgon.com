@@ -71,7 +71,11 @@ class RoomRatingRepositoryRankingTest {
         assertEquals(expected, actual.map { "${it.item.id}:${it.aggregateScore}" })
     }
 
-    private fun foodCategory(): Category = Category(name = FOOD_CATEGORY, attributes = listOf(TASTE, SERVICE))
+    private fun foodCategory(): Category =
+        Category(
+            name = FOOD_CATEGORY,
+            attributes = listOf(Attribute(TASTE), Attribute(SERVICE)),
+        )
 
     private fun foodItem(
         id: String,

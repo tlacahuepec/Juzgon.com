@@ -14,14 +14,22 @@ import com.juzgon.domain.ScoreEntry
 fun Category.toEntity(): CategoryEntity = CategoryEntity(name = name)
 
 fun Category.toAttributeEntities(): List<AttributeEntity> =
-    attributes.map { attributeId ->
-        AttributeEntity(id = attributeId, categoryName = name)
+    attributes.mapIndexed { index, attribute ->
+        AttributeEntity(
+            id = attribute.id,
+            categoryName = name,
+            weight = attribute.weight,
+            position = index,
+        )
     }
 
 fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
     Category(
         name = name,
-        attributes = attributes.sortedBy { it.id }.map { it.id },
+        attributes =
+            attributes
+                .sortedWith(compareBy<AttributeEntity> { it.position }.thenBy { it.id })
+                .map { it.toDomain() },
     )
 
 fun CategoryWithAttributes.toDomain(): Category = category.toDomain(attributes)

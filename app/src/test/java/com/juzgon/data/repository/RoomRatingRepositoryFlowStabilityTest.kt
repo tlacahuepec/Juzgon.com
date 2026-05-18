@@ -53,7 +53,7 @@ class RoomRatingRepositoryFlowStabilityTest {
                 categoryRepository.saveCategory(foodCategory())
                 assertEquals(listOf(foodCategory()), awaitItem())
 
-                categoryRepository.saveCategory(foodCategory(attributes = listOf(TASTE, SERVICE)))
+                categoryRepository.saveCategory(foodCategory())
                 expectNoEvents()
 
                 categoryRepository.saveCategory(updatedFoodCategory())
@@ -73,7 +73,7 @@ class RoomRatingRepositoryFlowStabilityTest {
                 categoryRepository.saveCategory(foodCategory())
                 assertEquals(foodCategory(), awaitItem())
 
-                categoryRepository.saveCategory(foodCategory(attributes = listOf(TASTE, SERVICE)))
+                categoryRepository.saveCategory(foodCategory())
                 expectNoEvents()
 
                 categoryRepository.deleteCategory(FOOD_CATEGORY)
@@ -136,10 +136,22 @@ class RoomRatingRepositoryFlowStabilityTest {
         assertEquals(expected.toScorePairs(), actual?.toScorePairs())
     }
 
-    private fun foodCategory(attributes: List<String> = listOf(SERVICE, TASTE)): Category =
+    private fun foodCategory(attributes: List<Attribute> = foodAttributes()): Category =
         Category(name = FOOD_CATEGORY, attributes = attributes)
 
-    private fun updatedFoodCategory(): Category = foodCategory(attributes = listOf(AMBIENCE, TASTE))
+    private fun updatedFoodCategory(): Category = foodCategory(attributes = updatedFoodAttributes())
+
+    private fun foodAttributes(): List<Attribute> =
+        listOf(
+            Attribute(SERVICE),
+            Attribute(TASTE),
+        )
+
+    private fun updatedFoodAttributes(): List<Attribute> =
+        listOf(
+            Attribute(AMBIENCE),
+            Attribute(TASTE),
+        )
 
     private fun foodItem(scores: List<Pair<String, Int>> = listOf(TASTE to 8, SERVICE to 6)): RatedItem =
         RatedItem(

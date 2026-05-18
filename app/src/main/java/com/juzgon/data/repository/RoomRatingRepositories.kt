@@ -46,10 +46,29 @@ class RoomCategoryRepository(
             } else {
                 categoryDao.deleteAttributesNotIn(
                     categoryName = category.name,
-                    attributeIds = category.attributes,
+                    attributeIds = category.attributes.map { it.id },
                 )
                 categoryDao.upsertAttributes(category.toAttributeEntities())
             }
+        }
+    }
+
+    override suspend fun renameCategory(
+        originalName: String,
+        category: Category,
+    ) {
+        if (originalName == category.name) {
+            saveCategory(category)
+            return
+        }
+
+        database.withTransaction {
+            require(categoryDao.getCategoryWithAttributes(category.name) == null) {
+                "Category name already exists"
+            }
+            categoryDao.upsertCategory(category.toEntity())
+            categoryDao.upsertAttributes(category.toAttributeEntities())
+            categoryDao.deleteCategoryByName(originalName)
         }
     }
 

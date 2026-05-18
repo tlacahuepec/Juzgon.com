@@ -25,7 +25,7 @@ object DataModule {
     ): JuzgonDatabase =
         Room
             .databaseBuilder(context, JuzgonDatabase::class.java, "juzgon.db")
-            .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+            .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3)
             .build()
 
     @Provides
