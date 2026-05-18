@@ -12,6 +12,11 @@ interface CategoryRepository {
 
     suspend fun saveCategory(category: Category)
 
+    suspend fun renameCategory(
+        originalName: String,
+        category: Category,
+    )
+
     suspend fun deleteCategory(name: String)
 }
 

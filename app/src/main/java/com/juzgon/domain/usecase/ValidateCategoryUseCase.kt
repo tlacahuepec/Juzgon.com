@@ -1,6 +1,7 @@
 package com.juzgon.domain.usecase
 
 import com.juzgon.domain.Category
+import java.util.Locale
 import javax.inject.Inject
 
 class ValidateCategoryUseCase
@@ -10,7 +11,7 @@ class ValidateCategoryUseCase
             require(category.name.isNotBlank()) { "Category name cannot be blank" }
             require(category.attributes.isNotEmpty()) { "Category must contain at least one attribute" }
 
-            val normalized = category.attributes.map { it.trim().lowercase() }
+            val normalized = category.attributes.map { it.id.trim().lowercase(Locale.ROOT) }
             require(normalized.distinct().size == normalized.size) {
                 "Category attributes must be unique (case-insensitive)"
             }

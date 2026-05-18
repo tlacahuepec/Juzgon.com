@@ -52,5 +52,5 @@ data class RankedRatedItem(
 
 data class Category(
     val name: String,
-    val attributes: List<String>,
+    val attributes: List<Attribute>,
 )
