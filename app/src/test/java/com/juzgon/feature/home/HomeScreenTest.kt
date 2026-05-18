@@ -3,7 +3,10 @@ package com.juzgon.feature.home
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,21 +21,30 @@ class HomeScreenTest {
 
     @Test
     fun homeScreenShowsEmptyState() {
+        var createClicked = false
+
         composeRule.setContent {
             MaterialTheme {
                 HomeScreen(
                     state = HomeUiState(),
                     onSearchQueryChange = {},
                     onSortOptionSelected = {},
+                    onCreateCategoryClick = { createClicked = true },
                 )
             }
         }
 
         composeRule.onNodeWithText("No categories yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Create category").assertIsDisplayed()
+        composeRule.onNodeWithText("Create category").performClick()
+
+        assertTrue(createClicked)
     }
 
     @Test
     fun homeScreenShowsContentState() {
+        var createClicked = false
+
         composeRule.setContent {
             MaterialTheme {
                 HomeScreen(
@@ -46,6 +58,7 @@ class HomeScreenTest {
                         ),
                     onSearchQueryChange = {},
                     onSortOptionSelected = {},
+                    onCreateCategoryClick = { createClicked = true },
                 )
             }
         }
@@ -57,5 +70,9 @@ class HomeScreenTest {
         composeRule.onNodeWithText("2 attributes").assertIsDisplayed()
         composeRule.onNodeWithText("Travel").assertIsDisplayed()
         composeRule.onNodeWithText("1 attribute").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Create category").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Create category").performClick()
+
+        assertTrue(createClicked)
     }
 }

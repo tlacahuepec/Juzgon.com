@@ -4,11 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val SUBSCRIPTION_STOP_TIMEOUT_MILLIS = 5_000L
@@ -21,6 +25,10 @@ class HomeViewModel
     ) : ViewModel() {
         private val searchQuery = MutableStateFlow("")
         private val sortOption = MutableStateFlow(HomeSortOption.Recent)
+        private val mutableNavigationEvents = MutableSharedFlow<HomeNavigationEvent>()
+
+        val navigationEvents: SharedFlow<HomeNavigationEvent> =
+            mutableNavigationEvents.asSharedFlow()
 
         val state: StateFlow<HomeUiState> =
             combine(
@@ -45,5 +53,11 @@ class HomeViewModel
 
         fun onSortOptionSelected(option: HomeSortOption) {
             sortOption.value = option
+        }
+
+        fun onCreateCategoryClick() {
+            viewModelScope.launch {
+                mutableNavigationEvents.emit(HomeNavigationEvent.CreateCategory)
+            }
         }
     }

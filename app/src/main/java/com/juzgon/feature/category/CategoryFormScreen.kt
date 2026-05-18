@@ -12,23 +12,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun CategoryFormRoute(
     categoryName: String? = null,
+    onBackClick: () -> Unit,
+    onSaveCompleted: () -> Unit,
     viewModel: CategoryFormViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName) {
@@ -38,6 +46,12 @@ fun CategoryFormRoute(
     }
 
     val state by viewModel.state.collectAsState()
+    LaunchedEffect(state.saveCompleted) {
+        if (state.saveCompleted) {
+            onSaveCompleted()
+        }
+    }
+
     CategoryFormScreen(
         state = state,
         onNameChange = viewModel::onNameChanged,
@@ -48,9 +62,11 @@ fun CategoryFormRoute(
         onMoveAttributeUp = viewModel::moveAttributeUp,
         onMoveAttributeDown = viewModel::moveAttributeDown,
         onSaveClick = viewModel::onSaveClick,
+        onBackClick = onBackClick,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryFormScreen(
     state: CategoryFormUiState,
@@ -62,84 +78,105 @@ fun CategoryFormScreen(
     onMoveAttributeUp: (Long) -> Unit,
     onMoveAttributeDown: (Long) -> Unit,
     onSaveClick: () -> Unit,
+    onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-    ) {
-        Text(
-            text = if (state.mode == CategoryFormMode.Edit) "Edit category" else "Create category",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = onNameChange,
-            label = { Text("Category name") },
-            isError = state.nameError != null,
-            supportingText = {
-                state.nameError?.let { nameError ->
-                    Text(nameError)
-                }
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Text(
-            text = "Attributes",
-            style = MaterialTheme.typography.titleMedium,
-        )
-
-        state.formError?.let { formError ->
-            Text(
-                text = formError,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        if (state.mode == CategoryFormMode.Edit) {
+                            "Edit category"
+                        } else {
+                            "Create category"
+                        },
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+                },
             )
-        }
-
-        state.attributes.forEachIndexed { index, attribute ->
-            CategoryAttributeRow(
-                attribute = attribute,
-                validationError = state.attributeErrors[index],
-                isFirst = index == 0,
-                isLast = index == state.attributes.lastIndex,
-                onNameChange = onAttributeNameChange,
-                onWeightChange = onAttributeWeightChange,
-                onRemove = onRemoveAttribute,
-                onMoveUp = onMoveAttributeUp,
-                onMoveDown = onMoveAttributeDown,
-            )
-        }
-
-        OutlinedButton(
-            onClick = onAddAttribute,
-            modifier = Modifier.fillMaxWidth(),
+        },
+        modifier = modifier,
+    ) { innerPadding ->
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
         ) {
-            Text("Add attribute")
-        }
-
-        if (state.errorMessage != null) {
-            Text(
-                text = state.errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = onNameChange,
+                label = { Text("Category name") },
+                isError = state.nameError != null,
+                supportingText = {
+                    state.nameError?.let { nameError ->
+                        Text(nameError)
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
-        }
 
-        Button(
-            onClick = onSaveClick,
-            enabled = state.saveEnabled,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (state.isSaving) "Saving" else "Save category")
+            Text(
+                text = "Attributes",
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            state.formError?.let { formError ->
+                Text(
+                    text = formError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+            state.attributes.forEachIndexed { index, attribute ->
+                CategoryAttributeRow(
+                    attribute = attribute,
+                    validationError = state.attributeErrors[index],
+                    isFirst = index == 0,
+                    isLast = index == state.attributes.lastIndex,
+                    onNameChange = onAttributeNameChange,
+                    onWeightChange = onAttributeWeightChange,
+                    onRemove = onRemoveAttribute,
+                    onMoveUp = onMoveAttributeUp,
+                    onMoveDown = onMoveAttributeDown,
+                )
+            }
+
+            OutlinedButton(
+                onClick = onAddAttribute,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Add attribute")
+            }
+
+            if (state.errorMessage != null) {
+                Text(
+                    text = state.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+            Button(
+                onClick = onSaveClick,
+                enabled = state.saveEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (state.isSaving) "Saving" else "Save category")
+            }
         }
     }
 }
