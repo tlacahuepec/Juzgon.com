@@ -48,8 +48,12 @@ class JuzgonDatabaseMigrationTest {
         val connection = helper.createDatabase(2)
         connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
         connection
-            .prepare("INSERT INTO attributes (id, category_name, weight) VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.5)")
-            .use { it.step() }
+            .prepare(
+                """
+                INSERT INTO attributes (id, category_name, weight)
+                VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.5)
+                """.trimIndent(),
+            ).use { it.step() }
         connection.close()
 
         helper.runMigrationsAndValidate(3, listOf(DatabaseMigrations.MIGRATION_2_3)).use { conn ->
