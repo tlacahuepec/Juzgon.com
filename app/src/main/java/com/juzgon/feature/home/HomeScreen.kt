@@ -31,6 +31,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -112,7 +116,12 @@ private fun HomeContent(
             onValueChange = actions.onSearchQueryChange,
             label = { Text("Search categories") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Search categories"
+                    },
         )
         Spacer(modifier = Modifier.height(12.dp))
         HomeSortControls(
@@ -145,11 +154,19 @@ private fun HomeSortControls(
             selected = selectedOption == HomeSortOption.Recent,
             onClick = { onSortOptionSelected(HomeSortOption.Recent) },
             label = { Text("Recent") },
+            modifier =
+                Modifier.semantics {
+                    contentDescription = "Sort categories by recent"
+                },
         )
         FilterChip(
             selected = selectedOption == HomeSortOption.Name,
             onClick = { onSortOptionSelected(HomeSortOption.Name) },
             label = { Text("Name") },
+            modifier =
+                Modifier.semantics {
+                    contentDescription = "Sort categories by name"
+                },
         )
     }
 }
@@ -207,7 +224,14 @@ private fun HomeEmptyState(
                     text = "No categories yet",
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = onCreateCategoryClick) {
+                Button(
+                    onClick = onCreateCategoryClick,
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Create category"
+                            role = Role.Button
+                        },
+                ) {
                     Text("Create category")
                 }
             }
@@ -220,18 +244,32 @@ private fun CategoryRow(
     category: HomeCategoryUiModel,
     onCategoryClick: (String) -> Unit,
 ) {
+    val attributeSummary = category.attributeCount.toAttributeSummary()
+
     ListItem(
         headlineContent = { Text(category.name) },
         supportingContent = {
             Text(
-                text =
-                    if (category.attributeCount == 1) {
-                        "1 attribute"
-                    } else {
-                        "${category.attributeCount} attributes"
-                    },
+                text = attributeSummary,
             )
         },
-        modifier = Modifier.clickable { onCategoryClick(category.name) },
+        modifier =
+            Modifier
+                .clickable(
+                    onClickLabel = "Open category ${category.name}",
+                    role = Role.Button,
+                ) {
+                    onCategoryClick(category.name)
+                }.semantics(mergeDescendants = true) {
+                    contentDescription = "Open category ${category.name}, $attributeSummary"
+                    role = Role.Button
+                },
     )
 }
+
+private fun Int.toAttributeSummary(): String =
+    if (this == 1) {
+        "1 attribute"
+    } else {
+        "$this attributes"
+    }

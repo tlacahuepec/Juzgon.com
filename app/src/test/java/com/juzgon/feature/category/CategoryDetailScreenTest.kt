@@ -57,6 +57,23 @@ class CategoryDetailScreenTest {
     }
 
     @Test
+    fun itemRowsExposeAccessibleSummarySemantics() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertIsDisplayed()
+    }
+
+    @Test
     fun backButtonInvokesCallback() {
         var backClicked = false
         setContent(
