@@ -2,6 +2,7 @@ package com.juzgon.feature.category
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -107,6 +108,39 @@ class CategoryFormScreenTest {
         composeRule.onNodeWithContentDescription("Back").performClick()
 
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun createFormExposesAccessibleSemantics() {
+        setContent(CategoryFormReducer.createState())
+
+        composeRule.onNodeWithContentDescription("Category name").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 name").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 weight").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Add attribute").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Save category").assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("Remove attribute 1").assertHasClickAction()
+    }
+
+    @Test
+    fun editFormExposesContextualAttributeActionSemantics() {
+        setContent(
+            CategoryFormReducer.editState(
+                Category(
+                    name = "Food",
+                    attributes =
+                        listOf(
+                            Attribute(id = "Taste", weight = 1.5),
+                            Attribute(id = "Service", weight = 1.0),
+                        ),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Move Taste down").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Remove Taste").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Move Service up").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Remove Service").assertHasClickAction()
     }
 
     private fun setContent(

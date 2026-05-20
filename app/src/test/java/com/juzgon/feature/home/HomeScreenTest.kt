@@ -1,6 +1,11 @@
 package com.juzgon.feature.home
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -87,5 +92,38 @@ class HomeScreenTest {
         composeRule.onNodeWithText("Food").performClick()
 
         assertEquals("Food", openedCategory)
+    }
+
+    @Test
+    fun homeInteractiveControlsExposeAccessibleSemantics() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Create category").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Search categories").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort categories by recent").assertHasClickAction()
+        composeRule.onNodeWithContentDescription("Sort categories by name").assertHasClickAction()
+        composeRule
+            .onNodeWithContentDescription("Open category Food, 2 attributes")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
 }

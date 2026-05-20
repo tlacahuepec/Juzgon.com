@@ -29,6 +29,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -134,7 +138,12 @@ fun CategoryFormScreen(
                     }
                 },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Category name"
+                        },
             )
 
             Text(
@@ -153,6 +162,7 @@ fun CategoryFormScreen(
             state.attributes.forEachIndexed { index, attribute ->
                 CategoryAttributeRow(
                     attribute = attribute,
+                    position = index + 1,
                     validationError = attributeErrors[index],
                     isFirst = index == 0,
                     isLast = index == state.attributes.lastIndex,
@@ -166,7 +176,13 @@ fun CategoryFormScreen(
 
             OutlinedButton(
                 onClick = onAddAttribute,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Add attribute"
+                            role = Role.Button
+                        },
             ) {
                 Text("Add attribute")
             }
@@ -182,7 +198,13 @@ fun CategoryFormScreen(
             Button(
                 onClick = onSaveClick,
                 enabled = state.saveEnabled,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Save category"
+                            role = Role.Button
+                        },
             ) {
                 Text(if (state.isSaving) "Saving" else "Save category")
             }
@@ -193,6 +215,7 @@ fun CategoryFormScreen(
 @Composable
 private fun CategoryAttributeRow(
     attribute: CategoryAttributeInput,
+    position: Int,
     validationError: CategoryAttributeValidationError,
     isFirst: Boolean,
     isLast: Boolean,
@@ -202,6 +225,8 @@ private fun CategoryAttributeRow(
     onMoveUp: (Long) -> Unit,
     onMoveDown: (Long) -> Unit,
 ) {
+    val actionName = attribute.accessibleActionName(position)
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = attribute.name,
@@ -214,7 +239,12 @@ private fun CategoryAttributeRow(
                 }
             },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Attribute $position name"
+                    },
         )
         OutlinedTextField(
             value = attribute.weightText,
@@ -227,25 +257,52 @@ private fun CategoryAttributeRow(
                 }
             },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Attribute $position weight"
+                    },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { onMoveUp(attribute.key) },
                 enabled = !isFirst,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Move $actionName up"
+                        role = Role.Button
+                    },
             ) {
                 Text("Move up")
             }
             OutlinedButton(
                 onClick = { onMoveDown(attribute.key) },
                 enabled = !isLast,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Move $actionName down"
+                        role = Role.Button
+                    },
             ) {
                 Text("Move down")
             }
-            OutlinedButton(onClick = { onRemove(attribute.key) }) {
+            OutlinedButton(
+                onClick = { onRemove(attribute.key) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Remove $actionName"
+                        role = Role.Button
+                    },
+            ) {
                 Text("Remove")
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
     }
 }
+
+private fun CategoryAttributeInput.accessibleActionName(position: Int): String =
+    name
+        .takeIf { it.isNotBlank() }
+        ?: "attribute $position"
