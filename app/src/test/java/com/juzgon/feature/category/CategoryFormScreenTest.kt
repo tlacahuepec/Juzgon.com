@@ -3,14 +3,17 @@ package com.juzgon.feature.category
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.Category
 import org.junit.Assert.assertTrue
@@ -143,6 +146,30 @@ class CategoryFormScreenTest {
         composeRule.onNodeWithContentDescription("Remove Service").assertHasClickAction()
     }
 
+    @Test
+    fun formActionsMeetMinimumTouchTargetSize() {
+        setContent(
+            CategoryFormReducer.editState(
+                Category(
+                    name = "Food",
+                    attributes =
+                        listOf(
+                            Attribute(id = "Taste", weight = 1.5),
+                            Attribute(id = "Service", weight = 1.0),
+                        ),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Add attribute").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Save category").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Move Taste down").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Remove Taste").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Move Service up").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Remove Service").assertMinimumTouchTarget()
+    }
+
     private fun setContent(
         state: CategoryFormUiState,
         onBackClick: () -> Unit = {},
@@ -163,5 +190,10 @@ class CategoryFormScreenTest {
                 )
             }
         }
+    }
+
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
+        assertWidthIsAtLeast(48.dp)
+        assertHeightIsAtLeast(48.dp)
     }
 }

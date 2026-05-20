@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -76,10 +77,16 @@ fun HomeScreen(
 ) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = actions.onCreateCategoryClick) {
+            FloatingActionButton(
+                onClick = actions.onCreateCategoryClick,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Create category"
+                    },
+            ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Create category",
+                    contentDescription = null,
                 )
             }
         },
@@ -155,18 +162,22 @@ private fun HomeSortControls(
             onClick = { onSortOptionSelected(HomeSortOption.Recent) },
             label = { Text("Recent") },
             modifier =
-                Modifier.semantics {
-                    contentDescription = "Sort categories by recent"
-                },
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics {
+                        contentDescription = "Sort categories by recent"
+                    },
         )
         FilterChip(
             selected = selectedOption == HomeSortOption.Name,
             onClick = { onSortOptionSelected(HomeSortOption.Name) },
             label = { Text("Name") },
             modifier =
-                Modifier.semantics {
-                    contentDescription = "Sort categories by name"
-                },
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics {
+                        contentDescription = "Sort categories by name"
+                    },
         )
     }
 }

@@ -1,11 +1,14 @@
 package com.juzgon.feature.category
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -74,6 +77,24 @@ class CategoryDetailScreenTest {
     }
 
     @Test
+    fun detailNavigationAndItemRowsMeetMinimumTouchTargetSize() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertMinimumTouchTarget()
+    }
+
+    @Test
     fun backButtonInvokesCallback() {
         var backClicked = false
         setContent(
@@ -102,5 +123,10 @@ class CategoryDetailScreenTest {
                 )
             }
         }
+    }
+
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
+        assertWidthIsAtLeast(48.dp)
+        assertHeightIsAtLeast(48.dp)
     }
 }
