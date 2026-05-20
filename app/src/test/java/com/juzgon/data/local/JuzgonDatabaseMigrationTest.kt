@@ -46,10 +46,12 @@ class JuzgonDatabaseMigrationTest {
     @Test
     fun migrate2To3_preservesAttributeRowsWithDefaultPosition() {
         val connection = helper.createDatabase(2)
+        val insertAttributeSql =
+            "INSERT INTO attributes (id, category_name, weight) " +
+                "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.5)"
+
         connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
-        connection
-            .prepare("INSERT INTO attributes (id, category_name, weight) VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.5)")
-            .use { it.step() }
+        connection.prepare(insertAttributeSql).use { it.step() }
         connection.close()
 
         helper.runMigrationsAndValidate(3, listOf(DatabaseMigrations.MIGRATION_2_3)).use { conn ->
