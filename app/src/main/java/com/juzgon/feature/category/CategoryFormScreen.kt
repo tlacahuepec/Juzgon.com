@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -107,10 +108,19 @@ fun CategoryFormScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier =
+                            Modifier
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .semantics {
+                                    contentDescription = "Back"
+                                    role = Role.Button
+                                },
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = null,
                         )
                     }
                 },
@@ -269,10 +279,11 @@ private fun CategoryAttributeRow(
                 onClick = { onMoveUp(attribute.key) },
                 enabled = !isFirst,
                 modifier =
-                    Modifier.semantics {
-                        contentDescription = "Move $actionName up"
-                        role = Role.Button
-                    },
+                    Modifier
+                        .semantics {
+                            contentDescription = "Move $actionName up"
+                            role = Role.Button
+                        }.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Text("Move up")
             }
@@ -280,20 +291,22 @@ private fun CategoryAttributeRow(
                 onClick = { onMoveDown(attribute.key) },
                 enabled = !isLast,
                 modifier =
-                    Modifier.semantics {
-                        contentDescription = "Move $actionName down"
-                        role = Role.Button
-                    },
+                    Modifier
+                        .semantics {
+                            contentDescription = "Move $actionName down"
+                            role = Role.Button
+                        }.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Text("Move down")
             }
             OutlinedButton(
                 onClick = { onRemove(attribute.key) },
                 modifier =
-                    Modifier.semantics {
-                        contentDescription = "Remove $actionName"
-                        role = Role.Button
-                    },
+                    Modifier
+                        .semantics {
+                            contentDescription = "Remove $actionName"
+                            role = Role.Button
+                        }.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Text("Remove")
             }

@@ -6,11 +6,14 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -125,5 +128,39 @@ class HomeScreenTest {
             .onNodeWithContentDescription("Open category Food, 2 attributes")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+    }
+
+    @Test
+    fun homePrimaryActionsMeetMinimumTouchTargetSize() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Create category").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Sort categories by recent").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Sort categories by name").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Open category Food, 2 attributes").assertMinimumTouchTarget()
+    }
+
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
+        assertWidthIsAtLeast(48.dp)
+        assertHeightIsAtLeast(48.dp)
     }
 }
