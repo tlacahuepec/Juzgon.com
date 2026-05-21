@@ -40,12 +40,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 @Composable
 fun ItemFormRoute(
     categoryName: String,
+    itemId: String? = null,
     onBackClick: () -> Unit,
     onSaveCompleted: () -> Unit,
     viewModel: ItemFormViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(categoryName) {
-        viewModel.loadCategory(categoryName)
+    LaunchedEffect(categoryName, itemId) {
+        viewModel.loadCategory(categoryName, itemId)
     }
 
     val state by viewModel.state.collectAsState()
@@ -87,7 +88,7 @@ fun ItemFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add item") },
+                title = { Text(if (state.mode == ItemFormMode.Edit) "Edit item" else "Add item") },
                 navigationIcon = {
                     IconButton(
                         onClick = onBackClick,
@@ -163,6 +164,7 @@ private fun ItemFormContent(
         OutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
+            enabled = state.titleEditable,
             label = { Text("Item title") },
             isError = titleError != null,
             supportingText = {

@@ -37,6 +37,8 @@ data class RatedItem(
     val id: String,
     val scores: List<ScoreEntry>,
     val notes: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
 ) {
     init {
         require(id.isNotBlank()) { "Rated item id cannot be blank" }

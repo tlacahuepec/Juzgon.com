@@ -48,6 +48,10 @@ data class ItemEntity(
     val id: String,
     @ColumnInfo(name = "notes")
     val notes: String = "",
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long = 0L,
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: Long = 0L,
 )
 
 @Entity(

@@ -27,6 +27,7 @@ class RoomRatingRepositoryTest {
     private lateinit var database: JuzgonDatabase
     private lateinit var categoryRepository: CategoryRepository
     private lateinit var ratedItemRepository: RatedItemRepository
+    private var currentTime = 1_000L
 
     @Before
     fun setUp() {
@@ -37,7 +38,7 @@ class RoomRatingRepositoryTest {
                 .allowMainThreadQueries()
                 .build()
         categoryRepository = RoomCategoryRepository(database)
-        ratedItemRepository = RoomRatedItemRepository(database)
+        ratedItemRepository = RoomRatedItemRepository(database) { currentTime }
     }
 
     @After
@@ -159,6 +160,36 @@ class RoomRatingRepositoryTest {
 
             assertEquals(true, result.isFailure)
             assertEquals(null, ratedItemRepository.observeRatedItem("orphan").first())
+        }
+
+    @Test
+    fun saveRatedItemSetsCreateAndUpdateTimestamps() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+
+            currentTime = 1_500L
+            ratedItemRepository.saveRatedItem(foodItem())
+
+            val item = ratedItemRepository.observeRatedItem(ITEM_ID).first()
+            assertEquals(1_500L, item?.createdAt)
+            assertEquals(1_500L, item?.updatedAt)
+        }
+
+    @Test
+    fun updateRatedItemPreservesCreatedTimestampAndChangesUpdatedTimestamp() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+
+            currentTime = 1_500L
+            ratedItemRepository.saveRatedItem(foodItem())
+
+            currentTime = 2_500L
+            ratedItemRepository.saveRatedItem(updatedFoodItem())
+
+            val item = ratedItemRepository.observeRatedItem(ITEM_ID).first()
+            assertEquals(1_500L, item?.createdAt)
+            assertEquals(2_500L, item?.updatedAt)
+            assertRatedItemEquals(updatedFoodItem(), item)
         }
 
     private fun assertCategoryListEquals(

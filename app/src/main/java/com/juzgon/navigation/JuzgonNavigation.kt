@@ -17,16 +17,23 @@ import com.juzgon.feature.home.HomeRoute
 import com.juzgon.feature.item.ItemFormRoute
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
+private const val ITEM_ID_ARGUMENT = "itemId"
 
 object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
     const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
+    const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
 
     fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
 
     fun createItem(categoryName: String): String = "item/create/${Uri.encode(categoryName)}"
+
+    fun editItem(
+        categoryName: String,
+        itemId: String,
+    ): String = "item/edit/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
 }
 
 @Composable
@@ -63,20 +70,24 @@ internal fun JuzgonNavHost(
         categoryName: String,
         onBack: () -> Unit,
         onAddItem: () -> Unit,
-    ) -> Unit = { categoryName, onBack, onAddItem ->
+        onEditItem: (String) -> Unit,
+    ) -> Unit = { categoryName, onBack, onAddItem, onEditItem ->
         CategoryDetailRoute(
             categoryName = categoryName,
             onBackClick = onBack,
             onAddItemClick = onAddItem,
+            onEditItemClick = onEditItem,
         )
     },
     itemFormContent: @Composable (
         categoryName: String,
+        itemId: String?,
         onBack: () -> Unit,
         onSaveCompleted: () -> Unit,
-    ) -> Unit = { categoryName, onBack, onSaveCompleted ->
+    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted ->
         ItemFormRoute(
             categoryName = categoryName,
+            itemId = itemId,
             onBackClick = onBack,
             onSaveCompleted = onSaveCompleted,
         )
@@ -137,10 +148,16 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
+            val openEditItem = { itemId: String ->
+                navController.navigate(JuzgonRoutes.editItem(categoryName, itemId)) {
+                    launchSingleTop = true
+                }
+            }
             categoryDetailContent(
                 categoryName,
                 returnBack,
                 openAddItem,
+                openEditItem,
             )
         }
         composable(
@@ -163,6 +180,36 @@ internal fun JuzgonNavHost(
             }
             itemFormContent(
                 categoryName,
+                null,
+                returnToCategory,
+                returnToCategory,
+            )
+        }
+        composable(
+            route = JuzgonRoutes.EDIT_ITEM,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                    navArgument(ITEM_ID_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val itemId = Uri.decode(backStackEntry.arguments?.getString(ITEM_ID_ARGUMENT).orEmpty())
+            val returnToCategory = {
+                if (!navController.popBackStack(JuzgonRoutes.CATEGORY_DETAIL, inclusive = false)) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            itemFormContent(
+                categoryName,
+                itemId,
                 returnToCategory,
                 returnToCategory,
             )

@@ -26,6 +26,7 @@ class RoomRatingRepositoryFlowStabilityTest {
     private lateinit var database: JuzgonDatabase
     private lateinit var categoryRepository: CategoryRepository
     private lateinit var ratedItemRepository: RatedItemRepository
+    private var currentTime = 1_000L
 
     @Before
     fun setUp() {
@@ -36,7 +37,7 @@ class RoomRatingRepositoryFlowStabilityTest {
                 .allowMainThreadQueries()
                 .build()
         categoryRepository = RoomCategoryRepository(database)
-        ratedItemRepository = RoomRatedItemRepository(database)
+        ratedItemRepository = RoomRatedItemRepository(database) { currentTime }
     }
 
     @After
@@ -92,6 +93,7 @@ class RoomRatingRepositoryFlowStabilityTest {
                 ratedItemRepository.saveRatedItem(foodItem())
                 assertRatedItemsEqual(listOf(foodItem()), awaitItem())
 
+                currentTime = 2_000L
                 ratedItemRepository.saveRatedItem(foodItem(scores = listOf(SERVICE to 6, TASTE to 8)))
                 expectNoEvents()
 
@@ -114,6 +116,7 @@ class RoomRatingRepositoryFlowStabilityTest {
                 ratedItemRepository.saveRatedItem(foodItem())
                 assertRatedItemEquals(foodItem(), awaitItem())
 
+                currentTime = 2_000L
                 ratedItemRepository.saveRatedItem(foodItem(scores = listOf(SERVICE to 6, TASTE to 8)))
                 expectNoEvents()
 
