@@ -13,6 +13,13 @@ import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.RatingEntity
 import kotlinx.coroutines.flow.Flow
 
+data class CategoryItemCount(
+    @ColumnInfo(name = "category_name")
+    val categoryName: String,
+    @ColumnInfo(name = "item_count")
+    val itemCount: Int,
+)
+
 data class CategoryWithAttributes(
     @Embedded
     val category: CategoryEntity,
@@ -46,6 +53,7 @@ data class RankedItemWithRatings(
 )
 
 @Dao
+@Suppress("TooManyFunctions")
 interface CategoryDao {
     @Upsert
     suspend fun upsertCategory(category: CategoryEntity)
@@ -82,6 +90,16 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE name = :name")
     suspend fun deleteCategoryByName(name: String)
+
+    @Query(
+        """
+        SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count
+        FROM attributes a
+        LEFT JOIN ratings r ON r.attribute_id = a.id
+        GROUP BY a.category_name
+        """,
+    )
+    fun observeItemCountsByCategory(): Flow<List<CategoryItemCount>>
 }
 
 @Dao

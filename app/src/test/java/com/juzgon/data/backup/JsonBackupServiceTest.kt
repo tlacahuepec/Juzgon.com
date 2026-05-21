@@ -1,6 +1,7 @@
 package com.juzgon.data.backup
 
 import com.juzgon.data.local.dao.CategoryDao
+import com.juzgon.data.local.dao.CategoryItemCount
 import com.juzgon.data.local.dao.CategoryWithAttributes
 import com.juzgon.data.local.dao.ItemDao
 import com.juzgon.data.local.dao.ItemWithRatings
@@ -236,6 +237,8 @@ class JsonBackupServiceTest {
         }
 
         override fun observeCategoriesWithAttributes(): Flow<List<CategoryWithAttributes>> = state
+
+        override fun observeItemCountsByCategory(): Flow<List<CategoryItemCount>> = MutableStateFlow(emptyList())
 
         override suspend fun upsertCategory(category: CategoryEntity) {
             upsertedCategories += category

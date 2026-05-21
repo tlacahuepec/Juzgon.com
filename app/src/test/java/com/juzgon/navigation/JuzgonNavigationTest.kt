@@ -38,7 +38,7 @@ class JuzgonNavigationTest {
                     navController = navController,
                     homeContent = { _, _ -> Text("Home route") },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _, _, _ -> Text("Detail route $categoryName") },
+                    categoryDetailContent = { categoryName, _, _, _, _, _ -> Text("Detail route $categoryName") },
                     itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
@@ -69,7 +69,7 @@ class JuzgonNavigationTest {
                             Text("Back home")
                         }
                     },
-                    categoryDetailContent = { categoryName, _, _, _ -> Text("Detail route $categoryName") },
+                    categoryDetailContent = { categoryName, _, _, _, _, _ -> Text("Detail route $categoryName") },
                     itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
@@ -101,7 +101,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, onBack, _, _ ->
+                    categoryDetailContent = { categoryName, onBack, _, _, _, _ ->
                         Button(onClick = onBack) {
                             Text("Detail route $categoryName")
                         }
@@ -138,7 +138,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _, onAddItem, _ ->
+                    categoryDetailContent = { categoryName, _, onAddItem, _, _, _ ->
                         Button(onClick = onAddItem) {
                             Text("Detail route $categoryName")
                         }
@@ -180,7 +180,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _, _, onItemClick ->
+                    categoryDetailContent = { categoryName, _, _, onItemClick, _, _ ->
                         Button(onClick = { onItemClick("Roadster / 2026") }) {
                             Text("Detail route $categoryName")
                         }
@@ -214,7 +214,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _, _, onItemClick ->
+                    categoryDetailContent = { categoryName, _, _, onItemClick, _, _ ->
                         Button(onClick = { onItemClick("Roadster / 2026") }) {
                             Text("Detail route $categoryName")
                         }

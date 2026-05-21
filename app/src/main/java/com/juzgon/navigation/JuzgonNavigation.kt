@@ -23,12 +23,15 @@ private const val ITEM_ID_ARGUMENT = "itemId"
 object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
+    const val EDIT_CATEGORY = "category/edit/{$CATEGORY_NAME_ARGUMENT}"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
     const val ITEM_DETAIL = "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
     const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
     const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
 
     fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
+
+    fun editCategory(categoryName: String): String = "category/edit/${Uri.encode(categoryName)}"
 
     fun itemDetail(
         categoryName: String,
@@ -73,17 +76,32 @@ internal fun JuzgonNavHost(
             onSaveCompleted = onSaveCompleted,
         )
     },
+    editCategoryContent: @Composable (
+        categoryName: String,
+        onBack: () -> Unit,
+        onSaveCompleted: () -> Unit,
+    ) -> Unit = { categoryName, onBack, onSaveCompleted ->
+        CategoryFormRoute(
+            categoryName = categoryName,
+            onBackClick = onBack,
+            onSaveCompleted = onSaveCompleted,
+        )
+    },
     categoryDetailContent: @Composable (
         categoryName: String,
         onBack: () -> Unit,
         onAddItem: () -> Unit,
         onEditItem: (String) -> Unit,
-    ) -> Unit = { categoryName, onBack, onAddItem, onEditItem ->
+        onEditCategory: () -> Unit,
+        onDeleteComplete: () -> Unit,
+    ) -> Unit = { categoryName, onBack, onAddItem, onEditItem, onEditCategory, onDeleteComplete ->
         CategoryDetailRoute(
             categoryName = categoryName,
             onBackClick = onBack,
             onAddItemClick = onAddItem,
             onEditItemClick = onEditItem,
+            onEditCategoryClick = onEditCategory,
+            onDeleteCategoryComplete = onDeleteComplete,
         )
     },
     itemFormContent: @Composable (
@@ -146,6 +164,33 @@ internal fun JuzgonNavHost(
             )
         }
         composable(
+            route = JuzgonRoutes.EDIT_CATEGORY,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val returnUp = {
+                if (!navController.navigateUp()) {
+                    navController.navigate(JuzgonRoutes.HOME) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            val returnHome = {
+                if (!navController.popBackStack(JuzgonRoutes.HOME, inclusive = false)) {
+                    navController.navigate(JuzgonRoutes.HOME) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            editCategoryContent(categoryName, returnUp, returnHome)
+        }
+        composable(
             route = JuzgonRoutes.CATEGORY_DETAIL,
             arguments =
                 listOf(
@@ -173,11 +218,25 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
+            val openEditCategory = {
+                navController.navigate(JuzgonRoutes.editCategory(categoryName)) {
+                    launchSingleTop = true
+                }
+            }
+            val returnHome = {
+                if (!navController.popBackStack(JuzgonRoutes.HOME, inclusive = false)) {
+                    navController.navigate(JuzgonRoutes.HOME) {
+                        launchSingleTop = true
+                    }
+                }
+            }
             categoryDetailContent(
                 categoryName,
                 returnBack,
                 openAddItem,
                 openItemDetail,
+                openEditCategory,
+                returnHome,
             )
         }
         composable(

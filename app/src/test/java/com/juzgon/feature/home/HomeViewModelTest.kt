@@ -48,10 +48,31 @@ class HomeViewModelTest {
 
                 assertEquals(
                     listOf(
-                        HomeCategoryUiModel(name = "Travel", attributeCount = 1),
-                        HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                        HomeCategoryUiModel(name = "Travel", attributeCount = 1, itemCount = 0),
+                        HomeCategoryUiModel(name = "Food", attributeCount = 2, itemCount = 0),
                     ),
                     awaitItem().categories,
+                )
+            }
+        }
+
+    @Test
+    fun itemCountIsMappedFromCategoryDomainModel() =
+        runTest {
+            val foodWithItems = foodCategory.copy(itemCount = 3)
+            val travelWithItems = travelCategory.copy(itemCount = 1)
+            fakeRepository.categories.value = listOf(travelWithItems, foodWithItems)
+
+            viewModel.state.test {
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf(
+                        HomeCategoryUiModel(name = "Travel", attributeCount = 1, itemCount = 1),
+                        HomeCategoryUiModel(name = "Food", attributeCount = 2, itemCount = 3),
+                    ),
+                    state.categories,
                 )
             }
         }
@@ -69,7 +90,7 @@ class HomeViewModelTest {
                 val state = awaitItem()
                 assertEquals("oo", state.searchQuery)
                 assertEquals(
-                    listOf(HomeCategoryUiModel(name = "Food", attributeCount = 2)),
+                    listOf(HomeCategoryUiModel(name = "Food", attributeCount = 2, itemCount = 0)),
                     state.categories,
                 )
             }
@@ -89,9 +110,9 @@ class HomeViewModelTest {
                 assertEquals(HomeSortOption.Name, state.sortOption)
                 assertEquals(
                     listOf(
-                        HomeCategoryUiModel(name = "Food", attributeCount = 2),
-                        HomeCategoryUiModel(name = "Music", attributeCount = 1),
-                        HomeCategoryUiModel(name = "Travel", attributeCount = 1),
+                        HomeCategoryUiModel(name = "Food", attributeCount = 2, itemCount = 0),
+                        HomeCategoryUiModel(name = "Music", attributeCount = 1, itemCount = 0),
+                        HomeCategoryUiModel(name = "Travel", attributeCount = 1, itemCount = 0),
                     ),
                     state.categories,
                 )

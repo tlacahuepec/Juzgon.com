@@ -6,8 +6,11 @@ import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,11 +23,13 @@ class CategoryDetailViewModel
         private val ratedItemRepository: RatedItemRepository,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(CategoryDetailUiState())
+        private val mutableNavigationEvents = MutableSharedFlow<CategoryDetailNavigationEvent>()
         private var activeCategoryName: String? = null
         private var loadJob: Job? = null
         private val sortOption = MutableStateFlow(CategoryDetailSortOption.Score)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
+        val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
 
         fun loadCategory(categoryName: String) {
             if (activeCategoryName == categoryName) {
@@ -48,7 +53,12 @@ class CategoryDetailViewModel
                             sortOption = sort,
                         )
                     }.collect { detailState ->
-                        mutableState.value = detailState
+                        mutableState.value =
+                            detailState.copy(
+                                showDeleteConfirmDialog = mutableState.value.showDeleteConfirmDialog,
+                                showDeleteWithItemsWarning = mutableState.value.showDeleteWithItemsWarning,
+                                isDeleting = mutableState.value.isDeleting,
+                            )
                     }
                 }
         }
@@ -61,5 +71,43 @@ class CategoryDetailViewModel
             val categoryName = activeCategoryName ?: return
             activeCategoryName = null
             loadCategory(categoryName)
+        }
+
+        fun onDeleteClick() {
+            val current = mutableState.value
+            if (current.isLoading || current.errorMessage != null) return
+            if (current.hasItems) {
+                mutableState.value = current.copy(showDeleteWithItemsWarning = true)
+            } else {
+                mutableState.value = current.copy(showDeleteConfirmDialog = true)
+            }
+        }
+
+        fun onDeleteConfirmed() {
+            val categoryName = activeCategoryName ?: return
+            mutableState.value =
+                mutableState.value.copy(
+                    showDeleteConfirmDialog = false,
+                    showDeleteWithItemsWarning = false,
+                    isDeleting = true,
+                )
+            viewModelScope.launch {
+                categoryRepository.deleteCategory(categoryName)
+                mutableNavigationEvents.emit(CategoryDetailNavigationEvent.NavigateBack)
+            }
+        }
+
+        fun onDeleteDialogDismissed() {
+            mutableState.value =
+                mutableState.value.copy(
+                    showDeleteConfirmDialog = false,
+                    showDeleteWithItemsWarning = false,
+                )
+        }
+
+        fun onEditCategoryClick() {
+            viewModelScope.launch {
+                mutableNavigationEvents.emit(CategoryDetailNavigationEvent.NavigateToEditCategory)
+            }
         }
     }

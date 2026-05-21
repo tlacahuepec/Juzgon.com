@@ -23,16 +23,20 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
         )
     }
 
-fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
+fun CategoryEntity.toDomain(
+    attributes: List<AttributeEntity>,
+    itemCount: Int = 0,
+): Category =
     Category(
         name = name,
         attributes =
             attributes
                 .sortedWith(compareBy<AttributeEntity> { it.position }.thenBy { it.id })
                 .map { it.toDomain() },
+        itemCount = itemCount,
     )
 
-fun CategoryWithAttributes.toDomain(): Category = category.toDomain(attributes)
+fun CategoryWithAttributes.toDomain(itemCount: Int = 0): Category = category.toDomain(attributes, itemCount)
 
 fun RatedItem.toItemEntity(
     createdAt: Long = this.createdAt,

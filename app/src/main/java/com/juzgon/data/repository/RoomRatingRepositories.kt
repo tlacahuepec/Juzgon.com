@@ -27,11 +27,13 @@ class RoomCategoryRepository(
     private val categoryDao = database.categoryDao()
 
     override fun observeCategories(): Flow<List<Category>> =
-        categoryDao
-            .observeCategoriesWithAttributes()
-            .map { categories ->
-                categories.map { it.toDomain() }
-            }.distinctUntilChanged()
+        combine(
+            categoryDao.observeCategoriesWithAttributes(),
+            categoryDao.observeItemCountsByCategory(),
+        ) { categories, itemCounts ->
+            val countsByName = itemCounts.associate { it.categoryName to it.itemCount }
+            categories.map { it.toDomain(itemCount = countsByName[it.category.name] ?: 0) }
+        }.distinctUntilChanged()
 
     override fun observeCategory(name: String): Flow<Category?> =
         categoryDao
