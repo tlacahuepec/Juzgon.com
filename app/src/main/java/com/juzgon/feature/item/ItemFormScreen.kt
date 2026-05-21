@@ -4,6 +4,7 @@ package com.juzgon.feature.item
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -23,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,6 +73,8 @@ fun ItemFormRoute(
         onTitleChange = viewModel::onTitleChanged,
         onNotesChange = viewModel::onNotesChanged,
         onScoreChange = viewModel::onScoreChanged,
+        onScoreIncrement = viewModel::onScoreIncrement,
+        onScoreDecrement = viewModel::onScoreDecrement,
         onSaveClick = viewModel::onSaveClick,
         onBackClick = onBackClick,
         onDeleteClick = viewModel::onDeleteClick,
@@ -85,6 +90,8 @@ fun ItemFormScreen(
     onTitleChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onScoreChange: (String, String) -> Unit,
+    onScoreIncrement: (String) -> Unit = {},
+    onScoreDecrement: (String) -> Unit = {},
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
     onDeleteClick: () -> Unit = {},
@@ -178,6 +185,8 @@ fun ItemFormScreen(
                     onTitleChange = onTitleChange,
                     onNotesChange = onNotesChange,
                     onScoreChange = onScoreChange,
+                    onScoreIncrement = onScoreIncrement,
+                    onScoreDecrement = onScoreDecrement,
                     onSaveClick = onSaveClick,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -193,6 +202,8 @@ private fun ItemFormContent(
     onTitleChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onScoreChange: (String, String) -> Unit,
+    onScoreIncrement: (String) -> Unit,
+    onScoreDecrement: (String) -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -244,6 +255,8 @@ private fun ItemFormContent(
                 scoreInput = scoreInput,
                 validationError = scoreErrors[index],
                 onScoreChange = onScoreChange,
+                onScoreIncrement = onScoreIncrement,
+                onScoreDecrement = onScoreDecrement,
             )
         }
 
@@ -276,23 +289,72 @@ private fun ItemScoreField(
     scoreInput: ItemScoreInput,
     validationError: ItemScoreValidationError,
     onScoreChange: (String, String) -> Unit,
+    onScoreIncrement: (String) -> Unit,
+    onScoreDecrement: (String) -> Unit,
 ) {
-    val label = "${scoreInput.attribute.id} score"
-    OutlinedTextField(
-        value = scoreInput.scoreText,
-        onValueChange = { onScoreChange(scoreInput.attribute.id, it) },
-        label = { Text(label) },
-        isError = validationError.score != null,
-        supportingText = {
-            validationError.score?.let { Text(it) }
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = label
+    val attributeId = scoreInput.attribute.id
+    val label = "$attributeId score"
+    val sliderValue = scoreInput.scoreText.toIntOrNull()?.toFloat() ?: SCORE_MIN.toFloat()
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Slider(
+            value = sliderValue,
+            onValueChange = { onScoreChange(attributeId, it.toInt().toString()) },
+            valueRange = SCORE_MIN.toFloat()..SCORE_MAX.toFloat(),
+            steps = SCORE_MAX - SCORE_MIN - 1,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "$attributeId slider" },
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { onScoreDecrement(attributeId) },
+                modifier =
+                    Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "Decrease $label"
+                            role = Role.Button
+                        },
+            ) {
+                Text(text = "−", style = MaterialTheme.typography.titleLarge)
+            }
+            OutlinedTextField(
+                value = scoreInput.scoreText,
+                onValueChange = { onScoreChange(attributeId, it) },
+                label = { Text(label) },
+                isError = validationError.score != null,
+                supportingText = {
+                    validationError.score?.let { Text(it) }
                 },
-    )
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .semantics {
+                            contentDescription = label
+                        },
+            )
+            IconButton(
+                onClick = { onScoreIncrement(attributeId) },
+                modifier =
+                    Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "Increase $label"
+                            role = Role.Button
+                        },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                )
+            }
+        }
+    }
 }

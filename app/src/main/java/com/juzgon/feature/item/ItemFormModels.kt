@@ -5,7 +5,9 @@ import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 
 private const val MIN_SCORE = 1
+internal const val SCORE_MIN = MIN_SCORE
 private const val MAX_SCORE = 10
+internal const val SCORE_MAX = MAX_SCORE
 
 enum class ItemFormMode {
     Create,
