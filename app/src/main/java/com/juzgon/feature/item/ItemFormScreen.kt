@@ -13,6 +13,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ fun ItemFormRoute(
     itemId: String? = null,
     onBackClick: () -> Unit,
     onSaveCompleted: () -> Unit,
+    onDeleteCompleted: () -> Unit = {},
     viewModel: ItemFormViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName, itemId) {
@@ -55,6 +59,11 @@ fun ItemFormRoute(
             onSaveCompleted()
         }
     }
+    LaunchedEffect(state.deleteCompleted) {
+        if (state.deleteCompleted) {
+            onDeleteCompleted()
+        }
+    }
 
     ItemFormScreen(
         state = state,
@@ -63,6 +72,9 @@ fun ItemFormRoute(
         onScoreChange = viewModel::onScoreChanged,
         onSaveClick = viewModel::onSaveClick,
         onBackClick = onBackClick,
+        onDeleteClick = viewModel::onDeleteClick,
+        onDeleteCancel = viewModel::onDeleteCancel,
+        onDeleteConfirm = viewModel::onDeleteConfirm,
     )
 }
 
@@ -75,6 +87,9 @@ fun ItemFormScreen(
     onScoreChange: (String, String) -> Unit,
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
+    onDeleteCancel: () -> Unit = {},
+    onDeleteConfirm: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val titleError = if (state.showValidationErrors) state.titleError else null
@@ -84,6 +99,20 @@ fun ItemFormScreen(
         } else {
             List(state.scores.size) { ItemScoreValidationError() }
         }
+
+    if (state.showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = onDeleteCancel,
+            title = { Text("Delete item?") },
+            text = { Text("This will permanently delete the item and all its ratings.") },
+            confirmButton = {
+                TextButton(onClick = onDeleteConfirm) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDeleteCancel) { Text("Cancel") }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -104,6 +133,25 @@ fun ItemFormScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
                         )
+                    }
+                },
+                actions = {
+                    if (state.mode == ItemFormMode.Edit) {
+                        IconButton(
+                            onClick = onDeleteClick,
+                            modifier =
+                                Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .semantics {
+                                        contentDescription = "Delete item"
+                                        role = Role.Button
+                                    },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = null,
+                            )
+                        }
                     }
                 },
             )
