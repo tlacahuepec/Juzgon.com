@@ -301,13 +301,13 @@ private fun CategoryRow(
     category: HomeCategoryUiModel,
     onCategoryClick: (String) -> Unit,
 ) {
-    val attributeSummary = category.attributeCount.toAttributeSummary()
+    val summary = buildCategorySummary(category.itemCount, category.attributeCount)
 
     ListItem(
         headlineContent = { Text(category.name) },
         supportingContent = {
             Text(
-                text = attributeSummary,
+                text = summary,
             )
         },
         modifier =
@@ -318,15 +318,17 @@ private fun CategoryRow(
                 ) {
                     onCategoryClick(category.name)
                 }.semantics(mergeDescendants = true) {
-                    contentDescription = "Open category ${category.name}, $attributeSummary"
+                    contentDescription = "Open category ${category.name}, $summary"
                     role = Role.Button
                 },
     )
 }
 
-private fun Int.toAttributeSummary(): String =
-    if (this == 1) {
-        "1 attribute"
-    } else {
-        "$this attributes"
-    }
+private fun buildCategorySummary(
+    itemCount: Int,
+    attributeCount: Int,
+): String {
+    val items = if (itemCount == 1) "1 item" else "$itemCount items"
+    val attrs = if (attributeCount == 1) "1 attribute" else "$attributeCount attributes"
+    return "$items · $attrs"
+}

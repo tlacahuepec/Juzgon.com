@@ -242,6 +242,146 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithContentDescription("Sort items by name").assertMinimumTouchTarget()
     }
 
+    @Test
+    fun editAndDeleteActionsAreAvailableWhenLoaded() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Edit category").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Delete category").assertIsDisplayed()
+    }
+
+    @Test
+    fun editCategoryButtonInvokesCallback() {
+        var editClicked = false
+        setContent(
+            state = CategoryDetailUiState(categoryName = "Cars", isLoading = false),
+            onEditCategoryClick = { editClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Edit category").performClick()
+
+        assertTrue(editClicked)
+    }
+
+    @Test
+    fun deleteCategoryButtonInvokesCallback() {
+        var deleteClicked = false
+        setContent(
+            state = CategoryDetailUiState(categoryName = "Cars", isLoading = false),
+            onDeleteClick = { deleteClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Delete category").performClick()
+
+        assertTrue(deleteClicked)
+    }
+
+    @Test
+    fun deleteConfirmDialogIsShownWhenFlagSet() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                isLoading = false,
+                showDeleteConfirmDialog = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("Delete category").assertIsDisplayed()
+        composeRule
+            .onNodeWithText("Are you sure you want to delete this category? This action cannot be undone.")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Confirm delete").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Cancel delete").assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteWarningDialogIsShownWithItemCountWhenFlagSet() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "7.4"),
+                    ),
+                isLoading = false,
+                showDeleteWithItemsWarning = true,
+            ),
+        )
+
+        composeRule
+            .onNodeWithText("This category has 2 items that will also be deleted. This action cannot be undone.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteConfirmButtonInvokesConfirmCallback() {
+        var confirmed = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    isLoading = false,
+                    showDeleteConfirmDialog = true,
+                ),
+            onDeleteConfirmed = { confirmed = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Confirm delete").performClick()
+
+        assertTrue(confirmed)
+    }
+
+    @Test
+    fun deleteCancelButtonInvokesDismissCallback() {
+        var dismissed = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    isLoading = false,
+                    showDeleteConfirmDialog = true,
+                ),
+            onDeleteDialogDismissed = { dismissed = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Cancel delete").performClick()
+
+        assertTrue(dismissed)
+    }
+
+    @Test
+    fun editAndDeleteActionsNotShownDuringLoading() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                isLoading = true,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Edit category").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Delete category").assertDoesNotExist()
+    }
+
+    @Test
+    fun editAndDeleteActionsMeetMinimumTouchTargetSize() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Edit category").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Delete category").assertMinimumTouchTarget()
+    }
+
     private fun setContent(
         state: CategoryDetailUiState,
         onBackClick: () -> Unit = {},
@@ -249,6 +389,10 @@ class CategoryDetailScreenTest {
         onSortOptionSelected: (CategoryDetailSortOption) -> Unit = {},
         onAddItemClick: () -> Unit = {},
         onEditItemClick: (String) -> Unit = {},
+        onDeleteClick: () -> Unit = {},
+        onDeleteConfirmed: () -> Unit = {},
+        onDeleteDialogDismissed: () -> Unit = {},
+        onEditCategoryClick: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -259,6 +403,10 @@ class CategoryDetailScreenTest {
                     onSortOptionSelected = onSortOptionSelected,
                     onAddItemClick = onAddItemClick,
                     onEditItemClick = onEditItemClick,
+                    onDeleteClick = onDeleteClick,
+                    onDeleteConfirmed = onDeleteConfirmed,
+                    onDeleteDialogDismissed = onDeleteDialogDismissed,
+                    onEditCategoryClick = onEditCategoryClick,
                 )
             }
         }

@@ -9,6 +9,12 @@ enum class CategoryDetailSortOption {
     Name,
 }
 
+sealed interface CategoryDetailNavigationEvent {
+    data object NavigateToEditCategory : CategoryDetailNavigationEvent
+
+    data object NavigateBack : CategoryDetailNavigationEvent
+}
+
 data class CategoryDetailItemUiModel(
     val id: String,
     val averageScoreText: String,
@@ -21,6 +27,9 @@ data class CategoryDetailUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val sortOption: CategoryDetailSortOption = CategoryDetailSortOption.Score,
+    val showDeleteConfirmDialog: Boolean = false,
+    val showDeleteWithItemsWarning: Boolean = false,
+    val isDeleting: Boolean = false,
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }

@@ -87,9 +87,9 @@ class HomeScreenTest {
         composeRule.onNodeWithText("Recent").assertIsDisplayed()
         composeRule.onNodeWithText("Name").assertIsDisplayed()
         composeRule.onNodeWithText("Food").assertIsDisplayed()
-        composeRule.onNodeWithText("2 attributes").assertIsDisplayed()
+        composeRule.onNodeWithText("0 items · 2 attributes").assertIsDisplayed()
         composeRule.onNodeWithText("Travel").assertIsDisplayed()
-        composeRule.onNodeWithText("1 attribute").assertIsDisplayed()
+        composeRule.onNodeWithText("0 items · 1 attribute").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Create category").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Create category").performClick()
 
@@ -128,7 +128,7 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Sort categories by recent").assertHasClickAction()
         composeRule.onNodeWithContentDescription("Sort categories by name").assertHasClickAction()
         composeRule
-            .onNodeWithContentDescription("Open category Food, 2 attributes")
+            .onNodeWithContentDescription("Open category Food, 0 items · 2 attributes")
             .assertHasClickAction()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
@@ -160,7 +160,9 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Create category").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Sort categories by recent").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Sort categories by name").assertMinimumTouchTarget()
-        composeRule.onNodeWithContentDescription("Open category Food, 2 attributes").assertMinimumTouchTarget()
+        composeRule
+            .onNodeWithContentDescription("Open category Food, 0 items · 2 attributes")
+            .assertMinimumTouchTarget()
     }
 
     @Test

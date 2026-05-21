@@ -16,6 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,10 +52,21 @@ fun CategoryDetailRoute(
     onBackClick: () -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
+    onEditCategoryClick: () -> Unit,
+    onDeleteCategoryComplete: () -> Unit,
     viewModel: CategoryDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName) {
         viewModel.loadCategory(categoryName)
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.navigationEvents.collect { event ->
+            when (event) {
+                CategoryDetailNavigationEvent.NavigateToEditCategory -> onEditCategoryClick()
+                CategoryDetailNavigationEvent.NavigateBack -> onDeleteCategoryComplete()
+            }
+        }
     }
 
     val state by viewModel.state.collectAsState()
@@ -62,6 +77,10 @@ fun CategoryDetailRoute(
         onSortOptionSelected = viewModel::onSortOptionSelected,
         onAddItemClick = onAddItemClick,
         onEditItemClick = onEditItemClick,
+        onDeleteClick = viewModel::onDeleteClick,
+        onDeleteConfirmed = viewModel::onDeleteConfirmed,
+        onDeleteDialogDismissed = viewModel::onDeleteDialogDismissed,
+        onEditCategoryClick = viewModel::onEditCategoryClick,
     )
 }
 
@@ -74,8 +93,21 @@ fun CategoryDetailScreen(
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
+    onDeleteClick: () -> Unit = {},
+    onDeleteConfirmed: () -> Unit = {},
+    onDeleteDialogDismissed: () -> Unit = {},
+    onEditCategoryClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
+        DeleteCategoryDialog(
+            hasItems = state.showDeleteWithItemsWarning,
+            itemCount = state.items.size,
+            onConfirm = onDeleteConfirmed,
+            onDismiss = onDeleteDialogDismissed,
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -104,6 +136,36 @@ fun CategoryDetailScreen(
                 },
                 actions = {
                     if (!state.isLoading && state.errorMessage == null) {
+                        IconButton(
+                            onClick = onEditCategoryClick,
+                            modifier =
+                                Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .semantics {
+                                        contentDescription = "Edit category"
+                                        role = Role.Button
+                                    },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = null,
+                            )
+                        }
+                        IconButton(
+                            onClick = onDeleteClick,
+                            modifier =
+                                Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .semantics {
+                                        contentDescription = "Delete category"
+                                        role = Role.Button
+                                    },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = null,
+                            )
+                        }
                         IconButton(
                             onClick = onAddItemClick,
                             modifier =
@@ -134,6 +196,45 @@ fun CategoryDetailScreen(
             modifier = Modifier.padding(innerPadding),
         )
     }
+}
+
+@Composable
+private fun DeleteCategoryDialog(
+    hasItems: Boolean,
+    itemCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete category") },
+        text = {
+            if (hasItems) {
+                Text(
+                    "This category has $itemCount ${if (itemCount == 1) "item" else "items"} " +
+                        "that will also be deleted. This action cannot be undone.",
+                )
+            } else {
+                Text("Are you sure you want to delete this category? This action cannot be undone.")
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                modifier = Modifier.semantics { contentDescription = "Confirm delete" },
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = "Cancel delete" },
+            ) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable

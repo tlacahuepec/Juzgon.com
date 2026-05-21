@@ -11,6 +11,7 @@ import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -235,6 +236,103 @@ class CategoryDetailViewModelTest {
             }
         }
 
+    @Test
+    fun deleteCategoryEmitsNavigateBackEventOnSuccess() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.navigationEvents.test {
+                viewModel.loadCategory("Cars")
+                var state = viewModel.state.value
+                if (state.isLoading) {
+                    state = viewModel.state.first { !it.isLoading }
+                }
+
+                viewModel.onDeleteClick()
+                viewModel.onDeleteConfirmed()
+
+                assertEquals(CategoryDetailNavigationEvent.NavigateBack, awaitItem())
+            }
+        }
+
+    @Test
+    fun deleteClickWithNoItemsShowsConfirmDialog() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onDeleteClick()
+                state = awaitItem()
+
+                assertEquals(true, state.showDeleteConfirmDialog)
+                assertEquals(false, state.showDeleteWithItemsWarning)
+            }
+        }
+
+    @Test
+    fun deleteClickWithItemsShowsWarningDialog() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onDeleteClick()
+                state = awaitItem()
+
+                assertEquals(false, state.showDeleteConfirmDialog)
+                assertEquals(true, state.showDeleteWithItemsWarning)
+            }
+        }
+
+    @Test
+    fun deleteDialogDismissedClearsDialogState() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onDeleteClick()
+                state = awaitItem()
+                assertEquals(true, state.showDeleteConfirmDialog)
+
+                viewModel.onDeleteDialogDismissed()
+                state = awaitItem()
+
+                assertEquals(false, state.showDeleteConfirmDialog)
+                assertEquals(false, state.showDeleteWithItemsWarning)
+            }
+        }
+
+    @Test
+    fun editCategoryClickEmitsNavigateToEditCategoryEvent() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.navigationEvents.test {
+                viewModel.loadCategory("Cars")
+                viewModel.onEditCategoryClick()
+
+                assertEquals(CategoryDetailNavigationEvent.NavigateToEditCategory, awaitItem())
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val category = MutableStateFlow<Category?>(null)
 
@@ -256,7 +354,7 @@ class CategoryDetailViewModelTest {
         }
 
         override suspend fun deleteCategory(name: String) {
-            error("CategoryDetailViewModel does not delete categories")
+            category.value = null
         }
     }
 

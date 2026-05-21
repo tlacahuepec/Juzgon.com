@@ -19,6 +19,7 @@ sealed interface HomeNavigationEvent {
 data class HomeCategoryUiModel(
     val name: String,
     val attributeCount: Int,
+    val itemCount: Int = 0,
 )
 
 data class HomeScreenActions(
@@ -65,6 +66,7 @@ object HomeStateReducer {
                     HomeCategoryUiModel(
                         name = category.name,
                         attributeCount = category.attributes.size,
+                        itemCount = category.itemCount,
                     )
                 }
 
