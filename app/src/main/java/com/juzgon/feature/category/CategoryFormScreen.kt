@@ -15,20 +15,31 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -36,6 +47,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.domain.AttributeType
 
 @Composable
 fun CategoryFormRoute(
@@ -62,10 +74,16 @@ fun CategoryFormRoute(
         onNameChange = viewModel::onNameChanged,
         onAttributeNameChange = viewModel::onAttributeNameChanged,
         onAttributeWeightChange = viewModel::onAttributeWeightChanged,
+        onAttributeTypeChange = viewModel::onAttributeTypeChanged,
+        onAttributeRequiredChange = viewModel::onAttributeRequiredChanged,
         onAddAttribute = viewModel::addAttribute,
         onRemoveAttribute = viewModel::removeAttribute,
         onMoveAttributeUp = viewModel::moveAttributeUp,
         onMoveAttributeDown = viewModel::moveAttributeDown,
+        onTypeChangeConfirmed = viewModel::onTypeChangeConfirmed,
+        onTypeChangeDeclined = viewModel::onTypeChangeDeclined,
+        onAttributeDeleteConfirmed = viewModel::onAttributeDeleteConfirmed,
+        onAttributeDeleteDeclined = viewModel::onAttributeDeleteDeclined,
         onSaveClick = viewModel::onSaveClick,
         onBackClick = onBackClick,
     )
@@ -78,10 +96,16 @@ fun CategoryFormScreen(
     onNameChange: (String) -> Unit,
     onAttributeNameChange: (Long, String) -> Unit,
     onAttributeWeightChange: (Long, String) -> Unit,
+    onAttributeTypeChange: (Long, AttributeType) -> Unit,
+    onAttributeRequiredChange: (Long, Boolean) -> Unit,
     onAddAttribute: () -> Unit,
     onRemoveAttribute: (Long) -> Unit,
     onMoveAttributeUp: (Long) -> Unit,
     onMoveAttributeDown: (Long) -> Unit,
+    onTypeChangeConfirmed: () -> Unit,
+    onTypeChangeDeclined: () -> Unit,
+    onAttributeDeleteConfirmed: () -> Unit,
+    onAttributeDeleteDeclined: () -> Unit,
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -94,6 +118,58 @@ fun CategoryFormScreen(
         } else {
             List(state.attributes.size) { CategoryAttributeValidationError() }
         }
+
+    if (state.showTypeChangeWarning) {
+        AlertDialog(
+            onDismissRequest = onTypeChangeDeclined,
+            title = { Text("Change attribute type") },
+            text = {
+                Text("Changing the attribute type may affect existing data. Continue?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = onTypeChangeConfirmed,
+                    modifier = Modifier.semantics { contentDescription = "Confirm type change" },
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onTypeChangeDeclined,
+                    modifier = Modifier.semantics { contentDescription = "Cancel type change" },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (state.showAttributeDeleteWarning) {
+        AlertDialog(
+            onDismissRequest = onAttributeDeleteDeclined,
+            title = { Text("Delete attribute") },
+            text = {
+                Text("Deleting this attribute will remove its values from all items. Continue?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = onAttributeDeleteConfirmed,
+                    modifier = Modifier.semantics { contentDescription = "Confirm delete attribute" },
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onAttributeDeleteDeclined,
+                    modifier = Modifier.semantics { contentDescription = "Cancel delete attribute" },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -178,6 +254,8 @@ fun CategoryFormScreen(
                     isLast = index == state.attributes.lastIndex,
                     onNameChange = onAttributeNameChange,
                     onWeightChange = onAttributeWeightChange,
+                    onTypeChange = onAttributeTypeChange,
+                    onRequiredChange = onAttributeRequiredChange,
                     onRemove = onRemoveAttribute,
                     onMoveUp = onMoveAttributeUp,
                     onMoveDown = onMoveAttributeDown,
@@ -222,6 +300,7 @@ fun CategoryFormScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryAttributeRow(
     attribute: CategoryAttributeInput,
@@ -231,11 +310,14 @@ private fun CategoryAttributeRow(
     isLast: Boolean,
     onNameChange: (Long, String) -> Unit,
     onWeightChange: (Long, String) -> Unit,
+    onTypeChange: (Long, AttributeType) -> Unit,
+    onRequiredChange: (Long, Boolean) -> Unit,
     onRemove: (Long) -> Unit,
     onMoveUp: (Long) -> Unit,
     onMoveDown: (Long) -> Unit,
 ) {
     val actionName = attribute.accessibleActionName(position)
+    var typeMenuExpanded by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
@@ -256,6 +338,61 @@ private fun CategoryAttributeRow(
                         contentDescription = "Attribute $position name"
                     },
         )
+
+        ExposedDropdownMenuBox(
+            expanded = typeMenuExpanded,
+            onExpandedChange = { typeMenuExpanded = it },
+            modifier =
+                Modifier.semantics {
+                    contentDescription = "Attribute $position type"
+                },
+        ) {
+            OutlinedTextField(
+                value =
+                    attribute.type.name
+                        .lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Type") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = typeMenuExpanded,
+                onDismissRequest = { typeMenuExpanded = false },
+            ) {
+                AttributeType.entries.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                        onClick = {
+                            onTypeChange(attribute.key, type)
+                            typeMenuExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Required", style = MaterialTheme.typography.bodyMedium)
+            Switch(
+                checked = attribute.isRequired,
+                onCheckedChange = { onRequiredChange(attribute.key, it) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Attribute $position required"
+                    },
+            )
+        }
+
         OutlinedTextField(
             value = attribute.weightText,
             onValueChange = { onWeightChange(attribute.key, it) },

@@ -6,6 +6,8 @@ private const val MAX_SCORE = 10
 data class Attribute(
     val id: String,
     val weight: Double = 1.0,
+    val type: AttributeType = AttributeType.NUMBER,
+    val isRequired: Boolean = true,
 ) {
     init {
         require(id.isNotBlank()) { "Attribute id cannot be blank" }

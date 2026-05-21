@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -77,7 +78,7 @@ class CategoryFormScreenTest {
         composeRule.onNodeWithText("Edit category").assertIsDisplayed()
         composeRule.onNodeWithText("Food").assertIsDisplayed()
         composeRule.onNodeWithText("Taste").assertIsDisplayed()
-        composeRule.onNodeWithText("1.5").assertIsDisplayed()
+        composeRule.onNodeWithText("1.5").assertExists()
         composeRule.onAllNodesWithText("Service").assertCountEquals(1)
     }
 
@@ -119,7 +120,7 @@ class CategoryFormScreenTest {
 
         composeRule.onNodeWithContentDescription("Category name").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Attribute 1 name").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Attribute 1 weight").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 weight").assertExists()
         composeRule.onNodeWithContentDescription("Add attribute").assertHasClickAction()
         composeRule.onNodeWithContentDescription("Save category").assertIsNotEnabled()
         composeRule.onNodeWithContentDescription("Remove attribute 1").assertHasClickAction()
@@ -170,6 +171,63 @@ class CategoryFormScreenTest {
         composeRule.onNodeWithContentDescription("Remove Service").assertMinimumTouchTarget()
     }
 
+    @Test
+    fun typePickerIsRenderedForEachAttribute() {
+        setContent(CategoryFormReducer.createState())
+
+        composeRule.onNodeWithContentDescription("Attribute 1 type").assertIsDisplayed()
+    }
+
+    @Test
+    fun requiredToggleIsRenderedForEachAttribute() {
+        setContent(CategoryFormReducer.createState())
+
+        composeRule.onNodeWithContentDescription("Attribute 1 required").assertIsDisplayed()
+    }
+
+    @Test
+    fun typeChangeWarningDialogIsShownWhenFlagSet() {
+        setContent(
+            CategoryFormUiState(
+                name = "Food",
+                attributes =
+                    listOf(
+                        CategoryAttributeInput(
+                            key = 0L,
+                            name = "Taste",
+                            type = AttributeType.NUMBER,
+                        ),
+                    ),
+                showTypeChangeWarning = true,
+                pendingTypeChange = AttributeType.DATE,
+            ),
+        )
+
+        composeRule
+            .onNodeWithText("Changing the attribute type may affect existing data. Continue?")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Confirm type change").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Cancel type change").assertIsDisplayed()
+    }
+
+    @Test
+    fun attributeDeleteWarningDialogIsShownWhenFlagSet() {
+        setContent(
+            CategoryFormUiState(
+                name = "Food",
+                attributes =
+                    listOf(CategoryAttributeInput(key = 0L, name = "Taste", type = AttributeType.NUMBER)),
+                showAttributeDeleteWarning = true,
+            ),
+        )
+
+        composeRule
+            .onNodeWithText("Deleting this attribute will remove its values from all items. Continue?")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Confirm delete attribute").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Cancel delete attribute").assertIsDisplayed()
+    }
+
     private fun setContent(
         state: CategoryFormUiState,
         onBackClick: () -> Unit = {},
@@ -181,10 +239,16 @@ class CategoryFormScreenTest {
                     onNameChange = {},
                     onAttributeNameChange = { _, _ -> },
                     onAttributeWeightChange = { _, _ -> },
+                    onAttributeTypeChange = { _, _ -> },
+                    onAttributeRequiredChange = { _, _ -> },
                     onAddAttribute = {},
                     onRemoveAttribute = {},
                     onMoveAttributeUp = {},
                     onMoveAttributeDown = {},
+                    onTypeChangeConfirmed = {},
+                    onTypeChangeDeclined = {},
+                    onAttributeDeleteConfirmed = {},
+                    onAttributeDeleteDeclined = {},
                     onSaveClick = {},
                     onBackClick = onBackClick,
                 )

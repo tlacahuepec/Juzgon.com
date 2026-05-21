@@ -8,6 +8,7 @@ private const val DATABASE_VERSION_2 = 2
 private const val DATABASE_VERSION_3 = 3
 private const val DATABASE_VERSION_4 = 4
 private const val DATABASE_VERSION_5 = 5
+private const val DATABASE_VERSION_6 = 6
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -36,6 +37,14 @@ object DatabaseMigrations {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE items ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE items ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+    val MIGRATION_5_6: Migration =
+        object : Migration(DATABASE_VERSION_5, DATABASE_VERSION_6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE attributes ADD COLUMN type TEXT NOT NULL DEFAULT 'NUMBER'")
+                db.execSQL("ALTER TABLE attributes ADD COLUMN is_required INTEGER NOT NULL DEFAULT 1")
             }
         }
 }
