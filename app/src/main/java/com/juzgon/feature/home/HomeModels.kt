@@ -26,15 +26,18 @@ data class HomeScreenActions(
     val onSortOptionSelected: (HomeSortOption) -> Unit,
     val onCreateCategoryClick: () -> Unit,
     val onCategoryClick: (String) -> Unit,
+    val onRetry: () -> Unit,
 )
 
 data class HomeUiState(
     val searchQuery: String = "",
     val sortOption: HomeSortOption = HomeSortOption.Recent,
     val categories: List<HomeCategoryUiModel> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 ) {
     val hasSearchQuery: Boolean = searchQuery.isNotBlank()
-    val isEmpty: Boolean = categories.isEmpty()
+    val isEmpty: Boolean = categories.isEmpty() && !isLoading && errorMessage == null
 }
 
 object HomeStateReducer {
@@ -69,6 +72,7 @@ object HomeStateReducer {
             searchQuery = searchQuery,
             sortOption = sortOption,
             categories = visibleCategories,
+            isLoading = false,
         )
     }
 }

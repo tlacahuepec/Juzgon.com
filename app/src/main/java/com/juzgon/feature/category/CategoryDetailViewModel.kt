@@ -22,6 +22,7 @@ class CategoryDetailViewModel
         private val mutableState = MutableStateFlow(CategoryDetailUiState())
         private var activeCategoryName: String? = null
         private var loadJob: Job? = null
+        private val sortOption = MutableStateFlow(CategoryDetailSortOption.Score)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
 
@@ -38,15 +39,27 @@ class CategoryDetailViewModel
                     combine(
                         categoryRepository.observeCategory(categoryName),
                         ratedItemRepository.observeRankedItems(categoryName),
-                    ) { category, rankedItems ->
+                        sortOption,
+                    ) { category, rankedItems, sort ->
                         CategoryDetailReducer.reduce(
                             categoryName = categoryName,
                             category = category,
                             rankedItems = rankedItems,
+                            sortOption = sort,
                         )
                     }.collect { detailState ->
                         mutableState.value = detailState
                     }
                 }
+        }
+
+        fun onSortOptionSelected(option: CategoryDetailSortOption) {
+            sortOption.value = option
+        }
+
+        fun onRetry() {
+            val categoryName = activeCategoryName ?: return
+            activeCategoryName = null
+            loadCategory(categoryName)
         }
     }

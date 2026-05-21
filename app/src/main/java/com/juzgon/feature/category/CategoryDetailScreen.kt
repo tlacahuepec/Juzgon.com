@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
@@ -13,8 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -51,6 +54,8 @@ fun CategoryDetailRoute(
     CategoryDetailScreen(
         state = state,
         onBackClick = onBackClick,
+        onRetry = viewModel::onRetry,
+        onSortOptionSelected = viewModel::onSortOptionSelected,
     )
 }
 
@@ -59,6 +64,8 @@ fun CategoryDetailRoute(
 fun CategoryDetailScreen(
     state: CategoryDetailUiState,
     onBackClick: () -> Unit,
+    onRetry: () -> Unit,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -93,6 +100,8 @@ fun CategoryDetailScreen(
     ) { innerPadding ->
         CategoryDetailContent(
             state = state,
+            onRetry = onRetry,
+            onSortOptionSelected = onSortOptionSelected,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -101,55 +110,128 @@ fun CategoryDetailScreen(
 @Composable
 private fun CategoryDetailContent(
     state: CategoryDetailUiState,
+    onRetry: () -> Unit,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
         state.isLoading -> CenteredContent(modifier = modifier) { CircularProgressIndicator() }
-        state.errorMessage != null ->
-            CenteredContent(modifier = modifier) {
+        state.errorMessage != null -> CategoryDetailErrorState(state.errorMessage, onRetry, modifier)
+        !state.hasItems -> CategoryDetailEmptyState(state.attributeSummary, modifier)
+        else -> CategoryDetailItemList(state, onSortOptionSelected, modifier)
+    }
+}
+
+@Composable
+private fun CategoryDetailErrorState(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CenteredContent(modifier = modifier) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Button(onClick = onRetry) {
+                Text("Retry")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailEmptyState(
+    attributeSummary: String,
+    modifier: Modifier = Modifier,
+) {
+    CenteredContent(modifier = modifier) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (attributeSummary.isNotBlank()) {
                 Text(
-                    text = state.errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = attributeSummary,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
-        !state.hasItems ->
-            CenteredContent(modifier = modifier) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (state.attributeSummary.isNotBlank()) {
-                        Text(
-                            text = state.attributeSummary,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    Text(
-                        text = "No items yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
-        else ->
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(24.dp),
-                modifier = modifier.fillMaxSize(),
-            ) {
-                item {
-                    Text(
-                        text = state.attributeSummary,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                items(
-                    items = state.items,
-                    key = { item -> item.id },
-                ) { item ->
-                    CategoryDetailItemRow(item = item)
-                }
-            }
+            Text(
+                text = "No items yet",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailItemList(
+    state: CategoryDetailUiState,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(24.dp),
+        modifier = modifier.fillMaxSize(),
+    ) {
+        item {
+            Text(
+                text = state.attributeSummary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        item {
+            CategoryDetailSortControls(
+                selectedOption = state.sortOption,
+                onSortOptionSelected = onSortOptionSelected,
+            )
+        }
+        items(
+            items = state.items,
+            key = { item -> item.id },
+        ) { item ->
+            CategoryDetailItemRow(item = item)
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailSortControls(
+    selectedOption: CategoryDetailSortOption,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterChip(
+            selected = selectedOption == CategoryDetailSortOption.Score,
+            onClick = { onSortOptionSelected(CategoryDetailSortOption.Score) },
+            label = { Text("Score") },
+            modifier =
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics {
+                        contentDescription = "Sort items by score"
+                    },
+        )
+        FilterChip(
+            selected = selectedOption == CategoryDetailSortOption.Name,
+            onClick = { onSortOptionSelected(CategoryDetailSortOption.Name) },
+            label = { Text("Name") },
+            modifier =
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics {
+                        contentDescription = "Sort items by name"
+                    },
+        )
     }
 }
 

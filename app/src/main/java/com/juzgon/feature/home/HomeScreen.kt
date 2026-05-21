@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -65,6 +66,7 @@ fun HomeRoute(
                 onSortOptionSelected = viewModel::onSortOptionSelected,
                 onCreateCategoryClick = viewModel::onCreateCategoryClick,
                 onCategoryClick = viewModel::onCategoryClick,
+                onRetry = viewModel::onRetry,
             ),
     )
 }
@@ -102,6 +104,50 @@ fun HomeScreen(
 
 @Composable
 private fun HomeContent(
+    state: HomeUiState,
+    actions: HomeScreenActions,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        state.isLoading ->
+            Box(contentAlignment = Alignment.Center, modifier = modifier.fillMaxSize()) {
+                CircularProgressIndicator(
+                    modifier = Modifier.semantics { contentDescription = "Loading categories" },
+                )
+            }
+        state.errorMessage != null -> HomeErrorState(state.errorMessage, actions.onRetry, modifier)
+        else -> HomeCategoriesState(state, actions, modifier)
+    }
+}
+
+@Composable
+private fun HomeErrorState(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Button(onClick = onRetry) {
+                Text("Retry")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeCategoriesState(
     state: HomeUiState,
     actions: HomeScreenActions,
     modifier: Modifier = Modifier,
