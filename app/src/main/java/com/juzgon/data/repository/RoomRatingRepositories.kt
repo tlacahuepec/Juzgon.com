@@ -2,6 +2,8 @@ package com.juzgon.data.repository
 
 import androidx.room.withTransaction
 import com.juzgon.data.local.JuzgonDatabase
+import com.juzgon.data.local.dao.ItemWithRatings
+import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.mapper.toAttributeEntities
 import com.juzgon.data.local.mapper.toDomain
 import com.juzgon.data.local.mapper.toEntity
@@ -129,11 +131,15 @@ class RoomRatedItemRepository(
 
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
-            val existingItem = itemDao.getItemWithRatings(ratedItem.id)?.item
+            val existingItemWithRatings = itemDao.getItemWithRatings(ratedItem.id)
+            if (existingItemWithRatings?.hasSameSavedContent(ratedItem) == true) {
+                return@withTransaction
+            }
+
             val updatedAt = currentTimeMillis()
             itemDao.upsertItem(
                 ratedItem.toItemEntity(
-                    createdAt = existingItem?.createdAt ?: updatedAt,
+                    createdAt = existingItemWithRatings?.item?.createdAt ?: updatedAt,
                     updatedAt = updatedAt,
                 ),
             )
@@ -150,4 +156,12 @@ class RoomRatedItemRepository(
             itemDao.deleteItemById(id)
         }
     }
+
+    private fun ItemWithRatings.hasSameSavedContent(ratedItem: RatedItem): Boolean =
+        item.notes == ratedItem.notes &&
+            ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot()
+
+    private fun List<RatingEntity>.toRatingSnapshot(): List<Pair<String, Int>> =
+        map { rating -> rating.attributeId to rating.score }
+            .sortedBy { (attributeId, _) -> attributeId }
 }
