@@ -7,6 +7,7 @@ import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -20,6 +21,8 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
             categoryName = name,
             weight = attribute.weight,
             position = index,
+            type = attribute.type.name,
+            isRequired = attribute.isRequired,
         )
     }
 
@@ -77,4 +80,10 @@ fun ItemEntity.toDomain(
 
 fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById)
 
-fun AttributeEntity.toDomain(): Attribute = Attribute(id = id, weight = weight)
+fun AttributeEntity.toDomain(): Attribute =
+    Attribute(
+        id = id,
+        weight = weight,
+        type = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER),
+        isRequired = isRequired,
+    )

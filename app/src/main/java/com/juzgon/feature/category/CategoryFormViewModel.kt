@@ -2,7 +2,9 @@ package com.juzgon.feature.category
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.repository.CategoryRepository
+import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +20,12 @@ class CategoryFormViewModel
     @Inject
     constructor(
         private val categoryRepository: CategoryRepository,
+        private val ratedItemRepository: RatedItemRepository,
         private val validateCategoryUseCase: ValidateCategoryUseCase,
     ) : ViewModel() {
         private var nextAttributeKey = 1L
         private val mutableState = MutableStateFlow(CategoryFormReducer.createState())
+        private var dirtyAttributeKeys = emptySet<Long>()
 
         val state: StateFlow<CategoryFormUiState> = mutableState
 
@@ -45,7 +49,22 @@ class CategoryFormViewModel
                     }
                 } else {
                     nextAttributeKey = category.attributes.size.toLong()
-                    mutableState.value = CategoryFormReducer.editState(category)
+                    val editState = CategoryFormReducer.editState(category)
+                    mutableState.value = editState
+
+                    val dirtyAttributeIds =
+                        ratedItemRepository
+                            .observeRankedItems(name)
+                            .first()
+                            .flatMap { it.item.scores }
+                            .map { it.attribute.id }
+                            .toSet()
+
+                    dirtyAttributeKeys =
+                        editState.attributes
+                            .filter { it.name in dirtyAttributeIds }
+                            .map { it.key }
+                            .toSet()
                 }
             }
         }
@@ -68,6 +87,54 @@ class CategoryFormViewModel
             updateAttribute(key) { it.copy(weightText = weightText) }
         }
 
+        fun onAttributeTypeChanged(
+            key: Long,
+            type: AttributeType,
+        ) {
+            if (key in dirtyAttributeKeys) {
+                mutableState.update {
+                    it.copy(
+                        showTypeChangeWarning = true,
+                        pendingTypeChange = type,
+                        pendingTypeChangeKey = key,
+                    )
+                }
+            } else {
+                updateAttribute(key) { it.copy(type = type) }
+            }
+        }
+
+        fun onAttributeRequiredChanged(
+            key: Long,
+            isRequired: Boolean,
+        ) {
+            updateAttribute(key) { it.copy(isRequired = isRequired) }
+        }
+
+        fun onTypeChangeConfirmed() {
+            val state = mutableState.value
+            val key = state.pendingTypeChangeKey ?: return
+            val type = state.pendingTypeChange ?: return
+            updateAttribute(key) { it.copy(type = type) }
+            mutableState.update {
+                it.copy(
+                    showTypeChangeWarning = false,
+                    pendingTypeChange = null,
+                    pendingTypeChangeKey = null,
+                )
+            }
+        }
+
+        fun onTypeChangeDeclined() {
+            mutableState.update {
+                it.copy(
+                    showTypeChangeWarning = false,
+                    pendingTypeChange = null,
+                    pendingTypeChangeKey = null,
+                )
+            }
+        }
+
         fun addAttribute() {
             val attribute = CategoryAttributeInput(key = nextAttributeKey++)
             mutableState.update {
@@ -80,13 +147,24 @@ class CategoryFormViewModel
         }
 
         fun removeAttribute(key: Long) {
-            mutableState.update {
-                it.copy(
-                    attributes = it.attributes.filterNot { attribute -> attribute.key == key },
-                    saveCompleted = false,
-                    errorMessage = null,
-                )
+            if (key in dirtyAttributeKeys) {
+                mutableState.update {
+                    it.copy(showAttributeDeleteWarning = true, pendingDeleteKey = key)
+                }
+            } else {
+                doRemoveAttribute(key)
             }
+        }
+
+        fun onAttributeDeleteConfirmed() {
+            val key = mutableState.value.pendingDeleteKey ?: return
+            dirtyAttributeKeys = dirtyAttributeKeys - key
+            doRemoveAttribute(key)
+            mutableState.update { it.copy(showAttributeDeleteWarning = false, pendingDeleteKey = null) }
+        }
+
+        fun onAttributeDeleteDeclined() {
+            mutableState.update { it.copy(showAttributeDeleteWarning = false, pendingDeleteKey = null) }
         }
 
         fun moveAttributeUp(key: Long) {
@@ -133,6 +211,16 @@ class CategoryFormViewModel
                         )
                     }
                 }
+            }
+        }
+
+        private fun doRemoveAttribute(key: Long) {
+            mutableState.update {
+                it.copy(
+                    attributes = it.attributes.filterNot { attribute -> attribute.key == key },
+                    saveCompleted = false,
+                    errorMessage = null,
+                )
             }
         }
 

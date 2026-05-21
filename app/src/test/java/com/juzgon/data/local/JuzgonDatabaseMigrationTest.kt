@@ -115,6 +115,35 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(5, listOf(DatabaseMigrations.MIGRATION_4_5)).close()
     }
 
+    @Test
+    fun migrate5To6_preservesAttributeRowsWithDefaultTypeAndIsRequired() {
+        val connection = helper.createDatabase(5)
+        connection
+            .prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.5, 0)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(6, listOf(DatabaseMigrations.MIGRATION_5_6)).use { conn ->
+            conn.prepare("SELECT id, type, is_required FROM attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ATTRIBUTE_ID, stmt.getText(0))
+                assertEquals("NUMBER", stmt.getText(1))
+                assertEquals(1L, stmt.getLong(2))
+            }
+        }
+    }
+
+    @Test
+    fun migrate5To6_validatesLatestSchema() {
+        helper.createDatabase(5).close()
+        helper.runMigrationsAndValidate(6, listOf(DatabaseMigrations.MIGRATION_5_6)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

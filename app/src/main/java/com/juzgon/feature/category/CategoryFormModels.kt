@@ -1,6 +1,7 @@
 package com.juzgon.feature.category
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import java.util.Locale
 
@@ -15,6 +16,8 @@ data class CategoryAttributeInput(
     val key: Long,
     val name: String = "",
     val weightText: String = "",
+    val type: AttributeType = AttributeType.NUMBER,
+    val isRequired: Boolean = true,
 )
 
 data class CategoryAttributeValidationError(
@@ -31,6 +34,11 @@ data class CategoryFormUiState(
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false,
     val errorMessage: String? = null,
+    val showTypeChangeWarning: Boolean = false,
+    val pendingTypeChange: AttributeType? = null,
+    val pendingTypeChangeKey: Long? = null,
+    val showAttributeDeleteWarning: Boolean = false,
+    val pendingDeleteKey: Long? = null,
 ) {
     val nameError: String?
         get() = if (name.isBlank()) "Category name is required" else null
@@ -56,6 +64,8 @@ data class CategoryFormUiState(
                     Attribute(
                         id = attribute.name.trim(),
                         weight = attribute.parsedWeight(),
+                        type = attribute.type,
+                        isRequired = attribute.isRequired,
                     )
                 },
         )
@@ -75,6 +85,8 @@ object CategoryFormReducer {
                         key = index.toLong(),
                         name = attribute.id,
                         weightText = attribute.weight.toString(),
+                        type = attribute.type,
+                        isRequired = attribute.isRequired,
                     )
                 },
         )

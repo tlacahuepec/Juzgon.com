@@ -37,6 +37,10 @@ data class AttributeEntity(
     val weight: Double = 1.0,
     @ColumnInfo(name = "position")
     val position: Int = 0,
+    @ColumnInfo(name = "type")
+    val type: String = "NUMBER",
+    @ColumnInfo(name = "is_required")
+    val isRequired: Boolean = true,
 )
 
 @Entity(

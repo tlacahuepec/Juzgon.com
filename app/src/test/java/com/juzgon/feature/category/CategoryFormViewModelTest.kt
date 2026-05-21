@@ -1,8 +1,13 @@
 package com.juzgon.feature.category
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.RankedRatedItem
+import com.juzgon.domain.RatedItem
+import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.repository.CategoryRepository
+import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateCategoryUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,12 +34,14 @@ class CategoryFormViewModelTest {
     val mainDispatcherRule = CategoryFormMainDispatcherRule()
 
     private lateinit var repository: FakeCategoryRepository
+    private lateinit var ratedItemRepository: FakeRatedItemRepository
     private lateinit var viewModel: CategoryFormViewModel
 
     @Before
     fun setUp() {
         repository = FakeCategoryRepository()
-        viewModel = CategoryFormViewModel(repository, ValidateCategoryUseCase())
+        ratedItemRepository = FakeRatedItemRepository()
+        viewModel = CategoryFormViewModel(repository, ratedItemRepository, ValidateCategoryUseCase())
     }
 
     @Test
@@ -208,6 +215,241 @@ class CategoryFormViewModelTest {
 
     private val attributeErrors: List<CategoryAttributeValidationError>
         get() = currentState.attributeErrors
+
+    @Test
+    fun onAttributeTypeChangedUpdatesAttributeType() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            assertEquals(AttributeType.DATE, attributes.single().type)
+        }
+
+    @Test
+    fun onAttributeRequiredChangedUpdatesRequiredFlag() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onAttributeRequiredChanged(key, false)
+            assertEquals(false, attributes.single().isRequired)
+        }
+
+    @Test
+    fun changingTypeOfDirtyAttributeShowsTypeChangeWarning() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+
+            assertTrue(currentState.showTypeChangeWarning)
+            assertEquals(AttributeType.DATE, currentState.pendingTypeChange)
+            assertEquals(AttributeType.NUMBER, attributes.single().type)
+        }
+
+    @Test
+    fun confirmingTypeChangeAppliesNewType() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            viewModel.onTypeChangeConfirmed()
+
+            assertEquals(AttributeType.DATE, attributes.single().type)
+            assertFalse(currentState.showTypeChangeWarning)
+        }
+
+    @Test
+    fun decliningTypeChangeRevertsToOriginalType() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            viewModel.onTypeChangeDeclined()
+
+            assertEquals(AttributeType.NUMBER, attributes.single().type)
+            assertFalse(currentState.showTypeChangeWarning)
+        }
+
+    @Test
+    fun removingDirtyAttributeShowsDeleteWarning() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.removeAttribute(key)
+
+            assertTrue(currentState.showAttributeDeleteWarning)
+            assertEquals(1, attributes.size)
+        }
+
+    @Test
+    fun confirmingAttributeDeleteRemovesIt() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.removeAttribute(key)
+            viewModel.onAttributeDeleteConfirmed()
+
+            assertEquals(0, attributes.size)
+            assertFalse(currentState.showAttributeDeleteWarning)
+        }
+
+    @Test
+    fun decliningAttributeDeleteKeepsAttribute() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "espresso",
+                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val key = attributes.single().key
+            viewModel.removeAttribute(key)
+            viewModel.onAttributeDeleteDeclined()
+
+            assertEquals(1, attributes.size)
+            assertFalse(currentState.showAttributeDeleteWarning)
+        }
+
+    @Test
+    fun typeAndRequiredArePreservedInSavedCategory() =
+        runTest {
+            val firstKey = attributes.single().key
+            viewModel.onNameChanged("Food")
+            viewModel.onAttributeNameChanged(firstKey, "Taste")
+            viewModel.onAttributeTypeChanged(firstKey, AttributeType.DATE)
+            viewModel.onAttributeRequiredChanged(firstKey, false)
+
+            viewModel.onSaveClick()
+
+            assertEquals(
+                Category(
+                    name = "Food",
+                    attributes = listOf(Attribute(id = "Taste", type = AttributeType.DATE, isRequired = false)),
+                ),
+                repository.savedCategory,
+            )
+        }
+
+    private class FakeRatedItemRepository : RatedItemRepository {
+        val rankedItems = MutableStateFlow(emptyList<RankedRatedItem>())
+
+        override fun observeRatedItems(): Flow<List<RatedItem>> = error("not used")
+
+        override fun observeRatedItem(id: String): Flow<RatedItem?> = error("not used")
+
+        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> = rankedItems
+
+        override suspend fun saveRatedItem(ratedItem: RatedItem) = error("not used")
+
+        override suspend fun deleteRatedItem(id: String) = error("not used")
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
