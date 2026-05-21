@@ -7,6 +7,11 @@ import com.juzgon.domain.ScoreEntry
 private const val MIN_SCORE = 1
 private const val MAX_SCORE = 10
 
+enum class ItemFormMode {
+    Create,
+    Edit,
+}
+
 data class ItemScoreInput(
     val attribute: Attribute,
     val scoreText: String = "",
@@ -17,7 +22,9 @@ data class ItemScoreValidationError(
 )
 
 data class ItemFormUiState(
+    val mode: ItemFormMode = ItemFormMode.Create,
     val categoryName: String = "",
+    val originalItemId: String? = null,
     val title: String = "",
     val notes: String = "",
     val scores: List<ItemScoreInput> = emptyList(),
@@ -27,6 +34,9 @@ data class ItemFormUiState(
     val saveCompleted: Boolean = false,
     val errorMessage: String? = null,
 ) {
+    val titleEditable: Boolean
+        get() = mode == ItemFormMode.Create
+
     val titleError: String?
         get() = if (title.isBlank()) "Title is required" else null
 

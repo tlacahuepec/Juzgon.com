@@ -41,6 +41,28 @@ class ItemFormScreenTest {
     }
 
     @Test
+    fun editFormRendersPrefilledContent() {
+        setContent(
+            loadedState().copy(
+                mode = ItemFormMode.Edit,
+                title = "Roadster",
+                notes = "weekend car",
+                scores =
+                    listOf(
+                        ItemScoreInput(Attribute("Speed"), "6"),
+                        ItemScoreInput(Attribute("Brakes"), "10"),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Edit item").assertIsDisplayed()
+        composeRule.onNodeWithText("Roadster").assertIsDisplayed()
+        composeRule.onNodeWithText("weekend car").assertIsDisplayed()
+        composeRule.onNodeWithText("6").assertIsDisplayed()
+        composeRule.onNodeWithText("10").assertIsDisplayed()
+    }
+
+    @Test
     fun saveButtonIsDisabledWhenInvalid() {
         setContent(loadedState())
 

@@ -1,3 +1,5 @@
+@file:Suppress("LongParameterList")
+
 package com.juzgon.feature.category
 
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -76,6 +79,28 @@ class CategoryDetailScreenTest {
         )
 
         composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertIsDisplayed()
+    }
+
+    @Test
+    fun itemRowInvokesEditCallback() {
+        var editedItemId: String? = null
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "4 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                ),
+            onEditItemClick = { editedItemId = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").performClick()
+
+        assertEquals("sedan", editedItemId)
     }
 
     @Test
@@ -223,6 +248,7 @@ class CategoryDetailScreenTest {
         onRetry: () -> Unit = {},
         onSortOptionSelected: (CategoryDetailSortOption) -> Unit = {},
         onAddItemClick: () -> Unit = {},
+        onEditItemClick: (String) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -232,6 +258,7 @@ class CategoryDetailScreenTest {
                     onRetry = onRetry,
                     onSortOptionSelected = onSortOptionSelected,
                     onAddItemClick = onAddItemClick,
+                    onEditItemClick = onEditItemClick,
                 )
             }
         }

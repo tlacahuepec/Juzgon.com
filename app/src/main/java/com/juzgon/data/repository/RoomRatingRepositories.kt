@@ -81,6 +81,7 @@ class RoomCategoryRepository(
 
 class RoomRatedItemRepository(
     private val database: JuzgonDatabase,
+    private val currentTimeMillis: () -> Long = { System.currentTimeMillis() },
 ) : RatedItemRepository {
     private val categoryDao = database.categoryDao()
     private val itemDao = database.itemDao()
@@ -128,7 +129,14 @@ class RoomRatedItemRepository(
 
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
-            itemDao.upsertItem(ratedItem.toItemEntity())
+            val existingItem = itemDao.getItemWithRatings(ratedItem.id)?.item
+            val updatedAt = currentTimeMillis()
+            itemDao.upsertItem(
+                ratedItem.toItemEntity(
+                    createdAt = existingItem?.createdAt ?: updatedAt,
+                    updatedAt = updatedAt,
+                ),
+            )
             itemDao.deleteRatingsForItem(ratedItem.id)
             val ratingEntities = ratedItem.toRatingEntities()
             if (ratingEntities.isNotEmpty()) {

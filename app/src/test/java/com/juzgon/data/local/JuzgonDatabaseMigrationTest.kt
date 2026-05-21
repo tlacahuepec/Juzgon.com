@@ -92,9 +92,33 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(4, listOf(DatabaseMigrations.MIGRATION_3_4)).close()
     }
 
+    @Test
+    fun migrate4To5_preservesItemRowsWithDefaultTimestamps() {
+        val connection = helper.createDatabase(4)
+        connection.prepare("INSERT INTO items (id, notes) VALUES ('$ITEM_ID', '$ITEM_NOTES')").use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(5, listOf(DatabaseMigrations.MIGRATION_4_5)).use { conn ->
+            conn.prepare("SELECT id, notes, created_at, updated_at FROM items").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ITEM_ID, stmt.getText(0))
+                assertEquals(ITEM_NOTES, stmt.getText(1))
+                assertEquals(0L, stmt.getLong(2))
+                assertEquals(0L, stmt.getLong(3))
+            }
+        }
+    }
+
+    @Test
+    fun migrate4To5_validatesLatestSchema() {
+        helper.createDatabase(4).close()
+        helper.runMigrationsAndValidate(5, listOf(DatabaseMigrations.MIGRATION_4_5)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"
         const val ITEM_ID = "espresso"
+        const val ITEM_NOTES = "rich"
     }
 }

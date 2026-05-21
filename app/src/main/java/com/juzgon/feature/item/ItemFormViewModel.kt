@@ -2,6 +2,7 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.Category
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateRatingsUseCase
@@ -25,35 +26,87 @@ class ItemFormViewModel
 
         val state: StateFlow<ItemFormUiState> = mutableState
 
-        fun loadCategory(categoryName: String) {
+        fun loadCategory(
+            categoryName: String,
+            itemId: String? = null,
+        ) {
             val current = mutableState.value
-            if (!current.isLoading && current.categoryName == categoryName) {
+            if (!current.isLoading && current.categoryName == categoryName && current.originalItemId == itemId) {
                 return
             }
 
-            mutableState.value = ItemFormUiState(categoryName = categoryName)
+            mutableState.value =
+                ItemFormUiState(
+                    mode = if (itemId == null) ItemFormMode.Create else ItemFormMode.Edit,
+                    categoryName = categoryName,
+                    originalItemId = itemId,
+                )
             viewModelScope.launch {
-                val category = categoryRepository.observeCategory(categoryName).first()
-                if (category == null) {
-                    mutableState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Category not found",
-                            scores = emptyList(),
-                        )
-                    }
-                } else {
+                loadFormState(categoryName, itemId)
+            }
+        }
+
+        private suspend fun loadFormState(
+            categoryName: String,
+            itemId: String?,
+        ) {
+            val category = categoryRepository.observeCategory(categoryName).first()
+            when {
+                category == null -> showLoadError("Category not found")
+                itemId == null ->
                     mutableState.value =
                         ItemFormUiState(
                             categoryName = category.name,
                             scores = category.attributes.map { attribute -> ItemScoreInput(attribute) },
                             isLoading = false,
                         )
-                }
+                else -> loadExistingItem(category, itemId)
+            }
+        }
+
+        private suspend fun loadExistingItem(
+            category: Category,
+            itemId: String,
+        ) {
+            val item = ratedItemRepository.observeRatedItem(itemId).first()
+            if (item == null) {
+                showLoadError("Item not found")
+                return
+            }
+
+            val scoresByAttributeId = item.scores.associateBy { score -> score.attribute.id }
+            mutableState.value =
+                ItemFormUiState(
+                    mode = ItemFormMode.Edit,
+                    categoryName = category.name,
+                    originalItemId = item.id,
+                    title = item.id,
+                    notes = item.notes,
+                    scores =
+                        category.attributes.map { attribute ->
+                            ItemScoreInput(
+                                attribute = attribute,
+                                scoreText = scoresByAttributeId[attribute.id]?.score?.toString().orEmpty(),
+                            )
+                        },
+                    isLoading = false,
+                )
+        }
+
+        private fun showLoadError(message: String) {
+            mutableState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = message,
+                    scores = emptyList(),
+                )
             }
         }
 
         fun onTitleChanged(title: String) {
+            if (!mutableState.value.titleEditable) {
+                return
+            }
             mutableState.update { it.copy(title = title, saveCompleted = false, errorMessage = null) }
         }
 
@@ -102,8 +155,10 @@ class ItemFormViewModel
                                 ValidateRatingsUseCase.AttributeBounds(scoreInput.attribute.id)
                             },
                     )
-                    require(ratedItemRepository.observeRatedItem(current.title.trim()).first() == null) {
-                        "Item already exists"
+                    if (current.mode == ItemFormMode.Create) {
+                        require(ratedItemRepository.observeRatedItem(current.title.trim()).first() == null) {
+                            "Item already exists"
+                        }
                     }
                     ratedItemRepository.saveRatedItem(current.toRatedItem())
                 }.onSuccess {

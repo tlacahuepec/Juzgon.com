@@ -16,7 +16,7 @@ import com.juzgon.data.local.entity.RatingEntity
         ItemEntity::class,
         RatingEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {

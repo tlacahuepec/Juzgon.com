@@ -48,6 +48,32 @@ class ItemFormViewModelTest {
         }
 
     @Test
+    fun editModeLoadsExistingItemValues() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    notes = "weekend car",
+                    scores =
+                        listOf(
+                            ScoreEntry(speed, 6),
+                            ScoreEntry(brakes, 10),
+                        ),
+                    createdAt = 100,
+                    updatedAt = 200,
+                )
+
+            viewModel.loadCategory("Cars", itemId = "Roadster")
+
+            assertEquals(ItemFormMode.Edit, currentState.mode)
+            assertEquals("Roadster", currentState.title)
+            assertEquals("weekend car", currentState.notes)
+            assertEquals(listOf("6", "10"), currentState.scores.map { it.scoreText })
+            assertTrue(currentState.saveEnabled)
+        }
+
+    @Test
     fun missingTitleAndScoresBlockSave() =
         runTest {
             categoryRepository.categories.value = listOf(carsCategory)
@@ -138,6 +164,43 @@ class ItemFormViewModelTest {
         }
 
     @Test
+    fun editSaveUpdatesExistingItemWithoutDuplicateError() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    notes = "old notes",
+                    scores =
+                        listOf(
+                            ScoreEntry(speed, 6),
+                            ScoreEntry(brakes, 7),
+                        ),
+                    createdAt = 100,
+                    updatedAt = 200,
+                )
+            viewModel.loadCategory("Cars", itemId = "Roadster")
+
+            viewModel.onNotesChanged("  track day  ")
+            viewModel.onScoreChanged("Speed", "9")
+            viewModel.onSaveClick()
+
+            assertEquals(
+                RatedItem(
+                    id = "Roadster",
+                    notes = "track day",
+                    scores =
+                        listOf(
+                            ScoreEntry(speed, 9),
+                            ScoreEntry(brakes, 7),
+                        ),
+                ),
+                ratedItemRepository.savedItem,
+            )
+            assertTrue(currentState.saveCompleted)
+        }
+
+    @Test
     fun saveFailureShowsErrorAndDoesNotComplete() =
         runTest {
             categoryRepository.categories.value = listOf(carsCategory)
@@ -178,6 +241,7 @@ class ItemFormViewModelTest {
     }
 
     private class FakeRatedItemRepository : RatedItemRepository {
+        val item = MutableStateFlow<RatedItem?>(null)
         var savedItem: RatedItem? = null
         var errorOnSave: Throwable? = null
 
@@ -185,7 +249,7 @@ class ItemFormViewModelTest {
             error("ItemFormViewModel does not observe all rated items")
         }
 
-        override fun observeRatedItem(id: String): Flow<RatedItem?> = MutableStateFlow(null)
+        override fun observeRatedItem(id: String): Flow<RatedItem?> = item
 
         override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> {
             error("ItemFormViewModel does not observe ranked items")

@@ -1,7 +1,8 @@
-@file:Suppress("FunctionName", "LongParameterList")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList")
 
 package com.juzgon.feature.category
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ fun CategoryDetailRoute(
     categoryName: String,
     onBackClick: () -> Unit,
     onAddItemClick: () -> Unit,
+    onEditItemClick: (String) -> Unit,
     viewModel: CategoryDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName) {
@@ -59,6 +61,7 @@ fun CategoryDetailRoute(
         onRetry = viewModel::onRetry,
         onSortOptionSelected = viewModel::onSortOptionSelected,
         onAddItemClick = onAddItemClick,
+        onEditItemClick = onEditItemClick,
     )
 }
 
@@ -70,6 +73,7 @@ fun CategoryDetailScreen(
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onAddItemClick: () -> Unit,
+    onEditItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -126,6 +130,7 @@ fun CategoryDetailScreen(
             onRetry = onRetry,
             onSortOptionSelected = onSortOptionSelected,
             onAddItemClick = onAddItemClick,
+            onEditItemClick = onEditItemClick,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -137,13 +142,14 @@ private fun CategoryDetailContent(
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onAddItemClick: () -> Unit,
+    onEditItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
         state.isLoading -> CenteredContent(modifier = modifier) { CircularProgressIndicator() }
         state.errorMessage != null -> CategoryDetailErrorState(state.errorMessage, onRetry, modifier)
         !state.hasItems -> CategoryDetailEmptyState(state.attributeSummary, onAddItemClick, modifier)
-        else -> CategoryDetailItemList(state, onSortOptionSelected, modifier)
+        else -> CategoryDetailItemList(state, onSortOptionSelected, onEditItemClick, modifier)
     }
 }
 
@@ -202,6 +208,7 @@ private fun CategoryDetailEmptyState(
 private fun CategoryDetailItemList(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onEditItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -225,7 +232,10 @@ private fun CategoryDetailItemList(
             items = state.items,
             key = { item -> item.id },
         ) { item ->
-            CategoryDetailItemRow(item = item)
+            CategoryDetailItemRow(
+                item = item,
+                onEditItemClick = onEditItemClick,
+            )
         }
     }
 }
@@ -278,7 +288,10 @@ private fun CenteredContent(
 }
 
 @Composable
-private fun CategoryDetailItemRow(item: CategoryDetailItemUiModel) {
+private fun CategoryDetailItemRow(
+    item: CategoryDetailItemUiModel,
+    onEditItemClick: (String) -> Unit,
+) {
     ListItem(
         headlineContent = { Text(item.id) },
         trailingContent = {
@@ -295,8 +308,11 @@ private fun CategoryDetailItemRow(item: CategoryDetailItemUiModel) {
             }
         },
         modifier =
-            Modifier.semantics(mergeDescendants = true) {
-                contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
-            },
+            Modifier
+                .clickable { onEditItemClick(item.id) }
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
+                    role = Role.Button
+                },
     )
 }

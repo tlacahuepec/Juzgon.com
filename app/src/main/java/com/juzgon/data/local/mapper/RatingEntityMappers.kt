@@ -34,7 +34,16 @@ fun CategoryEntity.toDomain(attributes: List<AttributeEntity>): Category =
 
 fun CategoryWithAttributes.toDomain(): Category = category.toDomain(attributes)
 
-fun RatedItem.toItemEntity(): ItemEntity = ItemEntity(id = id, notes = notes)
+fun RatedItem.toItemEntity(
+    createdAt: Long = this.createdAt,
+    updatedAt: Long = this.updatedAt,
+): ItemEntity =
+    ItemEntity(
+        id = id,
+        notes = notes,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 
 fun RatedItem.toRatingEntities(): List<RatingEntity> =
     scores.map { scoreEntry ->
@@ -53,7 +62,13 @@ fun ItemEntity.toDomain(
                 }
             ScoreEntry(attribute = attribute, score = rating.score)
         }
-    return RatedItem(id = id, scores = scoreEntries, notes = notes)
+    return RatedItem(
+        id = id,
+        scores = scoreEntries,
+        notes = notes,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 }
 
 fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById)
