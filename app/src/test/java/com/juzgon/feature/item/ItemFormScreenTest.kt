@@ -260,6 +260,7 @@ class ItemFormScreenTest {
         composeRule.onNodeWithContentDescription("Decrease Speed score").assertMinimumTouchTarget()
     }
 
+    @Suppress("LongParameterList")
     private fun setContent(
         state: ItemFormUiState,
         onBackClick: () -> Unit = {},
