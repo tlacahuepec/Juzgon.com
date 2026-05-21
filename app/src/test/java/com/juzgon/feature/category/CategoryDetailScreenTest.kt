@@ -1,6 +1,7 @@
 package com.juzgon.feature.category
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -35,6 +36,7 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithText("Cars").assertIsDisplayed()
         composeRule.onNodeWithText("4 attributes").assertIsDisplayed()
         composeRule.onNodeWithText("No items yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Add item").assertIsDisplayed()
     }
 
     @Test
@@ -91,6 +93,7 @@ class CategoryDetailScreenTest {
         )
 
         composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Add item").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertMinimumTouchTarget()
     }
 
@@ -109,6 +112,41 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithContentDescription("Back").performClick()
 
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun addItemActionInvokesCallbackFromEmptyState() {
+        var addItemClicked = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "4 attributes",
+                    isLoading = false,
+                ),
+            onAddItemClick = { addItemClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Add item").performClick()
+
+        assertTrue(addItemClicked)
+    }
+
+    @Test
+    fun addItemActionIsAvailableInContentState() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Add item").assertHasClickAction()
     }
 
     @Test
@@ -184,6 +222,7 @@ class CategoryDetailScreenTest {
         onBackClick: () -> Unit = {},
         onRetry: () -> Unit = {},
         onSortOptionSelected: (CategoryDetailSortOption) -> Unit = {},
+        onAddItemClick: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -192,6 +231,7 @@ class CategoryDetailScreenTest {
                     onBackClick = onBackClick,
                     onRetry = onRetry,
                     onSortOptionSelected = onSortOptionSelected,
+                    onAddItemClick = onAddItemClick,
                 )
             }
         }

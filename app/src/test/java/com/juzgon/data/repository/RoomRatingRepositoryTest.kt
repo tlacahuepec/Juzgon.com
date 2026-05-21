@@ -125,6 +125,42 @@ class RoomRatingRepositoryTest {
             }
         }
 
+    @Test
+    fun saveRatedItemPersistsNotesAndRatingsTogether() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+            val itemWithNotes =
+                RatedItem(
+                    id = ITEM_ID,
+                    notes = "Order the chef special",
+                    scores =
+                        listOf(
+                            ScoreEntry(attribute = Attribute(id = "taste", weight = 1.5), score = 10),
+                            ScoreEntry(attribute = Attribute(id = "service"), score = 8),
+                        ),
+                )
+
+            ratedItemRepository.saveRatedItem(itemWithNotes)
+
+            assertRatedItemEquals(itemWithNotes, ratedItemRepository.observeRatedItem(ITEM_ID).first())
+        }
+
+    @Test
+    fun saveRatedItemRollsBackItemWhenRatingInsertFails() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+            val itemWithUnknownAttribute =
+                RatedItem(
+                    id = "orphan",
+                    scores = listOf(ScoreEntry(attribute = Attribute("unknown"), score = 8)),
+                )
+
+            val result = runCatching { ratedItemRepository.saveRatedItem(itemWithUnknownAttribute) }
+
+            assertEquals(true, result.isFailure)
+            assertEquals(null, ratedItemRepository.observeRatedItem("orphan").first())
+        }
+
     private fun assertCategoryListEquals(
         expected: List<Category>,
         actual: List<Category>,
@@ -158,6 +194,7 @@ class RoomRatingRepositoryTest {
         actual: RatedItem?,
     ) {
         assertEquals(expected.id, actual?.id)
+        assertEquals(expected.notes, actual?.notes)
         assertEquals(expected.toScorePairs(), actual?.toScorePairs())
     }
 
