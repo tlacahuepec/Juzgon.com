@@ -134,6 +134,23 @@ class ItemFormViewModel
             }
         }
 
+        fun onDeleteClick() {
+            if (mutableState.value.mode != ItemFormMode.Edit) return
+            mutableState.update { it.copy(showDeleteDialog = true) }
+        }
+
+        fun onDeleteCancel() {
+            mutableState.update { it.copy(showDeleteDialog = false) }
+        }
+
+        fun onDeleteConfirm() {
+            val itemId = mutableState.value.originalItemId ?: return
+            viewModelScope.launch {
+                ratedItemRepository.deleteRatedItem(itemId)
+                mutableState.update { it.copy(showDeleteDialog = false, deleteCompleted = true) }
+            }
+        }
+
         fun onSaveClick() {
             val current = mutableState.value.copy(showValidationErrors = true)
             mutableState.value = current

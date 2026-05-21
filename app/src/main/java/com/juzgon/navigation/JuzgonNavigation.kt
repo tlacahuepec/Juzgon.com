@@ -84,12 +84,14 @@ internal fun JuzgonNavHost(
         itemId: String?,
         onBack: () -> Unit,
         onSaveCompleted: () -> Unit,
-    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted ->
+        onDeleteCompleted: () -> Unit,
+    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted, onDeleteCompleted ->
         ItemFormRoute(
             categoryName = categoryName,
             itemId = itemId,
             onBackClick = onBack,
             onSaveCompleted = onSaveCompleted,
+            onDeleteCompleted = onDeleteCompleted,
         )
     },
 ) {
@@ -183,6 +185,7 @@ internal fun JuzgonNavHost(
                 null,
                 returnToCategory,
                 returnToCategory,
+                returnToCategory,
             )
         }
         composable(
@@ -210,6 +213,7 @@ internal fun JuzgonNavHost(
             itemFormContent(
                 categoryName,
                 itemId,
+                returnToCategory,
                 returnToCategory,
                 returnToCategory,
             )

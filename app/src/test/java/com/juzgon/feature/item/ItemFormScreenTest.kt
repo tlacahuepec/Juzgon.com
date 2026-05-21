@@ -122,9 +122,90 @@ class ItemFormScreenTest {
         assertTrue(backClicked)
     }
 
+    @Test
+    fun deleteButtonNotShownInCreateMode() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithContentDescription("Delete item").assertDoesNotExist()
+    }
+
+    @Test
+    fun deleteButtonShownInEditMode() {
+        setContent(loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster"))
+
+        composeRule.onNodeWithContentDescription("Delete item").assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteButtonMeetsMinimumTouchTargetSize() {
+        setContent(loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster"))
+
+        composeRule.onNodeWithContentDescription("Delete item").assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun deleteButtonInvokesCallback() {
+        var deleteClicked = false
+        setContent(
+            loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster"),
+            onDeleteClick = { deleteClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Delete item").performClick()
+
+        assertTrue(deleteClicked)
+    }
+
+    @Test
+    fun confirmationDialogNotShownByDefault() {
+        setContent(loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster"))
+
+        composeRule.onNodeWithText("Delete item?").assertDoesNotExist()
+    }
+
+    @Test
+    fun confirmationDialogShownWhenShowDeleteDialogIsTrue() {
+        setContent(
+            loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster", showDeleteDialog = true),
+        )
+
+        composeRule.onNodeWithText("Delete item?").assertIsDisplayed()
+        composeRule.onNodeWithText("Delete").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel").assertIsDisplayed()
+    }
+
+    @Test
+    fun dialogCancelInvokesCallback() {
+        var cancelClicked = false
+        setContent(
+            loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster", showDeleteDialog = true),
+            onDeleteCancel = { cancelClicked = true },
+        )
+
+        composeRule.onNodeWithText("Cancel").performClick()
+
+        assertTrue(cancelClicked)
+    }
+
+    @Test
+    fun dialogConfirmInvokesCallback() {
+        var confirmClicked = false
+        setContent(
+            loadedState().copy(mode = ItemFormMode.Edit, originalItemId = "Roadster", showDeleteDialog = true),
+            onDeleteConfirm = { confirmClicked = true },
+        )
+
+        composeRule.onNodeWithText("Delete").performClick()
+
+        assertTrue(confirmClicked)
+    }
+
     private fun setContent(
         state: ItemFormUiState,
         onBackClick: () -> Unit = {},
+        onDeleteClick: () -> Unit = {},
+        onDeleteCancel: () -> Unit = {},
+        onDeleteConfirm: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -135,6 +216,9 @@ class ItemFormScreenTest {
                     onScoreChange = { _, _ -> },
                     onSaveClick = {},
                     onBackClick = onBackClick,
+                    onDeleteClick = onDeleteClick,
+                    onDeleteCancel = onDeleteCancel,
+                    onDeleteConfirm = onDeleteConfirm,
                 )
             }
         }

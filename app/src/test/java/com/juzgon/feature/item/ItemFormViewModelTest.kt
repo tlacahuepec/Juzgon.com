@@ -216,6 +216,59 @@ class ItemFormViewModelTest {
             assertFalse(currentState.saveCompleted)
         }
 
+    @Test
+    fun onDeleteClick_opensConfirmationDialog() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)))
+            viewModel.loadCategory("Cars", itemId = "Roadster")
+
+            viewModel.onDeleteClick()
+
+            assertTrue(currentState.showDeleteDialog)
+        }
+
+    @Test
+    fun onDeleteCancel_closesDialog() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)))
+            viewModel.loadCategory("Cars", itemId = "Roadster")
+            viewModel.onDeleteClick()
+
+            viewModel.onDeleteCancel()
+
+            assertFalse(currentState.showDeleteDialog)
+        }
+
+    @Test
+    fun onDeleteConfirm_deletesItemAndCompletes() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)))
+            viewModel.loadCategory("Cars", itemId = "Roadster")
+            viewModel.onDeleteClick()
+
+            viewModel.onDeleteConfirm()
+
+            assertEquals("Roadster", ratedItemRepository.deletedItemId)
+            assertTrue(currentState.deleteCompleted)
+        }
+
+    @Test
+    fun onDeleteClick_isNoOpInCreateMode() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+
+            viewModel.onDeleteClick()
+
+            assertFalse(currentState.showDeleteDialog)
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val categories = MutableStateFlow(emptyList<Category>())
 
@@ -243,6 +296,7 @@ class ItemFormViewModelTest {
     private class FakeRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
         var savedItem: RatedItem? = null
+        var deletedItemId: String? = null
         var errorOnSave: Throwable? = null
 
         override fun observeRatedItems(): Flow<List<RatedItem>> {
@@ -261,7 +315,7 @@ class ItemFormViewModelTest {
         }
 
         override suspend fun deleteRatedItem(id: String) {
-            error("ItemFormViewModel does not delete rated items")
+            deletedItemId = id
         }
     }
 

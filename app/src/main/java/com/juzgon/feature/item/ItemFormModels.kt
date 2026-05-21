@@ -32,6 +32,8 @@ data class ItemFormUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val deleteCompleted: Boolean = false,
     val errorMessage: String? = null,
 ) {
     val titleEditable: Boolean
