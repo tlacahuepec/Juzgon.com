@@ -144,6 +144,42 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(6, listOf(DatabaseMigrations.MIGRATION_5_6)).close()
     }
 
+    @Test
+    fun migrate6To7_createsItemValuesTableWithCorrectColumns() {
+        val connection = helper.createDatabase(6)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, 'NUMBER', 1)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(7, listOf(DatabaseMigrations.MIGRATION_6_7)).use { conn ->
+            val insertValueSql =
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$ITEM_ID', '$ATTRIBUTE_ID', 'blue')"
+            conn
+                .prepare(insertValueSql)
+                .use { it.step() }
+            conn.prepare("SELECT item_id, attribute_id, value_text FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ITEM_ID, stmt.getText(0))
+                assertEquals(ATTRIBUTE_ID, stmt.getText(1))
+                assertEquals("blue", stmt.getText(2))
+            }
+        }
+    }
+
+    @Test
+    fun migrate6To7_validatesLatestSchema() {
+        helper.createDatabase(6).close()
+        helper.runMigrationsAndValidate(7, listOf(DatabaseMigrations.MIGRATION_6_7)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

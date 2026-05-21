@@ -5,10 +5,12 @@ import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 
@@ -57,9 +59,15 @@ fun RatedItem.toRatingEntities(): List<RatingEntity> =
         RatingEntity(itemId = id, attributeId = scoreEntry.attribute.id, score = scoreEntry.score)
     }
 
+fun RatedItem.toItemValueEntities(): List<ItemValueEntity> =
+    values.map { valueEntry ->
+        ItemValueEntity(itemId = id, attributeId = valueEntry.attribute.id, valueText = valueEntry.value)
+    }
+
 fun ItemEntity.toDomain(
     ratings: List<RatingEntity>,
     attributesById: Map<String, Attribute>,
+    valueEntities: List<ItemValueEntity> = emptyList(),
 ): RatedItem {
     val scoreEntries =
         ratings.sortedBy { it.attributeId }.map { rating ->
@@ -69,16 +77,24 @@ fun ItemEntity.toDomain(
                 }
             ScoreEntry(attribute = attribute, score = rating.score)
         }
+    val values =
+        valueEntities.sortedBy { it.attributeId }.mapNotNull { valueEntity ->
+            attributesById[valueEntity.attributeId]?.let { attribute ->
+                ItemAttributeValue(attribute = attribute, value = valueEntity.valueText)
+            }
+        }
     return RatedItem(
         id = id,
         scores = scoreEntries,
         notes = notes,
+        values = values,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
 }
 
-fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById)
+@Suppress("MaxLineLength")
+fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById, values)
 
 fun AttributeEntity.toDomain(): Attribute =
     Attribute(

@@ -42,6 +42,13 @@ class ItemDetailViewModel
                                     score = scoreEntry.score,
                                 )
                             },
+                        attributeValues =
+                            item.values.map { valueEntry ->
+                                ItemDetailAttributeValue(
+                                    label = valueEntry.attribute.id,
+                                    value = valueEntry.value,
+                                )
+                            },
                         notes = item.notes,
                         isLoading = false,
                     )

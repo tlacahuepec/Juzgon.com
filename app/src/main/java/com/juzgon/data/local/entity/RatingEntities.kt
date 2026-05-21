@@ -85,3 +85,31 @@ data class RatingEntity(
     @ColumnInfo(name = "score")
     val score: Int,
 )
+
+@Entity(
+    tableName = "item_values",
+    primaryKeys = ["item_id", "attribute_id"],
+    foreignKeys = [
+        ForeignKey(
+            entity = ItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["item_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = AttributeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["attribute_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"])],
+)
+data class ItemValueEntity(
+    @ColumnInfo(name = "item_id")
+    val itemId: String,
+    @ColumnInfo(name = "attribute_id")
+    val attributeId: String,
+    @ColumnInfo(name = "value_text")
+    val valueText: String,
+)

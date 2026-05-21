@@ -1,7 +1,9 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -397,4 +399,97 @@ class ItemFormViewModelTest {
         val brakes = Attribute("Brakes")
         val carsCategory = Category(name = "Cars", attributes = listOf(speed, brakes))
     }
+
+    @Test
+    fun loadCategoryCreatesScoreInputsOnlyForNumberAttributes() =
+        runTest {
+            val colorAttr = Attribute("Color", type = AttributeType.BOOLEAN)
+            val detailsAttr = Attribute("Details", type = AttributeType.NOTES)
+            categoryRepository.categories.value =
+                listOf(Category(name = "Mixed", attributes = listOf(speed, colorAttr, detailsAttr)))
+
+            viewModel.loadCategory("Mixed")
+
+            assertEquals(listOf("Speed"), currentState.scores.map { it.attribute.id })
+            assertEquals(listOf("Color", "Details"), currentState.values.map { it.attribute.id })
+        }
+
+    @Test
+    fun optionalNumberAttributeWithBlankScoreAllowsSave() =
+        runTest {
+            val optionalSpeed = Attribute("Speed", isRequired = false)
+            val requiredBrakes = Attribute("Brakes", isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Cars", attributes = listOf(optionalSpeed, requiredBrakes)))
+            viewModel.loadCategory("Cars")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Brakes", "8")
+
+            assertTrue(currentState.saveEnabled)
+        }
+
+    @Test
+    fun requiredNonNumberAttributeWithBlankValueBlocksSave() =
+        runTest {
+            val requiredNotes = Attribute("Details", type = AttributeType.NOTES, isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, requiredNotes)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+
+            assertFalse(currentState.saveEnabled)
+        }
+
+    @Test
+    fun optionalNonNumberAttributeWithBlankValueAllowsSave() =
+        runTest {
+            val optionalNotes = Attribute("Details", type = AttributeType.NOTES, isRequired = false)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, optionalNotes)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+
+            assertTrue(currentState.saveEnabled)
+        }
+
+    @Test
+    fun savePersistsItemWithTypedValues() =
+        runTest {
+            val notesAttr = Attribute("Details", type = AttributeType.NOTES, isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, notesAttr)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+            viewModel.onValueChanged("Details", "Very fast car")
+
+            viewModel.onSaveClick()
+
+            val saved = ratedItemRepository.savedItem!!
+            assertEquals(listOf(ScoreEntry(speed, 7)), saved.scores)
+            assertEquals(1, saved.values.size)
+            assertEquals("Details", saved.values[0].attribute.id)
+            assertEquals("Very fast car", saved.values[0].value)
+        }
+
+    @Test
+    fun editModeLoadsExistingScoresAndValues() =
+        runTest {
+            val notesAttr = Attribute("Details", type = AttributeType.NOTES, isRequired = false)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, notesAttr)))
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(speed, 8)),
+                    values = listOf(ItemAttributeValue(notesAttr, "Very fast")),
+                )
+
+            viewModel.loadCategory("Mixed", itemId = "Roadster")
+
+            assertEquals(listOf("8"), currentState.scores.map { it.scoreText })
+            assertEquals(listOf("Very fast"), currentState.values.map { it.valueText })
+        }
 }

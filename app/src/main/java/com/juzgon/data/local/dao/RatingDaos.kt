@@ -10,6 +10,7 @@ import androidx.room.Upsert
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -38,6 +39,12 @@ data class ItemWithRatings(
         entityColumn = "item_id",
     )
     val ratings: List<RatingEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "item_id",
+        entity = ItemValueEntity::class,
+    )
+    val values: List<ItemValueEntity>,
 )
 
 data class RankedItemWithRatings(
@@ -103,6 +110,7 @@ interface CategoryDao {
 }
 
 @Dao
+@Suppress("TooManyFunctions")
 interface ItemDao {
     @Upsert
     suspend fun upsertItem(item: ItemEntity)
@@ -134,7 +142,7 @@ interface ItemDao {
         FROM items
         INNER JOIN ratings ON ratings.item_id = items.id
         INNER JOIN attributes ON attributes.id = ratings.attribute_id
-        WHERE attributes.category_name = :categoryName
+        WHERE attributes.category_name = :categoryName AND attributes.type = 'NUMBER'
         GROUP BY items.id
         ORDER BY aggregate_score DESC, items.id ASC
         """,
@@ -146,6 +154,12 @@ interface ItemDao {
 
     @Query("DELETE FROM ratings WHERE item_id = :itemId")
     suspend fun deleteRatingsForItem(itemId: String)
+
+    @Upsert
+    suspend fun upsertItemValues(values: List<ItemValueEntity>)
+
+    @Query("DELETE FROM item_values WHERE item_id = :itemId")
+    suspend fun deleteItemValuesForItem(itemId: String)
 
     @Query("DELETE FROM items WHERE id = :id")
     suspend fun deleteItemById(id: String)

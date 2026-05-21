@@ -9,10 +9,16 @@ data class ItemDetailAttributeScore(
     val score: Int,
 )
 
+data class ItemDetailAttributeValue(
+    val label: String,
+    val value: String,
+)
+
 data class ItemDetailUiState(
     val itemId: String = "",
     val overallScoreText: String = "",
     val attributeScores: List<ItemDetailAttributeScore> = emptyList(),
+    val attributeValues: List<ItemDetailAttributeValue> = emptyList(),
     val notes: String = "",
     val isLoading: Boolean = true,
     val errorMessage: String? = null,

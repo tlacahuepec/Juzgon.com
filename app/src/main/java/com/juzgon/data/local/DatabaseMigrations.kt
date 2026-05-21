@@ -9,6 +9,7 @@ private const val DATABASE_VERSION_3 = 3
 private const val DATABASE_VERSION_4 = 4
 private const val DATABASE_VERSION_5 = 5
 private const val DATABASE_VERSION_6 = 6
+private const val DATABASE_VERSION_7 = 7
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -45,6 +46,26 @@ object DatabaseMigrations {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE attributes ADD COLUMN type TEXT NOT NULL DEFAULT 'NUMBER'")
                 db.execSQL("ALTER TABLE attributes ADD COLUMN is_required INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+    val MIGRATION_6_7: Migration =
+        object : Migration(DATABASE_VERSION_6, DATABASE_VERSION_7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE item_values (
+                        item_id TEXT NOT NULL,
+                        attribute_id TEXT NOT NULL,
+                        value_text TEXT NOT NULL,
+                        PRIMARY KEY (item_id, attribute_id),
+                        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                        FOREIGN KEY (attribute_id) REFERENCES attributes(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX index_item_values_item_id ON item_values(item_id)")
+                db.execSQL("CREATE INDEX index_item_values_attribute_id ON item_values(attribute_id)")
             }
         }
 }

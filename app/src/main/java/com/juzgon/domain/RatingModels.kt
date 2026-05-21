@@ -39,6 +39,7 @@ data class RatedItem(
     val id: String,
     val scores: List<ScoreEntry>,
     val notes: String = "",
+    val values: List<ItemAttributeValue> = emptyList(),
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 ) {
@@ -47,8 +48,16 @@ data class RatedItem(
         require(scores.map { it.attribute.id }.distinct().size == scores.size) {
             "Rated item scores must not contain duplicate attribute ids"
         }
+        require(values.map { it.attribute.id }.distinct().size == values.size) {
+            "Rated item values must not contain duplicate attribute ids"
+        }
     }
 }
+
+data class ItemAttributeValue(
+    val attribute: Attribute,
+    val value: String,
+)
 
 data class RankedRatedItem(
     val item: RatedItem,

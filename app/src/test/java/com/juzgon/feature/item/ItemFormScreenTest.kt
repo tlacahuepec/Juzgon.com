@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -260,6 +261,45 @@ class ItemFormScreenTest {
         composeRule.onNodeWithContentDescription("Decrease Speed score").assertMinimumTouchTarget()
     }
 
+    @Test
+    fun booleanAttributeRendersSwitchControl() {
+        setContent(
+            loadedState().copy(
+                values = listOf(ItemValueInput(Attribute("Available", type = AttributeType.BOOLEAN))),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Available value").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun notesAttributeRendersTextField() {
+        setContent(
+            loadedState().copy(
+                values = listOf(ItemValueInput(Attribute("Details", type = AttributeType.NOTES))),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Details value").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun requiredValueAttributeShowsErrorAfterSaveAttempt() {
+        setContent(
+            loadedState().copy(
+                values =
+                    listOf(
+                        ItemValueInput(
+                            Attribute("Details", type = AttributeType.NOTES, isRequired = true),
+                        ),
+                    ),
+                showValidationErrors = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("Details is required").performScrollTo().assertIsDisplayed()
+    }
+
     @Suppress("LongParameterList")
     private fun setContent(
         state: ItemFormUiState,
@@ -269,6 +309,7 @@ class ItemFormScreenTest {
         onDeleteConfirm: () -> Unit = {},
         onScoreIncrement: (String) -> Unit = {},
         onScoreDecrement: (String) -> Unit = {},
+        onValueChange: (String, String) -> Unit = { _, _ -> },
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -279,6 +320,7 @@ class ItemFormScreenTest {
                     onScoreChange = { _, _ -> },
                     onScoreIncrement = onScoreIncrement,
                     onScoreDecrement = onScoreDecrement,
+                    onValueChange = onValueChange,
                     onSaveClick = {},
                     onBackClick = onBackClick,
                     onDeleteClick = onDeleteClick,

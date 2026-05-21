@@ -3,11 +3,13 @@ package com.juzgon.data.repository
 import androidx.room.withTransaction
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.data.local.dao.ItemWithRatings
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.mapper.toAttributeEntities
 import com.juzgon.data.local.mapper.toDomain
 import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
+import com.juzgon.data.local.mapper.toItemValueEntities
 import com.juzgon.data.local.mapper.toRatingEntities
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
@@ -114,11 +116,11 @@ class RoomRatedItemRepository(
             itemDao.observeRankedItemsForCategory(categoryName),
             categoryDao.observeAttributes(),
         ) { rankedItems, attributes ->
-            val categoryAttributes = attributes.filter { it.categoryName == categoryName }
-            if (categoryAttributes.isEmpty()) {
+            val categoryNumberAttributes = attributes.filter { it.categoryName == categoryName && it.type == "NUMBER" }
+            if (categoryNumberAttributes.isEmpty()) {
                 emptyList()
             } else {
-                val attributesById = categoryAttributes.associate { it.id to it.toDomain() }
+                val attributesById = categoryNumberAttributes.associate { it.id to it.toDomain() }
                 val ratingSystem = RatingSystem(attributesById.values.toList())
                 val ratedItems =
                     rankedItems.map { rankedItem ->
@@ -150,6 +152,11 @@ class RoomRatedItemRepository(
             if (ratingEntities.isNotEmpty()) {
                 itemDao.upsertRatings(ratingEntities)
             }
+            itemDao.deleteItemValuesForItem(ratedItem.id)
+            val valueEntities = ratedItem.toItemValueEntities()
+            if (valueEntities.isNotEmpty()) {
+                itemDao.upsertItemValues(valueEntities)
+            }
         }
     }
 
@@ -161,9 +168,14 @@ class RoomRatedItemRepository(
 
     private fun ItemWithRatings.hasSameSavedContent(ratedItem: RatedItem): Boolean =
         item.notes == ratedItem.notes &&
-            ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot()
+            ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot() &&
+            values.toValueSnapshot() == ratedItem.toItemValueEntities().toValueSnapshot()
 
     private fun List<RatingEntity>.toRatingSnapshot(): List<Pair<String, Int>> =
         map { rating -> rating.attributeId to rating.score }
+            .sortedBy { (attributeId, _) -> attributeId }
+
+    private fun List<ItemValueEntity>.toValueSnapshot(): List<Pair<String, String>> =
+        map { it.attributeId to it.valueText }
             .sortedBy { (attributeId, _) -> attributeId }
 }
