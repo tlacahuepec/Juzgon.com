@@ -5,12 +5,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.juzgon.BuildConfig
+import com.juzgon.data.backup.JsonBackupService
 import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.data.local.RoomSampleDataStore
 import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
+import com.juzgon.domain.backup.BackupService
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import dagger.Module
@@ -58,6 +60,14 @@ object DataModule {
                 ).build()
         return database
     }
+
+    @Provides
+    @Singleton
+    fun provideBackupService(database: JuzgonDatabase): BackupService =
+        JsonBackupService(
+            categoryDao = database.categoryDao(),
+            itemDao = database.itemDao(),
+        )
 
     @Provides
     @Singleton
