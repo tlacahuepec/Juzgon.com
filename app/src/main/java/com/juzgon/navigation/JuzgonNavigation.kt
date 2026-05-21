@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.juzgon.feature.category.CategoryDetailRoute
 import com.juzgon.feature.category.CategoryFormRoute
 import com.juzgon.feature.home.HomeRoute
+import com.juzgon.feature.item.ItemDetailRoute
 import com.juzgon.feature.item.ItemFormRoute
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
@@ -23,10 +24,16 @@ object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
+    const val ITEM_DETAIL = "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
     const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
     const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
 
     fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
+
+    fun itemDetail(
+        categoryName: String,
+        itemId: String,
+    ): String = "item/detail/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
 
     fun createItem(categoryName: String): String = "item/create/${Uri.encode(categoryName)}"
 
@@ -94,6 +101,17 @@ internal fun JuzgonNavHost(
             onDeleteCompleted = onDeleteCompleted,
         )
     },
+    itemDetailContent: @Composable (
+        itemId: String,
+        onBack: () -> Unit,
+        onEditClick: () -> Unit,
+    ) -> Unit = { itemId, onBack, onEditClick ->
+        ItemDetailRoute(
+            itemId = itemId,
+            onBackClick = onBack,
+            onEditClick = onEditClick,
+        )
+    },
 ) {
     NavHost(
         navController = navController,
@@ -150,8 +168,8 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
-            val openEditItem = { itemId: String ->
-                navController.navigate(JuzgonRoutes.editItem(categoryName, itemId)) {
+            val openItemDetail = { itemId: String ->
+                navController.navigate(JuzgonRoutes.itemDetail(categoryName, itemId)) {
                     launchSingleTop = true
                 }
             }
@@ -159,8 +177,37 @@ internal fun JuzgonNavHost(
                 categoryName,
                 returnBack,
                 openAddItem,
-                openEditItem,
+                openItemDetail,
             )
+        }
+        composable(
+            route = JuzgonRoutes.ITEM_DETAIL,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                    navArgument(ITEM_ID_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val itemId = Uri.decode(backStackEntry.arguments?.getString(ITEM_ID_ARGUMENT).orEmpty())
+            val returnBack = {
+                if (!navController.navigateUp()) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            val openEdit = {
+                navController.navigate(JuzgonRoutes.editItem(categoryName, itemId)) {
+                    launchSingleTop = true
+                }
+            }
+            itemDetailContent(itemId, returnBack, openEdit)
         }
         composable(
             route = JuzgonRoutes.CREATE_ITEM,

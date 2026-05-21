@@ -166,7 +166,7 @@ class JuzgonNavigationTest {
     }
 
     @Test
-    fun categoryDetailCanOpenEncodedEditItemRouteAndReturnAfterSave() {
+    fun categoryDetailOpensItemDetailOnItemTap() {
         lateinit var navController: TestNavHostController
 
         composeRule.setContent {
@@ -180,15 +180,52 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _, _, onEditItem ->
-                        Button(onClick = { onEditItem("Roadster / 2026") }) {
+                    categoryDetailContent = { categoryName, _, _, onItemClick ->
+                        Button(onClick = { onItemClick("Roadster / 2026") }) {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemFormContent = { categoryName, itemId, _, onSaveCompleted, _ ->
-                        Button(onClick = onSaveCompleted) {
-                            Text("Edit item route $categoryName $itemId")
+                    itemDetailContent = { itemId, _, _ -> Text("Item detail $itemId") },
+                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open detail").performClick()
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
+        composeRule.onNodeWithText("Item detail Roadster / 2026").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.ITEM_DETAIL, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun itemDetailOpensEditItemOnEditTap() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, onOpenCategory ->
+                        Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
+                            Text("Open detail")
                         }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, _, _, onItemClick ->
+                        Button(onClick = { onItemClick("Roadster / 2026") }) {
+                            Text("Detail route $categoryName")
+                        }
+                    },
+                    itemDetailContent = { _, _, onEditClick ->
+                        Button(onClick = onEditClick) {
+                            Text("Item detail route")
+                        }
+                    },
+                    itemFormContent = { categoryName, itemId, _, _, _ ->
+                        Text("Edit item route $categoryName $itemId")
                     },
                 )
             }
@@ -196,14 +233,10 @@ class JuzgonNavigationTest {
 
         composeRule.onNodeWithText("Open detail").performClick()
         composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
+        composeRule.onNodeWithText("Item detail route").performClick()
         composeRule.onNodeWithText("Edit item route Fast Cars / SUVs Roadster / 2026").assertIsDisplayed()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.EDIT_ITEM, navController.currentDestination?.route)
-        }
-
-        composeRule.onNodeWithText("Edit item route Fast Cars / SUVs Roadster / 2026").performClick()
-        composeRule.runOnIdle {
-            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
         }
     }
 
