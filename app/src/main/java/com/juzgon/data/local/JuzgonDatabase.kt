@@ -7,6 +7,7 @@ import com.juzgon.data.local.dao.ItemDao
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 
 @Database(
@@ -15,8 +16,9 @@ import com.juzgon.data.local.entity.RatingEntity
         AttributeEntity::class,
         ItemEntity::class,
         RatingEntity::class,
+        ItemValueEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {

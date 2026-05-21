@@ -1,6 +1,8 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -138,6 +140,25 @@ class ItemDetailViewModelTest {
             viewModel.loadItem("Roadster")
 
             assertFalse(viewModel.state.value.isLoading)
+        }
+
+    @Test
+    fun loadItemMapsNonNumberAttributeValuesToAttributeValues() =
+        runTest {
+            val notesAttr = Attribute("Details", type = AttributeType.NOTES)
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                    values = listOf(ItemAttributeValue(notesAttr, "Very fast car")),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            val state = viewModel.state.value
+            assertEquals(1, state.attributeValues.size)
+            assertEquals("Details", state.attributeValues[0].label)
+            assertEquals("Very fast car", state.attributeValues[0].value)
         }
 
     private class FakeDetailRatedItemRepository : RatedItemRepository {

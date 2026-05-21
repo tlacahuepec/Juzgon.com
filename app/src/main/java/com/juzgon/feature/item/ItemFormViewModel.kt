@@ -2,6 +2,7 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
@@ -58,7 +59,14 @@ class ItemFormViewModel
                     mutableState.value =
                         ItemFormUiState(
                             categoryName = category.name,
-                            scores = category.attributes.map { attribute -> ItemScoreInput(attribute) },
+                            scores =
+                                category.attributes
+                                    .filter { it.type == AttributeType.NUMBER }
+                                    .map { ItemScoreInput(it) },
+                            values =
+                                category.attributes
+                                    .filter { it.type != AttributeType.NUMBER }
+                                    .map { ItemValueInput(it) },
                             isLoading = false,
                         )
                 else -> loadExistingItem(category, itemId)
@@ -75,7 +83,10 @@ class ItemFormViewModel
                 return
             }
 
+            val numberAttrs = category.attributes.filter { it.type == AttributeType.NUMBER }
+            val otherAttrs = category.attributes.filter { it.type != AttributeType.NUMBER }
             val scoresByAttributeId = item.scores.associateBy { score -> score.attribute.id }
+            val valuesByAttributeId = item.values.associateBy { value -> value.attribute.id }
             mutableState.value =
                 ItemFormUiState(
                     mode = ItemFormMode.Edit,
@@ -84,10 +95,19 @@ class ItemFormViewModel
                     title = item.id,
                     notes = item.notes,
                     scores =
-                        category.attributes.map { attribute ->
+                        numberAttrs.map { attribute ->
                             ItemScoreInput(
                                 attribute = attribute,
                                 scoreText = scoresByAttributeId[attribute.id]?.score?.toString().orEmpty(),
+                            )
+                        },
+                    values =
+                        otherAttrs.map { attribute ->
+                            val existingValue = valuesByAttributeId[attribute.id]?.value
+                            val defaultValue = if (attribute.type == AttributeType.BOOLEAN) "false" else ""
+                            ItemValueInput(
+                                attribute = attribute,
+                                valueText = existingValue ?: defaultValue,
                             )
                         },
                     isLoading = false,
@@ -100,6 +120,7 @@ class ItemFormViewModel
                     isLoading = false,
                     errorMessage = message,
                     scores = emptyList(),
+                    values = emptyList(),
                 )
             }
         }
@@ -127,6 +148,26 @@ class ItemFormViewModel
                                 score.copy(scoreText = scoreText)
                             } else {
                                 score
+                            }
+                        },
+                    saveCompleted = false,
+                    errorMessage = null,
+                )
+            }
+        }
+
+        fun onValueChanged(
+            attributeId: String,
+            valueText: String,
+        ) {
+            mutableState.update {
+                it.copy(
+                    values =
+                        it.values.map { valueInput ->
+                            if (valueInput.attribute.id == attributeId) {
+                                valueInput.copy(valueText = valueText)
+                            } else {
+                                valueInput
                             }
                         },
                     saveCompleted = false,
@@ -193,16 +234,22 @@ class ItemFormViewModel
             viewModelScope.launch {
                 mutableState.update { it.copy(isSaving = true, errorMessage = null) }
                 runCatching {
-                    validateRatingsUseCase(
-                        scoresByAttributeId =
-                            current.scores.associate { scoreInput ->
-                                scoreInput.attribute.id to checkNotNull(scoreInput.scoreText.toIntOrNull())
-                            },
-                        requiredAttributeBounds =
-                            current.scores.map { scoreInput ->
-                                ValidateRatingsUseCase.AttributeBounds(scoreInput.attribute.id)
-                            },
-                    )
+                    if (current.scores.isNotEmpty()) {
+                        validateRatingsUseCase(
+                            scoresByAttributeId =
+                                current.scores
+                                    .filter { it.scoreText.isNotBlank() }
+                                    .associate { scoreInput ->
+                                        scoreInput.attribute.id to checkNotNull(scoreInput.scoreText.toIntOrNull())
+                                    },
+                            requiredAttributeBounds =
+                                current.scores
+                                    .filter { it.attribute.isRequired }
+                                    .map { scoreInput ->
+                                        ValidateRatingsUseCase.AttributeBounds(scoreInput.attribute.id)
+                                    },
+                        )
+                    }
                     if (current.mode == ItemFormMode.Create) {
                         require(ratedItemRepository.observeRatedItem(current.title.trim()).first() == null) {
                             "Item already exists"

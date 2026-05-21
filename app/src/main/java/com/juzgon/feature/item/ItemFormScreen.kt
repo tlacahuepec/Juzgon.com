@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.domain.AttributeType
 
 @Composable
 fun ItemFormRoute(
@@ -75,6 +77,7 @@ fun ItemFormRoute(
         onScoreChange = viewModel::onScoreChanged,
         onScoreIncrement = viewModel::onScoreIncrement,
         onScoreDecrement = viewModel::onScoreDecrement,
+        onValueChange = viewModel::onValueChanged,
         onSaveClick = viewModel::onSaveClick,
         onBackClick = onBackClick,
         onDeleteClick = viewModel::onDeleteClick,
@@ -92,6 +95,7 @@ fun ItemFormScreen(
     onScoreChange: (String, String) -> Unit,
     onScoreIncrement: (String) -> Unit = {},
     onScoreDecrement: (String) -> Unit = {},
+    onValueChange: (String, String) -> Unit = { _, _ -> },
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
     onDeleteClick: () -> Unit = {},
@@ -105,6 +109,12 @@ fun ItemFormScreen(
             state.scoreErrors
         } else {
             List(state.scores.size) { ItemScoreValidationError() }
+        }
+    val valueErrors =
+        if (state.showValidationErrors) {
+            state.valueErrors
+        } else {
+            List(state.values.size) { ItemValueValidationError() }
         }
 
     if (state.showDeleteDialog) {
@@ -182,11 +192,13 @@ fun ItemFormScreen(
                     state = state,
                     titleError = titleError,
                     scoreErrors = scoreErrors,
+                    valueErrors = valueErrors,
                     onTitleChange = onTitleChange,
                     onNotesChange = onNotesChange,
                     onScoreChange = onScoreChange,
                     onScoreIncrement = onScoreIncrement,
                     onScoreDecrement = onScoreDecrement,
+                    onValueChange = onValueChange,
                     onSaveClick = onSaveClick,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -199,11 +211,13 @@ private fun ItemFormContent(
     state: ItemFormUiState,
     titleError: String?,
     scoreErrors: List<ItemScoreValidationError>,
+    valueErrors: List<ItemValueValidationError>,
     onTitleChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onScoreChange: (String, String) -> Unit,
     onScoreIncrement: (String) -> Unit,
     onScoreDecrement: (String) -> Unit,
+    onValueChange: (String, String) -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -257,6 +271,14 @@ private fun ItemFormContent(
                 onScoreChange = onScoreChange,
                 onScoreIncrement = onScoreIncrement,
                 onScoreDecrement = onScoreDecrement,
+            )
+        }
+
+        state.values.forEachIndexed { index, valueInput ->
+            ItemAttributeValueField(
+                valueInput = valueInput,
+                validationError = valueErrors[index],
+                onValueChange = onValueChange,
             )
         }
 
@@ -355,6 +377,49 @@ private fun ItemScoreField(
                     contentDescription = null,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ItemAttributeValueField(
+    valueInput: ItemValueInput,
+    validationError: ItemValueValidationError,
+    onValueChange: (String, String) -> Unit,
+) {
+    val attributeId = valueInput.attribute.id
+    val cd = "$attributeId value"
+    when (valueInput.attribute.type) {
+        AttributeType.BOOLEAN -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = cd },
+            ) {
+                Text(text = attributeId, style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = valueInput.valueText == "true",
+                    onCheckedChange = { checked -> onValueChange(attributeId, checked.toString()) },
+                )
+            }
+        }
+        else -> {
+            OutlinedTextField(
+                value = valueInput.valueText,
+                onValueChange = { onValueChange(attributeId, it) },
+                label = { Text(attributeId) },
+                isError = validationError.value != null,
+                supportingText = {
+                    validationError.value?.let { Text(it) }
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = cd },
+            )
         }
     }
 }

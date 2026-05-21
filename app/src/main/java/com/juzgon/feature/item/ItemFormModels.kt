@@ -1,6 +1,8 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 
@@ -23,6 +25,15 @@ data class ItemScoreValidationError(
     val score: String? = null,
 )
 
+data class ItemValueInput(
+    val attribute: Attribute,
+    val valueText: String = if (attribute.type == AttributeType.BOOLEAN) "false" else "",
+)
+
+data class ItemValueValidationError(
+    val value: String? = null,
+)
+
 data class ItemFormUiState(
     val mode: ItemFormMode = ItemFormMode.Create,
     val categoryName: String = "",
@@ -30,6 +41,7 @@ data class ItemFormUiState(
     val title: String = "",
     val notes: String = "",
     val scores: List<ItemScoreInput> = emptyList(),
+    val values: List<ItemValueInput> = emptyList(),
     val showValidationErrors: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -50,29 +62,55 @@ data class ItemFormUiState(
                 ItemScoreValidationError(score = scoreInput.scoreError())
             }
 
+    val valueErrors: List<ItemValueValidationError>
+        get() =
+            values.map { valueInput ->
+                ItemValueValidationError(
+                    value =
+                        if (valueInput.attribute.isRequired && valueInput.valueText.isBlank()) {
+                            "${valueInput.attribute.id} is required"
+                        } else {
+                            null
+                        },
+                )
+            }
+
     val saveEnabled: Boolean
         get() =
             !isLoading &&
                 !isSaving &&
-                scores.isNotEmpty() &&
+                (scores.isNotEmpty() || values.isNotEmpty()) &&
                 titleError == null &&
-                scoreErrors.all { it.score == null }
+                scoreErrors.all { it.score == null } &&
+                valueErrors.all { it.value == null }
 
     fun toRatedItem(): RatedItem =
         RatedItem(
             id = title.trim(),
             notes = notes.trim(),
             scores =
-                scores.map { scoreInput ->
-                    ScoreEntry(
-                        attribute = scoreInput.attribute,
-                        score = checkNotNull(scoreInput.scoreText.toIntOrNull()),
-                    )
-                },
+                scores
+                    .filter { it.scoreText.isNotBlank() }
+                    .map { scoreInput ->
+                        ScoreEntry(
+                            attribute = scoreInput.attribute,
+                            score = checkNotNull(scoreInput.scoreText.toIntOrNull()),
+                        )
+                    },
+            values =
+                values
+                    .filter { it.valueText.isNotBlank() }
+                    .map { valueInput ->
+                        ItemAttributeValue(
+                            attribute = valueInput.attribute,
+                            value = valueInput.valueText,
+                        )
+                    },
         )
 }
 
 private fun ItemScoreInput.scoreError(): String? {
+    if (!attribute.isRequired && scoreText.isBlank()) return null
     val score = scoreText.toIntOrNull()
     return when {
         scoreText.isBlank() -> "Score is required"

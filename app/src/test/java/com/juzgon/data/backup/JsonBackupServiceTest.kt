@@ -9,6 +9,7 @@ import com.juzgon.data.local.dao.RankedItemWithRatings
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.backup.BackupException
 import kotlinx.coroutines.flow.Flow
@@ -87,6 +88,7 @@ class JsonBackupServiceTest {
                     ItemWithRatings(
                         ItemEntity("Roadster", "cool car", 100L, 200L),
                         listOf(RatingEntity("Roadster", "Speed", 9)),
+                        emptyList(),
                     ),
                 )
 
@@ -140,7 +142,7 @@ class JsonBackupServiceTest {
             categoryDao.state.value =
                 listOf(CategoryWithAttributes(CategoryEntity("OldCategory"), emptyList()))
             itemDao.state.value =
-                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList()))
+                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
             val json = """{"version":1,"categories":[],"items":[]}"""
 
             service.import(json)
@@ -170,6 +172,7 @@ class JsonBackupServiceTest {
                             RatingEntity("Roadster", "Speed", 9),
                             RatingEntity("Roadster", "Brakes", 8),
                         ),
+                        emptyList(),
                     ),
                 )
 
@@ -295,6 +298,10 @@ class JsonBackupServiceTest {
         }
 
         override suspend fun deleteRatingsForItem(itemId: String) = Unit
+
+        override suspend fun upsertItemValues(values: List<ItemValueEntity>) = Unit
+
+        override suspend fun deleteItemValuesForItem(itemId: String) = Unit
 
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
 
