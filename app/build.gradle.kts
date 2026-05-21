@@ -89,6 +89,36 @@ spotless {
     }
 }
 
+tasks.register("checkDependencyBoundaries") {
+    description = "Validates that feature/* does not import data/*, and domain/* does not import feature/* or data/*"
+    group = "verification"
+    doLast {
+        val srcDir = file("src/main/java/com/juzgon")
+        val violations = mutableListOf<String>()
+        fileTree(srcDir.resolve("feature")).filter { it.extension == "kt" }.forEach { file ->
+            file.readLines().forEachIndexed { lineNum, line ->
+                if (line.trimStart().startsWith("import com.juzgon.data.")) {
+                    violations.add("${file.relativeTo(srcDir)} (line ${lineNum + 1}): feature imports data layer: $line")
+                }
+            }
+        }
+        fileTree(srcDir.resolve("domain")).filter { it.extension == "kt" }.forEach { file ->
+            file.readLines().forEachIndexed { lineNum, line ->
+                val trimmed = line.trimStart()
+                if (trimmed.startsWith("import com.juzgon.feature.") || trimmed.startsWith("import com.juzgon.data.")) {
+                    violations.add("${file.relativeTo(srcDir)} (line ${lineNum + 1}): domain imports feature or data layer: $line")
+                }
+            }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException("Dependency boundary violations:\n" + violations.joinToString("\n"))
+        }
+        println("Dependency boundary check passed.")
+    }
+}
+
+tasks.named("check") { dependsOn("checkDependencyBoundaries") }
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
