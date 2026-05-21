@@ -103,6 +103,138 @@ class CategoryDetailViewModelTest {
             }
         }
 
+    @Test
+    fun retryReloadsCategory() =
+        runTest {
+            categoryRepository.category.value = null
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var errorState = awaitItem()
+                if (errorState.isLoading) {
+                    errorState = awaitItem()
+                }
+                assertEquals("Category not found", errorState.errorMessage)
+
+                categoryRepository.category.value = carsCategory
+                viewModel.onRetry()
+
+                var loaded = awaitItem()
+                if (loaded.isLoading) {
+                    loaded = awaitItem()
+                }
+                assertEquals("Cars", loaded.categoryName)
+                assertEquals(null, loaded.errorMessage)
+                assertEquals(false, loaded.isLoading)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun scoreSortOrdersItemsByAggregateScoreDescending() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 7.0),
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 9.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf("sedan", "coupe"),
+                    state.items.map { it.id },
+                )
+            }
+        }
+
+    @Test
+    fun nameSortOrdersItemsByIdAscending() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 9.0),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 7.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSortOptionSelected(CategoryDetailSortOption.Name)
+                state = awaitItem()
+
+                assertEquals(
+                    listOf("coupe", "sedan"),
+                    state.items.map { it.id },
+                )
+            }
+        }
+
+    @Test
+    fun scoreSortTieBreaksByNameAscending() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.0),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 8.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf("coupe", "sedan"),
+                    state.items.map { it.id },
+                )
+            }
+        }
+
+    @Test
+    fun sortOptionChangeReordersItems() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 9.0),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 7.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(listOf("sedan", "coupe"), state.items.map { it.id })
+                assertEquals(CategoryDetailSortOption.Score, state.sortOption)
+
+                viewModel.onSortOptionSelected(CategoryDetailSortOption.Name)
+                state = awaitItem()
+
+                assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
+                assertEquals(CategoryDetailSortOption.Name, state.sortOption)
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val category = MutableStateFlow<Category?>(null)
 

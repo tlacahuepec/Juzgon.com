@@ -111,15 +111,87 @@ class CategoryDetailScreenTest {
         assertTrue(backClicked)
     }
 
+    @Test
+    fun errorStateRendersWithRetryButton() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                isLoading = false,
+                errorMessage = "Category not found",
+            ),
+        )
+
+        composeRule.onNodeWithText("Category not found").assertIsDisplayed()
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    @Test
+    fun retryButtonInvokesCallback() {
+        var retryClicked = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    isLoading = false,
+                    errorMessage = "Category not found",
+                ),
+            onRetry = { retryClicked = true },
+        )
+
+        composeRule.onNodeWithText("Retry").performClick()
+
+        assertTrue(retryClicked)
+    }
+
+    @Test
+    fun sortControlsAreDisplayedWhenContentLoaded() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Sort items by score").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by name").assertIsDisplayed()
+    }
+
+    @Test
+    fun sortControlsMeetMinimumTouchTargetSize() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Sort items by score").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Sort items by name").assertMinimumTouchTarget()
+    }
+
     private fun setContent(
         state: CategoryDetailUiState,
         onBackClick: () -> Unit = {},
+        onRetry: () -> Unit = {},
+        onSortOptionSelected: (CategoryDetailSortOption) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
                 CategoryDetailScreen(
                     state = state,
                     onBackClick = onBackClick,
+                    onRetry = onRetry,
+                    onSortOptionSelected = onSortOptionSelected,
                 )
             }
         }

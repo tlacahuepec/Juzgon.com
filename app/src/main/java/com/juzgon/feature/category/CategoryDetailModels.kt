@@ -4,6 +4,11 @@ import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import java.util.Locale
 
+enum class CategoryDetailSortOption {
+    Score,
+    Name,
+}
+
 data class CategoryDetailItemUiModel(
     val id: String,
     val averageScoreText: String,
@@ -15,6 +20,7 @@ data class CategoryDetailUiState(
     val items: List<CategoryDetailItemUiModel> = emptyList(),
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    val sortOption: CategoryDetailSortOption = CategoryDetailSortOption.Score,
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -26,6 +32,7 @@ object CategoryDetailReducer {
         categoryName: String,
         category: Category?,
         rankedItems: List<RankedRatedItem>,
+        sortOption: CategoryDetailSortOption,
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -35,17 +42,29 @@ object CategoryDetailReducer {
             )
         }
 
+        val sortedItems =
+            when (sortOption) {
+                CategoryDetailSortOption.Score ->
+                    rankedItems.sortedWith(
+                        compareByDescending<RankedRatedItem> { it.aggregateScore }
+                            .thenBy { it.item.id },
+                    )
+                CategoryDetailSortOption.Name ->
+                    rankedItems.sortedBy { it.item.id }
+            }
+
         return CategoryDetailUiState(
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
-                rankedItems.map { rankedItem ->
+                sortedItems.map { rankedItem ->
                     CategoryDetailItemUiModel(
                         id = rankedItem.item.id,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
                     )
                 },
             isLoading = false,
+            sortOption = sortOption,
         )
     }
 }

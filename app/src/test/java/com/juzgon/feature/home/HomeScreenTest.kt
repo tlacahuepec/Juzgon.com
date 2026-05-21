@@ -42,6 +42,7 @@ class HomeScreenTest {
                             onSortOptionSelected = {},
                             onCreateCategoryClick = { createClicked = true },
                             onCategoryClick = {},
+                            onRetry = {},
                         ),
                 )
             }
@@ -76,6 +77,7 @@ class HomeScreenTest {
                             onSortOptionSelected = {},
                             onCreateCategoryClick = { createClicked = true },
                             onCategoryClick = { openedCategory = it },
+                            onRetry = {},
                         ),
                 )
             }
@@ -115,6 +117,7 @@ class HomeScreenTest {
                             onSortOptionSelected = {},
                             onCreateCategoryClick = {},
                             onCategoryClick = {},
+                            onRetry = {},
                         ),
                 )
             }
@@ -148,6 +151,7 @@ class HomeScreenTest {
                             onSortOptionSelected = {},
                             onCreateCategoryClick = {},
                             onCategoryClick = {},
+                            onRetry = {},
                         ),
                 )
             }
@@ -157,6 +161,74 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription("Sort categories by recent").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Sort categories by name").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Open category Food, 2 attributes").assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun homeScreenShowsLoadingState() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state = HomeUiState(isLoading = true),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Loading categories").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenShowsErrorState() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state = HomeUiState(errorMessage = "Failed to load categories"),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Failed to load categories").assertIsDisplayed()
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    @Test
+    fun retryButtonInvokesCallback() {
+        var retryClicked = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state = HomeUiState(errorMessage = "Failed to load categories"),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = { retryClicked = true },
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Retry").performClick()
+
+        assertTrue(retryClicked)
     }
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {

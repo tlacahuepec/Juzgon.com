@@ -8,12 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -25,13 +29,13 @@ class HomeViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var repository: FakeCategoryRepository
+    private lateinit var fakeRepository: FakeCategoryRepository
     private lateinit var viewModel: HomeViewModel
 
     @Before
     fun setUp() {
-        repository = FakeCategoryRepository()
-        viewModel = HomeViewModel(repository)
+        fakeRepository = FakeCategoryRepository()
+        viewModel = HomeViewModel(fakeRepository)
     }
 
     @Test
@@ -40,7 +44,7 @@ class HomeViewModelTest {
             viewModel.state.test {
                 assertEquals(emptyList<HomeCategoryUiModel>(), awaitItem().categories)
 
-                repository.categories.value = listOf(travelCategory, foodCategory)
+                fakeRepository.categories.value = listOf(travelCategory, foodCategory)
 
                 assertEquals(
                     listOf(
@@ -55,7 +59,7 @@ class HomeViewModelTest {
     @Test
     fun searchFiltersCategoriesByName() =
         runTest {
-            repository.categories.value = listOf(travelCategory, foodCategory, musicCategory)
+            fakeRepository.categories.value = listOf(travelCategory, foodCategory, musicCategory)
 
             viewModel.state.test {
                 assertEquals(3, awaitItem().categories.size)
@@ -74,7 +78,7 @@ class HomeViewModelTest {
     @Test
     fun nameSortOrdersCategoriesByName() =
         runTest {
-            repository.categories.value = listOf(travelCategory, foodCategory, musicCategory)
+            fakeRepository.categories.value = listOf(travelCategory, foodCategory, musicCategory)
 
             viewModel.state.test {
                 assertEquals(3, awaitItem().categories.size)
@@ -114,6 +118,72 @@ class HomeViewModelTest {
             }
         }
 
+    @Test
+    fun initialStateIsLoading() {
+        assertTrue(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun stateIsNotLoadingAfterCategoriesEmit() =
+        runTest {
+            viewModel.state.test {
+                // With UnconfinedTestDispatcher the initial loading state may transition
+                // to the loaded state synchronously; consume items until non-loading.
+                var state = awaitItem()
+                if (state.isLoading) {
+                    state = awaitItem()
+                }
+
+                fakeRepository.categories.value = listOf(travelCategory)
+
+                val loaded = awaitItem()
+                assertEquals(false, loaded.isLoading)
+                assertNull(loaded.errorMessage)
+            }
+        }
+
+    @Test
+    fun stateShowsErrorWhenRepositoryThrows() =
+        runTest {
+            val throwingRepo = ThrowingCategoryRepository()
+            val vm = HomeViewModel(throwingRepo)
+
+            vm.state.test {
+                var state = awaitItem()
+                if (state.isLoading) {
+                    state = awaitItem()
+                }
+                assertNotNull(state.errorMessage)
+                assertEquals(false, state.isLoading)
+            }
+        }
+
+    @Test
+    fun retryResubscribesToRepository() =
+        runTest {
+            val throwingRepo = ThrowingCategoryRepository()
+            val vm = HomeViewModel(throwingRepo)
+
+            vm.state.test {
+                var state = awaitItem()
+                if (state.isLoading) {
+                    state = awaitItem()
+                }
+                assertNotNull(state.errorMessage)
+
+                throwingRepo.shouldThrow = false
+                vm.onRetry()
+
+                var loaded = awaitItem()
+                if (loaded.isLoading) {
+                    loaded = awaitItem()
+                }
+                assertEquals(false, loaded.isLoading)
+                assertNull(loaded.errorMessage)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val categories = MutableStateFlow(emptyList<Category>())
 
@@ -138,6 +208,37 @@ class HomeViewModelTest {
             error("HomeViewModel does not delete categories")
         }
     }
+
+    private class ThrowingCategoryRepository : CategoryRepository {
+        var shouldThrow = true
+
+        override fun observeCategories(): Flow<List<Category>> =
+            flow {
+                if (shouldThrow) throw RepositoryUnavailableException()
+                emit(emptyList())
+            }
+
+        override fun observeCategory(name: String): Flow<Category?> {
+            error("not used")
+        }
+
+        override suspend fun saveCategory(category: Category) {
+            error("not used")
+        }
+
+        override suspend fun renameCategory(
+            originalName: String,
+            category: Category,
+        ) {
+            error("not used")
+        }
+
+        override suspend fun deleteCategory(name: String) {
+            error("not used")
+        }
+    }
+
+    private class RepositoryUnavailableException : Exception("DB error")
 
     private companion object {
         val foodCategory = Category(name = "Food", attributes = listOf(Attribute("taste"), Attribute("service")))
