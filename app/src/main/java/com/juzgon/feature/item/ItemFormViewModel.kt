@@ -134,6 +134,36 @@ class ItemFormViewModel
             }
         }
 
+        fun onScoreIncrement(attributeId: String) {
+            adjustScore(attributeId) { current -> (current + 1).coerceAtMost(SCORE_MAX) }
+        }
+
+        fun onScoreDecrement(attributeId: String) {
+            adjustScore(attributeId) { current -> (current - 1).coerceAtLeast(SCORE_MIN) }
+        }
+
+        private fun adjustScore(
+            attributeId: String,
+            transform: (Int) -> Int,
+        ) {
+            mutableState.update {
+                it.copy(
+                    scores =
+                        it.scores.map { score ->
+                            if (score.attribute.id == attributeId) {
+                                val current = score.scoreText.toIntOrNull()
+                                val next = if (current == null) SCORE_MIN else transform(current)
+                                score.copy(scoreText = next.toString())
+                            } else {
+                                score
+                            }
+                        },
+                    saveCompleted = false,
+                    errorMessage = null,
+                )
+            }
+        }
+
         fun onDeleteClick() {
             if (mutableState.value.mode != ItemFormMode.Edit) return
             mutableState.update { it.copy(showDeleteDialog = true) }

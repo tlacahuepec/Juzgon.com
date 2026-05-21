@@ -217,6 +217,76 @@ class ItemFormViewModelTest {
         }
 
     @Test
+    fun onScoreIncrement_incrementsByOne() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+            viewModel.onScoreChanged("Speed", "6")
+
+            viewModel.onScoreIncrement("Speed")
+
+            assertEquals("7", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
+    fun onScoreIncrement_clampsAtMaxScore() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+            viewModel.onScoreChanged("Speed", "10")
+
+            viewModel.onScoreIncrement("Speed")
+
+            assertEquals("10", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
+    fun onScoreDecrement_decrementsByOne() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+            viewModel.onScoreChanged("Speed", "6")
+
+            viewModel.onScoreDecrement("Speed")
+
+            assertEquals("5", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
+    fun onScoreDecrement_clampsAtMinScore() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+            viewModel.onScoreChanged("Speed", "1")
+
+            viewModel.onScoreDecrement("Speed")
+
+            assertEquals("1", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
+    fun onScoreIncrement_setsToMinWhenBlank() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+
+            viewModel.onScoreIncrement("Speed")
+
+            assertEquals("1", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
+    fun onScoreDecrement_setsToMinWhenBlank() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            viewModel.loadCategory("Cars")
+
+            viewModel.onScoreDecrement("Speed")
+
+            assertEquals("1", currentState.scores.first { it.attribute.id == "Speed" }.scoreText)
+        }
+
+    @Test
     fun onDeleteClick_opensConfirmationDialog() =
         runTest {
             categoryRepository.categories.value = listOf(carsCategory)

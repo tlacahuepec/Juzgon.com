@@ -13,8 +13,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.Attribute
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +39,7 @@ class ItemFormScreenTest {
         composeRule.onNodeWithText("Item title").assertIsDisplayed()
         composeRule.onNodeWithText("Notes").assertIsDisplayed()
         composeRule.onNodeWithText("Speed score").assertIsDisplayed()
-        composeRule.onNodeWithText("Brakes score").assertIsDisplayed()
+        composeRule.onNodeWithText("Brakes score").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -59,7 +61,7 @@ class ItemFormScreenTest {
         composeRule.onNodeWithText("Roadster").assertIsDisplayed()
         composeRule.onNodeWithText("weekend car").assertIsDisplayed()
         composeRule.onNodeWithText("6").assertIsDisplayed()
-        composeRule.onNodeWithText("10").assertIsDisplayed()
+        composeRule.onNodeWithText("10").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -100,8 +102,8 @@ class ItemFormScreenTest {
         composeRule.onNodeWithContentDescription("Item title").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Item notes").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Speed score").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Brakes score").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Save item").assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("Brakes score").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Save item").performScrollTo().assertIsNotEnabled()
     }
 
     @Test
@@ -200,12 +202,72 @@ class ItemFormScreenTest {
         assertTrue(confirmClicked)
     }
 
+    @Test
+    fun scoreFieldShowsIncrementButton() {
+        setContent(
+            loadedState().copy(
+                scores = listOf(ItemScoreInput(Attribute("Speed"), "6")),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Increase Speed score").assertIsDisplayed()
+    }
+
+    @Test
+    fun scoreFieldShowsDecrementButton() {
+        setContent(
+            loadedState().copy(
+                scores = listOf(ItemScoreInput(Attribute("Speed"), "6")),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Decrease Speed score").assertIsDisplayed()
+    }
+
+    @Test
+    fun incrementButtonInvokesCallback() {
+        var incrementedAttribute: String? = null
+        setContent(
+            loadedState().copy(scores = listOf(ItemScoreInput(Attribute("Speed"), "6"))),
+            onScoreIncrement = { incrementedAttribute = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Increase Speed score").performClick()
+
+        assertEquals("Speed", incrementedAttribute)
+    }
+
+    @Test
+    fun decrementButtonInvokesCallback() {
+        var decrementedAttribute: String? = null
+        setContent(
+            loadedState().copy(scores = listOf(ItemScoreInput(Attribute("Speed"), "6"))),
+            onScoreDecrement = { decrementedAttribute = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Decrease Speed score").performClick()
+
+        assertEquals("Speed", decrementedAttribute)
+    }
+
+    @Test
+    fun stepperButtonsMeetMinimumTouchTargetSize() {
+        setContent(
+            loadedState().copy(scores = listOf(ItemScoreInput(Attribute("Speed"), "6"))),
+        )
+
+        composeRule.onNodeWithContentDescription("Increase Speed score").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Decrease Speed score").assertMinimumTouchTarget()
+    }
+
     private fun setContent(
         state: ItemFormUiState,
         onBackClick: () -> Unit = {},
         onDeleteClick: () -> Unit = {},
         onDeleteCancel: () -> Unit = {},
         onDeleteConfirm: () -> Unit = {},
+        onScoreIncrement: (String) -> Unit = {},
+        onScoreDecrement: (String) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -214,6 +276,8 @@ class ItemFormScreenTest {
                     onTitleChange = {},
                     onNotesChange = {},
                     onScoreChange = { _, _ -> },
+                    onScoreIncrement = onScoreIncrement,
+                    onScoreDecrement = onScoreDecrement,
                     onSaveClick = {},
                     onBackClick = onBackClick,
                     onDeleteClick = onDeleteClick,
