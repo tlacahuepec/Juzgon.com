@@ -20,29 +20,29 @@ class CategoryDetailViewModel
         private val ratedItemRepository: RatedItemRepository,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(CategoryDetailUiState())
-        private var activeCategoryName: String? = null
+        private var activeCategoryId: String? = null
         private var loadJob: Job? = null
         private val sortOption = MutableStateFlow(CategoryDetailSortOption.Score)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
 
-        fun loadCategory(categoryName: String) {
-            if (activeCategoryName == categoryName) {
+        fun loadCategory(categoryId: String) {
+            if (activeCategoryId == categoryId) {
                 return
             }
 
-            activeCategoryName = categoryName
+            activeCategoryId = categoryId
             loadJob?.cancel()
-            mutableState.value = CategoryDetailReducer.loading(categoryName)
+            mutableState.value = CategoryDetailReducer.loading(categoryId)
             loadJob =
                 viewModelScope.launch {
                     combine(
-                        categoryRepository.observeCategory(categoryName),
-                        ratedItemRepository.observeRankedItems(categoryName),
+                        categoryRepository.observeCategory(categoryId),
+                        ratedItemRepository.observeRankedItems(categoryId),
                         sortOption,
                     ) { category, rankedItems, sort ->
                         CategoryDetailReducer.reduce(
-                            categoryName = categoryName,
+                            categoryId = categoryId,
                             category = category,
                             rankedItems = rankedItems,
                             sortOption = sort,
@@ -58,8 +58,8 @@ class CategoryDetailViewModel
         }
 
         fun onRetry() {
-            val categoryName = activeCategoryName ?: return
-            activeCategoryName = null
-            loadCategory(categoryName)
+            val categoryId = activeCategoryId ?: return
+            activeCategoryId = null
+            loadCategory(categoryId)
         }
     }

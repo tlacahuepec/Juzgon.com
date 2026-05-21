@@ -11,10 +11,12 @@ enum class CategoryDetailSortOption {
 
 data class CategoryDetailItemUiModel(
     val id: String,
+    val name: String,
     val averageScoreText: String,
 )
 
 data class CategoryDetailUiState(
+    val categoryId: String = "",
     val categoryName: String = "",
     val attributeSummary: String = "",
     val items: List<CategoryDetailItemUiModel> = emptyList(),
@@ -26,17 +28,17 @@ data class CategoryDetailUiState(
 }
 
 object CategoryDetailReducer {
-    fun loading(categoryName: String): CategoryDetailUiState = CategoryDetailUiState(categoryName = categoryName)
+    fun loading(categoryId: String): CategoryDetailUiState = CategoryDetailUiState(categoryId = categoryId)
 
     fun reduce(
-        categoryName: String,
+        categoryId: String,
         category: Category?,
         rankedItems: List<RankedRatedItem>,
         sortOption: CategoryDetailSortOption,
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
-                categoryName = categoryName,
+                categoryId = categoryId,
                 isLoading = false,
                 errorMessage = "Category not found",
             )
@@ -54,12 +56,14 @@ object CategoryDetailReducer {
             }
 
         return CategoryDetailUiState(
+            categoryId = category.id,
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
                 sortedItems.map { rankedItem ->
                     CategoryDetailItemUiModel(
                         id = rankedItem.item.id,
+                        name = rankedItem.item.name,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
                     )
                 },

@@ -1,8 +1,10 @@
 package com.juzgon.feature.category
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import java.util.Locale
+import java.util.UUID
 
 private const val DEFAULT_WEIGHT = 1.0
 
@@ -13,8 +15,10 @@ enum class CategoryFormMode {
 
 data class CategoryAttributeInput(
     val key: Long,
+    val id: String? = null,
     val name: String = "",
     val weightText: String = "",
+    val type: AttributeType = AttributeType.RATING,
 )
 
 data class CategoryAttributeValidationError(
@@ -24,7 +28,8 @@ data class CategoryAttributeValidationError(
 
 data class CategoryFormUiState(
     val mode: CategoryFormMode = CategoryFormMode.Create,
-    val originalName: String? = null,
+    val id: String? = null,
+    val originalId: String? = null,
     val name: String = "",
     val attributes: List<CategoryAttributeInput> = listOf(CategoryAttributeInput(key = 0L)),
     val showValidationErrors: Boolean = false,
@@ -50,12 +55,16 @@ data class CategoryFormUiState(
 
     fun toCategory(): Category =
         Category(
+            id = id ?: UUID.randomUUID().toString(),
             name = name.trim(),
             attributes =
-                attributes.map { attribute ->
+                attributes.mapIndexed { index, attribute ->
                     Attribute(
-                        id = attribute.name.trim(),
+                        id = attribute.id ?: UUID.randomUUID().toString(),
+                        name = attribute.name.trim(),
+                        type = attribute.type,
                         weight = attribute.parsedWeight(),
+                        position = index,
                     )
                 },
         )
@@ -67,14 +76,17 @@ object CategoryFormReducer {
     fun editState(category: Category): CategoryFormUiState =
         CategoryFormUiState(
             mode = CategoryFormMode.Edit,
-            originalName = category.name,
+            id = category.id,
+            originalId = category.id,
             name = category.name,
             attributes =
                 category.attributes.mapIndexed { index, attribute ->
                     CategoryAttributeInput(
                         key = index.toLong(),
-                        name = attribute.id,
+                        id = attribute.id,
+                        name = attribute.name,
                         weightText = attribute.weight.toString(),
+                        type = attribute.type,
                     )
                 },
         )

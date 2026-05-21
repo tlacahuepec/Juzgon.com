@@ -40,12 +40,8 @@ object DataModule {
         database =
             Room
                 .databaseBuilder(context, JuzgonDatabase::class.java, "juzgon.db")
-                .addMigrations(
-                    DatabaseMigrations.MIGRATION_1_2,
-                    DatabaseMigrations.MIGRATION_2_3,
-                    DatabaseMigrations.MIGRATION_3_4,
-                    DatabaseMigrations.MIGRATION_4_5,
-                ).addCallback(
+                .fallbackToDestructiveMigration()
+                .addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

@@ -246,7 +246,7 @@ private fun HomeCategoryContent(
         ) {
             items(
                 items = state.categories,
-                key = { category -> category.name },
+                key = { category -> category.id },
             ) { category ->
                 CategoryRow(
                     category = category,
@@ -302,12 +302,14 @@ private fun CategoryRow(
     onCategoryClick: (String) -> Unit,
 ) {
     val attributeSummary = category.attributeCount.toAttributeSummary()
+    val itemSummary = category.itemCount.toItemSummary()
+    val summary = "$itemSummary, $attributeSummary"
 
     ListItem(
         headlineContent = { Text(category.name) },
         supportingContent = {
             Text(
-                text = attributeSummary,
+                text = summary,
             )
         },
         modifier =
@@ -316,9 +318,9 @@ private fun CategoryRow(
                     onClickLabel = "Open category ${category.name}",
                     role = Role.Button,
                 ) {
-                    onCategoryClick(category.name)
+                    onCategoryClick(category.id)
                 }.semantics(mergeDescendants = true) {
-                    contentDescription = "Open category ${category.name}, $attributeSummary"
+                    contentDescription = "Open category ${category.name}, $summary"
                     role = Role.Button
                 },
     )
@@ -329,4 +331,11 @@ private fun Int.toAttributeSummary(): String =
         "1 attribute"
     } else {
         "$this attributes"
+    }
+
+private fun Int.toItemSummary(): String =
+    if (this == 1) {
+        "1 item"
+    } else {
+        "$this items"
     }

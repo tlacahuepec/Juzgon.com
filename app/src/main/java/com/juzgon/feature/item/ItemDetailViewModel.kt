@@ -31,6 +31,7 @@ class ItemDetailViewModel
                 mutableState.value =
                     ItemDetailUiState(
                         itemId = item.id,
+                        itemName = item.name,
                         overallScoreText =
                             computeWeightedAverageText(
                                 item.scores.map { it.attribute.weight to it.score },
@@ -38,7 +39,7 @@ class ItemDetailViewModel
                         attributeScores =
                             item.scores.map { scoreEntry ->
                                 ItemDetailAttributeScore(
-                                    label = scoreEntry.attribute.id,
+                                    label = scoreEntry.attribute.name,
                                     score = scoreEntry.score,
                                 )
                             },

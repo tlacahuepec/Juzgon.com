@@ -11,6 +11,7 @@ data class ItemDetailAttributeScore(
 
 data class ItemDetailUiState(
     val itemId: String = "",
+    val itemName: String = "",
     val overallScoreText: String = "",
     val attributeScores: List<ItemDetailAttributeScore> = emptyList(),
     val notes: String = "",

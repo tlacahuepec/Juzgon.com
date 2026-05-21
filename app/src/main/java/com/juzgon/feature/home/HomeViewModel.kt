@@ -74,9 +74,9 @@ class HomeViewModel
             }
         }
 
-        fun onCategoryClick(categoryName: String) {
+        fun onCategoryClick(categoryId: String) {
             viewModelScope.launch {
-                mutableNavigationEvents.emit(HomeNavigationEvent.OpenCategory(categoryName))
+                mutableNavigationEvents.emit(HomeNavigationEvent.OpenCategory(categoryId))
             }
         }
     }

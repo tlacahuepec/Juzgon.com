@@ -25,20 +25,21 @@ class CategoryFormViewModel
 
         val state: StateFlow<CategoryFormUiState> = mutableState
 
-        fun loadCategory(name: String) {
+        fun loadCategory(id: String) {
             val current = mutableState.value
-            if (current.mode == CategoryFormMode.Edit && current.originalName == name) {
+            if (current.mode == CategoryFormMode.Edit && current.originalId == id) {
                 return
             }
 
             viewModelScope.launch {
-                val category = categoryRepository.observeCategory(name).first()
+                val category = categoryRepository.observeCategory(id).first()
                 if (category == null) {
                     mutableState.update {
                         it.copy(
                             mode = CategoryFormMode.Edit,
-                            originalName = name,
-                            name = name,
+                            id = id,
+                            originalId = id,
+                            name = "",
                             attributes = emptyList(),
                             errorMessage = "Category not found",
                         )
@@ -110,9 +111,9 @@ class CategoryFormViewModel
                 runCatching {
                     val category = current.toCategory()
                     validateCategoryUseCase(category)
-                    val originalName = current.originalName
-                    if (originalName != null) {
-                        categoryRepository.renameCategory(originalName, category)
+                    val originalId = current.originalId
+                    if (originalId != null) {
+                        categoryRepository.renameCategory(originalId, category)
                     } else {
                         categoryRepository.saveCategory(category)
                     }
@@ -121,7 +122,8 @@ class CategoryFormViewModel
                         it.copy(
                             isSaving = false,
                             saveCompleted = true,
-                            originalName = it.name.trim(),
+                            id = it.id ?: current.toCategory().id,
+                            originalId = it.originalId ?: current.toCategory().id,
                             mode = CategoryFormMode.Edit,
                         )
                     }

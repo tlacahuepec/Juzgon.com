@@ -5,9 +5,11 @@ import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.RatingEntity
+import com.juzgon.domain.AttributeType
 
+internal const val SAMPLE_CATEGORY_ID = "sample-category-123"
 internal const val SAMPLE_CATEGORY_NAME = "Restaurants"
-internal const val SAMPLE_ITEM_ID = "Sample bistro"
+internal const val SAMPLE_ITEM_ID = "sample-item-123"
 
 private const val TASTE_ATTRIBUTE_ID = "taste"
 private const val SERVICE_ATTRIBUTE_ID = "service"
@@ -21,13 +23,13 @@ internal class RoomSampleDataStore(
 
     override suspend fun seed() {
         database.withTransaction {
-            if (categoryDao.getCategoryWithAttributes(SAMPLE_CATEGORY_NAME) != null) {
+            if (categoryDao.getCategoryWithAttributesByName(SAMPLE_CATEGORY_NAME) != null) {
                 return@withTransaction
             }
 
-            categoryDao.upsertCategory(CategoryEntity(name = SAMPLE_CATEGORY_NAME))
+            categoryDao.upsertCategory(CategoryEntity(id = SAMPLE_CATEGORY_ID, name = SAMPLE_CATEGORY_NAME))
             categoryDao.upsertAttributes(sampleAttributes())
-            itemDao.upsertItem(ItemEntity(id = SAMPLE_ITEM_ID))
+            itemDao.upsertItem(ItemEntity(id = SAMPLE_ITEM_ID, categoryId = SAMPLE_CATEGORY_ID, name = "Sample bistro"))
             itemDao.upsertRatings(sampleRatings())
         }
     }
@@ -36,19 +38,25 @@ internal class RoomSampleDataStore(
         listOf(
             AttributeEntity(
                 id = TASTE_ATTRIBUTE_ID,
-                categoryName = SAMPLE_CATEGORY_NAME,
+                categoryId = SAMPLE_CATEGORY_ID,
+                name = "Taste",
+                type = AttributeType.RATING.name,
                 weight = 1.5,
                 position = 0,
             ),
             AttributeEntity(
                 id = SERVICE_ATTRIBUTE_ID,
-                categoryName = SAMPLE_CATEGORY_NAME,
+                categoryId = SAMPLE_CATEGORY_ID,
+                name = "Service",
+                type = AttributeType.RATING.name,
                 weight = 1.0,
                 position = 1,
             ),
             AttributeEntity(
                 id = AMBIENCE_ATTRIBUTE_ID,
-                categoryName = SAMPLE_CATEGORY_NAME,
+                categoryId = SAMPLE_CATEGORY_ID,
+                name = "Ambience",
+                type = AttributeType.RATING.name,
                 weight = 1.0,
                 position = 2,
             ),

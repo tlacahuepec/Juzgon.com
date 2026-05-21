@@ -68,7 +68,7 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.itemId.ifBlank { "Item" }) },
+                title = { Text(state.itemName.ifBlank { "Item" }) },
                 navigationIcon = {
                     IconButton(
                         onClick = onBackClick,

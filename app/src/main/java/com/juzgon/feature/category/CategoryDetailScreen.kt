@@ -44,14 +44,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun CategoryDetailRoute(
-    categoryName: String,
+    categoryId: String,
     onBackClick: () -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     viewModel: CategoryDetailViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(categoryName) {
-        viewModel.loadCategory(categoryName)
+    LaunchedEffect(categoryId) {
+        viewModel.loadCategory(categoryId)
     }
 
     val state by viewModel.state.collectAsState()
@@ -293,7 +293,7 @@ private fun CategoryDetailItemRow(
     onEditItemClick: (String) -> Unit,
 ) {
     ListItem(
-        headlineContent = { Text(item.id) },
+        headlineContent = { Text(item.name) },
         trailingContent = {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -311,7 +311,7 @@ private fun CategoryDetailItemRow(
             Modifier
                 .clickable { onEditItemClick(item.id) }
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
+                    contentDescription = "Rated item ${item.name}, average score ${item.averageScoreText}"
                     role = Role.Button
                 },
     )

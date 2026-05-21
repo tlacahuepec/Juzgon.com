@@ -25,7 +25,9 @@ data class ItemScoreValidationError(
 
 data class ItemFormUiState(
     val mode: ItemFormMode = ItemFormMode.Create,
+    val categoryId: String = "",
     val categoryName: String = "",
+    val itemId: String? = null,
     val originalItemId: String? = null,
     val title: String = "",
     val notes: String = "",
@@ -39,7 +41,7 @@ data class ItemFormUiState(
     val errorMessage: String? = null,
 ) {
     val titleEditable: Boolean
-        get() = mode == ItemFormMode.Create
+        get() = true
 
     val titleError: String?
         get() = if (title.isBlank()) "Title is required" else null
@@ -60,7 +62,9 @@ data class ItemFormUiState(
 
     fun toRatedItem(): RatedItem =
         RatedItem(
-            id = title.trim(),
+            id = itemId ?: java.util.UUID.randomUUID().toString(),
+            categoryId = categoryId,
+            name = title.trim(),
             notes = notes.trim(),
             scores =
                 scores.map { scoreInput ->

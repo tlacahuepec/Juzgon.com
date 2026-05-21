@@ -12,13 +12,15 @@ sealed interface HomeNavigationEvent {
     data object CreateCategory : HomeNavigationEvent
 
     data class OpenCategory(
-        val categoryName: String,
+        val categoryId: String,
     ) : HomeNavigationEvent
 }
 
 data class HomeCategoryUiModel(
+    val id: String,
     val name: String,
     val attributeCount: Int,
+    val itemCount: Int,
 )
 
 data class HomeScreenActions(
@@ -54,7 +56,7 @@ object HomeStateReducer {
                         category.name.contains(normalizedQuery, ignoreCase = true)
                 }.let { filteredCategories ->
                     when (sortOption) {
-                        HomeSortOption.Recent -> filteredCategories
+                        HomeSortOption.Recent -> filteredCategories // TODO: actually implement recent if needed, else list order
                         HomeSortOption.Name ->
                             filteredCategories.sortedWith(
                                 compareBy<Category> { it.name.lowercase(Locale.ROOT) }
@@ -63,8 +65,10 @@ object HomeStateReducer {
                     }
                 }.map { category ->
                     HomeCategoryUiModel(
+                        id = category.id,
                         name = category.name,
                         attributeCount = category.attributes.size,
+                        itemCount = category.itemCount,
                     )
                 }
 

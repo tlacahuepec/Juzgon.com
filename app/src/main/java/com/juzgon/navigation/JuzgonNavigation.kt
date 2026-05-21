@@ -17,30 +17,30 @@ import com.juzgon.feature.home.HomeRoute
 import com.juzgon.feature.item.ItemDetailRoute
 import com.juzgon.feature.item.ItemFormRoute
 
-private const val CATEGORY_NAME_ARGUMENT = "categoryName"
+private const val CATEGORY_ID_ARGUMENT = "categoryId"
 private const val ITEM_ID_ARGUMENT = "itemId"
 
 object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
-    const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
-    const val ITEM_DETAIL = "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
-    const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
-    const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
+    const val CATEGORY_DETAIL = "category/{$CATEGORY_ID_ARGUMENT}"
+    const val ITEM_DETAIL = "item/detail/{$CATEGORY_ID_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
+    const val CREATE_ITEM = "item/create/{$CATEGORY_ID_ARGUMENT}"
+    const val EDIT_ITEM = "item/edit/{$CATEGORY_ID_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
 
-    fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
+    fun categoryDetail(categoryId: String): String = "category/${Uri.encode(categoryId)}"
 
     fun itemDetail(
-        categoryName: String,
+        categoryId: String,
         itemId: String,
-    ): String = "item/detail/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
+    ): String = "item/detail/${Uri.encode(categoryId)}/${Uri.encode(itemId)}"
 
-    fun createItem(categoryName: String): String = "item/create/${Uri.encode(categoryName)}"
+    fun createItem(categoryId: String): String = "item/create/${Uri.encode(categoryId)}"
 
     fun editItem(
-        categoryName: String,
+        categoryId: String,
         itemId: String,
-    ): String = "item/edit/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
+    ): String = "item/edit/${Uri.encode(categoryId)}/${Uri.encode(itemId)}"
 }
 
 @Composable
@@ -74,27 +74,27 @@ internal fun JuzgonNavHost(
         )
     },
     categoryDetailContent: @Composable (
-        categoryName: String,
+        categoryId: String,
         onBack: () -> Unit,
         onAddItem: () -> Unit,
         onEditItem: (String) -> Unit,
-    ) -> Unit = { categoryName, onBack, onAddItem, onEditItem ->
+    ) -> Unit = { categoryId, onBack, onAddItem, onEditItem ->
         CategoryDetailRoute(
-            categoryName = categoryName,
+            categoryId = categoryId,
             onBackClick = onBack,
             onAddItemClick = onAddItem,
             onEditItemClick = onEditItem,
         )
     },
     itemFormContent: @Composable (
-        categoryName: String,
+        categoryId: String,
         itemId: String?,
         onBack: () -> Unit,
         onSaveCompleted: () -> Unit,
         onDeleteCompleted: () -> Unit,
-    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted, onDeleteCompleted ->
+    ) -> Unit = { categoryId, itemId, onBack, onSaveCompleted, onDeleteCompleted ->
         ItemFormRoute(
-            categoryName = categoryName,
+            categoryId = categoryId,
             itemId = itemId,
             onBackClick = onBack,
             onSaveCompleted = onSaveCompleted,
@@ -125,8 +125,8 @@ internal fun JuzgonNavHost(
                         launchSingleTop = true
                     }
                 },
-                { categoryName ->
-                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                { categoryId ->
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryId)) {
                         launchSingleTop = true
                     }
                 },
@@ -149,13 +149,13 @@ internal fun JuzgonNavHost(
             route = JuzgonRoutes.CATEGORY_DETAIL,
             arguments =
                 listOf(
-                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                    navArgument(CATEGORY_ID_ARGUMENT) {
                         type = NavType.StringType
                     },
                 ),
         ) { backStackEntry ->
-            val categoryName =
-                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val categoryId =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_ID_ARGUMENT).orEmpty())
             val returnBack = {
                 if (!navController.navigateUp()) {
                     navController.navigate(JuzgonRoutes.HOME) {
@@ -164,17 +164,17 @@ internal fun JuzgonNavHost(
                 }
             }
             val openAddItem = {
-                navController.navigate(JuzgonRoutes.createItem(categoryName)) {
+                navController.navigate(JuzgonRoutes.createItem(categoryId)) {
                     launchSingleTop = true
                 }
             }
             val openItemDetail = { itemId: String ->
-                navController.navigate(JuzgonRoutes.itemDetail(categoryName, itemId)) {
+                navController.navigate(JuzgonRoutes.itemDetail(categoryId, itemId)) {
                     launchSingleTop = true
                 }
             }
             categoryDetailContent(
-                categoryName,
+                categoryId,
                 returnBack,
                 openAddItem,
                 openItemDetail,
@@ -184,7 +184,7 @@ internal fun JuzgonNavHost(
             route = JuzgonRoutes.ITEM_DETAIL,
             arguments =
                 listOf(
-                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                    navArgument(CATEGORY_ID_ARGUMENT) {
                         type = NavType.StringType
                     },
                     navArgument(ITEM_ID_ARGUMENT) {
@@ -192,18 +192,18 @@ internal fun JuzgonNavHost(
                     },
                 ),
         ) { backStackEntry ->
-            val categoryName =
-                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val categoryId =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_ID_ARGUMENT).orEmpty())
             val itemId = Uri.decode(backStackEntry.arguments?.getString(ITEM_ID_ARGUMENT).orEmpty())
             val returnBack = {
                 if (!navController.navigateUp()) {
-                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryId)) {
                         launchSingleTop = true
                     }
                 }
             }
             val openEdit = {
-                navController.navigate(JuzgonRoutes.editItem(categoryName, itemId)) {
+                navController.navigate(JuzgonRoutes.editItem(categoryId, itemId)) {
                     launchSingleTop = true
                 }
             }
@@ -213,22 +213,22 @@ internal fun JuzgonNavHost(
             route = JuzgonRoutes.CREATE_ITEM,
             arguments =
                 listOf(
-                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                    navArgument(CATEGORY_ID_ARGUMENT) {
                         type = NavType.StringType
                     },
                 ),
         ) { backStackEntry ->
-            val categoryName =
-                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val categoryId =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_ID_ARGUMENT).orEmpty())
             val returnToCategory = {
                 if (!navController.popBackStack(JuzgonRoutes.CATEGORY_DETAIL, inclusive = false)) {
-                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryId)) {
                         launchSingleTop = true
                     }
                 }
             }
             itemFormContent(
-                categoryName,
+                categoryId,
                 null,
                 returnToCategory,
                 returnToCategory,
@@ -239,7 +239,7 @@ internal fun JuzgonNavHost(
             route = JuzgonRoutes.EDIT_ITEM,
             arguments =
                 listOf(
-                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                    navArgument(CATEGORY_ID_ARGUMENT) {
                         type = NavType.StringType
                     },
                     navArgument(ITEM_ID_ARGUMENT) {
@@ -247,18 +247,18 @@ internal fun JuzgonNavHost(
                     },
                 ),
         ) { backStackEntry ->
-            val categoryName =
-                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val categoryId =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_ID_ARGUMENT).orEmpty())
             val itemId = Uri.decode(backStackEntry.arguments?.getString(ITEM_ID_ARGUMENT).orEmpty())
             val returnToCategory = {
                 if (!navController.popBackStack(JuzgonRoutes.CATEGORY_DETAIL, inclusive = false)) {
-                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryId)) {
                         launchSingleTop = true
                     }
                 }
             }
             itemFormContent(
-                categoryName,
+                categoryId,
                 itemId,
                 returnToCategory,
                 returnToCategory,

@@ -45,15 +45,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun ItemFormRoute(
-    categoryName: String,
+    categoryId: String,
     itemId: String? = null,
     onBackClick: () -> Unit,
     onSaveCompleted: () -> Unit,
     onDeleteCompleted: () -> Unit = {},
     viewModel: ItemFormViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(categoryName, itemId) {
-        viewModel.loadCategory(categoryName, itemId)
+    LaunchedEffect(categoryId, itemId) {
+        viewModel.loadCategory(categoryId, itemId)
     }
 
     val state by viewModel.state.collectAsState()
@@ -293,7 +293,8 @@ private fun ItemScoreField(
     onScoreDecrement: (String) -> Unit,
 ) {
     val attributeId = scoreInput.attribute.id
-    val label = "$attributeId score"
+    val attributeName = scoreInput.attribute.name
+    val label = "$attributeName score"
     val sliderValue = scoreInput.scoreText.toIntOrNull()?.toFloat() ?: SCORE_MIN.toFloat()
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

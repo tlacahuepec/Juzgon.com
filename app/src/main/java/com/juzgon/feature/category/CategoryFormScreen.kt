@@ -39,14 +39,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun CategoryFormRoute(
-    categoryName: String? = null,
+    categoryId: String? = null,
     onBackClick: () -> Unit,
     onSaveCompleted: () -> Unit,
     viewModel: CategoryFormViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(categoryName) {
-        if (categoryName != null) {
-            viewModel.loadCategory(categoryName)
+    LaunchedEffect(categoryId) {
+        if (categoryId != null) {
+            viewModel.loadCategory(categoryId)
         }
     }
 

@@ -28,35 +28,37 @@ class ItemFormViewModel
         val state: StateFlow<ItemFormUiState> = mutableState
 
         fun loadCategory(
-            categoryName: String,
+            categoryId: String,
             itemId: String? = null,
         ) {
             val current = mutableState.value
-            if (!current.isLoading && current.categoryName == categoryName && current.originalItemId == itemId) {
+            if (!current.isLoading && current.categoryId == categoryId && current.originalItemId == itemId) {
                 return
             }
 
             mutableState.value =
                 ItemFormUiState(
                     mode = if (itemId == null) ItemFormMode.Create else ItemFormMode.Edit,
-                    categoryName = categoryName,
+                    categoryId = categoryId,
+                    itemId = itemId,
                     originalItemId = itemId,
                 )
             viewModelScope.launch {
-                loadFormState(categoryName, itemId)
+                loadFormState(categoryId, itemId)
             }
         }
 
         private suspend fun loadFormState(
-            categoryName: String,
+            categoryId: String,
             itemId: String?,
         ) {
-            val category = categoryRepository.observeCategory(categoryName).first()
+            val category = categoryRepository.observeCategory(categoryId).first()
             when {
                 category == null -> showLoadError("Category not found")
                 itemId == null ->
                     mutableState.value =
                         ItemFormUiState(
+                            categoryId = category.id,
                             categoryName = category.name,
                             scores = category.attributes.map { attribute -> ItemScoreInput(attribute) },
                             isLoading = false,
@@ -79,9 +81,11 @@ class ItemFormViewModel
             mutableState.value =
                 ItemFormUiState(
                     mode = ItemFormMode.Edit,
+                    categoryId = category.id,
                     categoryName = category.name,
+                    itemId = item.id,
                     originalItemId = item.id,
-                    title = item.id,
+                    title = item.name,
                     notes = item.notes,
                     scores =
                         category.attributes.map { attribute ->
@@ -105,9 +109,6 @@ class ItemFormViewModel
         }
 
         fun onTitleChanged(title: String) {
-            if (!mutableState.value.titleEditable) {
-                return
-            }
             mutableState.update { it.copy(title = title, saveCompleted = false, errorMessage = null) }
         }
 
@@ -203,11 +204,6 @@ class ItemFormViewModel
                                 ValidateRatingsUseCase.AttributeBounds(scoreInput.attribute.id)
                             },
                     )
-                    if (current.mode == ItemFormMode.Create) {
-                        require(ratedItemRepository.observeRatedItem(current.title.trim()).first() == null) {
-                            "Item already exists"
-                        }
-                    }
                     ratedItemRepository.saveRatedItem(current.toRatedItem())
                 }.onSuccess {
                     mutableState.update {

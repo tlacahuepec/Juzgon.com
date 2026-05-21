@@ -8,16 +8,16 @@ import kotlinx.coroutines.flow.Flow
 interface CategoryRepository {
     fun observeCategories(): Flow<List<Category>>
 
-    fun observeCategory(name: String): Flow<Category?>
+    fun observeCategory(id: String): Flow<Category?>
 
     suspend fun saveCategory(category: Category)
 
     suspend fun renameCategory(
-        originalName: String,
+        originalId: String,
         category: Category,
     )
 
-    suspend fun deleteCategory(name: String)
+    suspend fun deleteCategory(id: String)
 }
 
 interface RatedItemRepository {
@@ -25,7 +25,7 @@ interface RatedItemRepository {
 
     fun observeRatedItem(id: String): Flow<RatedItem?>
 
-    fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>>
+    fun observeRankedItems(categoryId: String): Flow<List<RankedRatedItem>>
 
     suspend fun saveRatedItem(ratedItem: RatedItem)
 

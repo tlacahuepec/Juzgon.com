@@ -2,13 +2,15 @@ package com.juzgon.data.repository
 
 import androidx.room.withTransaction
 import com.juzgon.data.local.JuzgonDatabase
-import com.juzgon.data.local.dao.ItemWithRatings
+import com.juzgon.data.local.dao.ItemWithRatingsAndValues
+import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.mapper.toAttributeEntities
 import com.juzgon.data.local.mapper.toDomain
 import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
 import com.juzgon.data.local.mapper.toRatingEntities
+import com.juzgon.data.local.mapper.toValueEntities
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
@@ -28,14 +30,14 @@ class RoomCategoryRepository(
 
     override fun observeCategories(): Flow<List<Category>> =
         categoryDao
-            .observeCategoriesWithAttributes()
-            .map { categories ->
-                categories.map { it.toDomain() }
+            .observeCategorySummaries()
+            .map { summaries ->
+                summaries.map { it.toDomain() }
             }.distinctUntilChanged()
 
-    override fun observeCategory(name: String): Flow<Category?> =
+    override fun observeCategory(id: String): Flow<Category?> =
         categoryDao
-            .observeCategoryWithAttributes(name)
+            .observeCategoryWithAttributes(id)
             .map { category ->
                 category?.toDomain()
             }.distinctUntilChanged()
@@ -44,10 +46,10 @@ class RoomCategoryRepository(
         database.withTransaction {
             categoryDao.upsertCategory(category.toEntity())
             if (category.attributes.isEmpty()) {
-                categoryDao.deleteAttributesForCategory(category.name)
+                categoryDao.deleteAttributesForCategory(category.id)
             } else {
                 categoryDao.deleteAttributesNotIn(
-                    categoryName = category.name,
+                    categoryId = category.id,
                     attributeIds = category.attributes.map { it.id },
                 )
                 categoryDao.upsertAttributes(category.toAttributeEntities())
@@ -56,27 +58,21 @@ class RoomCategoryRepository(
     }
 
     override suspend fun renameCategory(
-        originalName: String,
+        originalId: String,
         category: Category,
     ) {
-        if (originalName == category.name) {
-            saveCategory(category)
-            return
-        }
-
+        // Obsolete as we use UUIDs, keeping for interface compatibility
         database.withTransaction {
-            require(categoryDao.getCategoryWithAttributes(category.name) == null) {
+            require(categoryDao.getCategoryWithAttributesByName(category.name) == null || categoryDao.getCategoryWithAttributesByName(category.name)?.category?.id == category.id) {
                 "Category name already exists"
             }
-            categoryDao.upsertCategory(category.toEntity())
-            categoryDao.upsertAttributes(category.toAttributeEntities())
-            categoryDao.deleteCategoryByName(originalName)
+            saveCategory(category)
         }
     }
 
-    override suspend fun deleteCategory(name: String) {
+    override suspend fun deleteCategory(id: String) {
         database.withTransaction {
-            categoryDao.deleteCategoryByName(name)
+            categoryDao.deleteCategoryById(id)
         }
     }
 }
@@ -91,7 +87,7 @@ class RoomRatedItemRepository(
 
     override fun observeRatedItems(): Flow<List<RatedItem>> =
         combine(
-            itemDao.observeItemsWithRatings(),
+            itemDao.observeItemsWithRatingsAndValues(),
             categoryDao.observeAttributes(),
         ) { items, attributes ->
             val attributesById = attributes.associate { it.id to it.toDomain() }
@@ -100,19 +96,19 @@ class RoomRatedItemRepository(
 
     override fun observeRatedItem(id: String): Flow<RatedItem?> =
         combine(
-            itemDao.observeItemWithRatings(id),
+            itemDao.observeItemWithRatingsAndValues(id),
             categoryDao.observeAttributes(),
         ) { item, attributes ->
             val attributesById = attributes.associate { it.id to it.toDomain() }
             item?.toDomain(attributesById)
         }.distinctUntilChanged()
 
-    override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> =
+    override fun observeRankedItems(categoryId: String): Flow<List<RankedRatedItem>> =
         combine(
-            itemDao.observeRankedItemsForCategory(categoryName),
+            itemDao.observeRankedItemsForCategory(categoryId),
             categoryDao.observeAttributes(),
         ) { rankedItems, attributes ->
-            val categoryAttributes = attributes.filter { it.categoryName == categoryName }
+            val categoryAttributes = attributes.filter { it.categoryId == categoryId }
             if (categoryAttributes.isEmpty()) {
                 emptyList()
             } else {
@@ -122,6 +118,7 @@ class RoomRatedItemRepository(
                     rankedItems.map { rankedItem ->
                         rankedItem.item.toDomain(
                             ratings = rankedItem.ratings.filter { it.attributeId in attributesById },
+                            values = rankedItem.values.filter { it.attributeId in attributesById },
                             attributesById = attributesById,
                         )
                     }
@@ -131,22 +128,29 @@ class RoomRatedItemRepository(
 
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
-            val existingItemWithRatings = itemDao.getItemWithRatings(ratedItem.id)
-            if (existingItemWithRatings?.hasSameSavedContent(ratedItem) == true) {
+            val existingItem = itemDao.getItemWithRatingsAndValues(ratedItem.id)
+            if (existingItem?.hasSameSavedContent(ratedItem) == true) {
                 return@withTransaction
             }
 
             val updatedAt = currentTimeMillis()
             itemDao.upsertItem(
                 ratedItem.toItemEntity(
-                    createdAt = existingItemWithRatings?.item?.createdAt ?: updatedAt,
+                    createdAt = existingItem?.item?.createdAt ?: updatedAt,
                     updatedAt = updatedAt,
                 ),
             )
             itemDao.deleteRatingsForItem(ratedItem.id)
+            itemDao.deleteValuesForItem(ratedItem.id)
+            
             val ratingEntities = ratedItem.toRatingEntities()
             if (ratingEntities.isNotEmpty()) {
                 itemDao.upsertRatings(ratingEntities)
+            }
+            
+            val valueEntities = ratedItem.toValueEntities()
+            if (valueEntities.isNotEmpty()) {
+                itemDao.upsertValues(valueEntities)
             }
         }
     }
@@ -157,11 +161,17 @@ class RoomRatedItemRepository(
         }
     }
 
-    private fun ItemWithRatings.hasSameSavedContent(ratedItem: RatedItem): Boolean =
+    private fun ItemWithRatingsAndValues.hasSameSavedContent(ratedItem: RatedItem): Boolean =
         item.notes == ratedItem.notes &&
-            ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot()
+            item.name == ratedItem.name &&
+            ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot() &&
+            values.toValueSnapshot() == ratedItem.toValueEntities().toValueSnapshot()
 
     private fun List<RatingEntity>.toRatingSnapshot(): List<Pair<String, Int>> =
         map { rating -> rating.attributeId to rating.score }
+            .sortedBy { (attributeId, _) -> attributeId }
+            
+    private fun List<ItemValueEntity>.toValueSnapshot(): List<Pair<String, String>> =
+        map { value -> value.attributeId to value.valueString }
             .sortedBy { (attributeId, _) -> attributeId }
 }
