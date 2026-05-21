@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "MatchingDeclarationName")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "MatchingDeclarationName")
 
 package com.juzgon.navigation
 
@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.juzgon.feature.category.CategoryDetailRoute
 import com.juzgon.feature.category.CategoryFormRoute
 import com.juzgon.feature.home.HomeRoute
+import com.juzgon.feature.item.ItemFormRoute
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 
@@ -21,8 +22,11 @@ object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
+    const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
 
     fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
+
+    fun createItem(categoryName: String): String = "item/create/${Uri.encode(categoryName)}"
 }
 
 @Composable
@@ -58,10 +62,23 @@ internal fun JuzgonNavHost(
     categoryDetailContent: @Composable (
         categoryName: String,
         onBack: () -> Unit,
-    ) -> Unit = { categoryName, onBack ->
+        onAddItem: () -> Unit,
+    ) -> Unit = { categoryName, onBack, onAddItem ->
         CategoryDetailRoute(
             categoryName = categoryName,
             onBackClick = onBack,
+            onAddItemClick = onAddItem,
+        )
+    },
+    itemFormContent: @Composable (
+        categoryName: String,
+        onBack: () -> Unit,
+        onSaveCompleted: () -> Unit,
+    ) -> Unit = { categoryName, onBack, onSaveCompleted ->
+        ItemFormRoute(
+            categoryName = categoryName,
+            onBackClick = onBack,
+            onSaveCompleted = onSaveCompleted,
         )
     },
 ) {
@@ -115,9 +132,39 @@ internal fun JuzgonNavHost(
                     }
                 }
             }
+            val openAddItem = {
+                navController.navigate(JuzgonRoutes.createItem(categoryName)) {
+                    launchSingleTop = true
+                }
+            }
             categoryDetailContent(
                 categoryName,
                 returnBack,
+                openAddItem,
+            )
+        }
+        composable(
+            route = JuzgonRoutes.CREATE_ITEM,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val returnToCategory = {
+                if (!navController.popBackStack(JuzgonRoutes.CATEGORY_DETAIL, inclusive = false)) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            itemFormContent(
+                categoryName,
+                returnToCategory,
+                returnToCategory,
             )
         }
     }

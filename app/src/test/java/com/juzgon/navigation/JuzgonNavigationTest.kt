@@ -38,7 +38,8 @@ class JuzgonNavigationTest {
                     navController = navController,
                     homeContent = { _, _ -> Text("Home route") },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, _ -> Text("Detail route $categoryName") },
+                    categoryDetailContent = { categoryName, _, _ -> Text("Detail route $categoryName") },
+                    itemFormContent = { categoryName, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -68,7 +69,8 @@ class JuzgonNavigationTest {
                             Text("Back home")
                         }
                     },
-                    categoryDetailContent = { categoryName, _ -> Text("Detail route $categoryName") },
+                    categoryDetailContent = { categoryName, _, _ -> Text("Detail route $categoryName") },
+                    itemFormContent = { categoryName, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -99,11 +101,12 @@ class JuzgonNavigationTest {
                         }
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
-                    categoryDetailContent = { categoryName, onBack ->
+                    categoryDetailContent = { categoryName, onBack, _ ->
                         Button(onClick = onBack) {
                             Text("Detail route $categoryName")
                         }
                     },
+                    itemFormContent = { categoryName, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -117,6 +120,48 @@ class JuzgonNavigationTest {
         composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun categoryDetailCanOpenEncodedAddItemRouteAndReturnAfterSave() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, onOpenCategory ->
+                        Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
+                            Text("Open detail")
+                        }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, _, onAddItem ->
+                        Button(onClick = onAddItem) {
+                            Text("Detail route $categoryName")
+                        }
+                    },
+                    itemFormContent = { categoryName, _, onSaveCompleted ->
+                        Button(onClick = onSaveCompleted) {
+                            Text("Add item route $categoryName")
+                        }
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open detail").performClick()
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
+        composeRule.onNodeWithText("Add item route Fast Cars / SUVs").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CREATE_ITEM, navController.currentDestination?.route)
+        }
+
+        composeRule.onNodeWithText("Add item route Fast Cars / SUVs").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
         }
     }
 

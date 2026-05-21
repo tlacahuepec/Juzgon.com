@@ -71,8 +71,30 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(3, listOf(DatabaseMigrations.MIGRATION_2_3)).close()
     }
 
+    @Test
+    fun migrate3To4_preservesItemRowsWithDefaultBlankNotes() {
+        val connection = helper.createDatabase(3)
+        connection.prepare("INSERT INTO items (id) VALUES ('$ITEM_ID')").use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(4, listOf(DatabaseMigrations.MIGRATION_3_4)).use { conn ->
+            conn.prepare("SELECT id, notes FROM items").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ITEM_ID, stmt.getText(0))
+                assertEquals("", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate3To4_validatesLatestSchema() {
+        helper.createDatabase(3).close()
+        helper.runMigrationsAndValidate(4, listOf(DatabaseMigrations.MIGRATION_3_4)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"
+        const val ITEM_ID = "espresso"
     }
 }

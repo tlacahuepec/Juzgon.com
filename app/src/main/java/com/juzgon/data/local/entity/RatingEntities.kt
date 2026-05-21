@@ -46,6 +46,8 @@ data class ItemEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
     val id: String,
+    @ColumnInfo(name = "notes")
+    val notes: String = "",
 )
 
 @Entity(

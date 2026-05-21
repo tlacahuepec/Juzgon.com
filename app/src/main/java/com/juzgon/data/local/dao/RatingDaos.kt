@@ -109,6 +109,7 @@ interface ItemDao {
         """
         SELECT
             items.id AS id,
+            items.notes AS notes,
             ROUND(SUM(ratings.score * attributes.weight) / SUM(attributes.weight), 1) AS aggregate_score
         FROM items
         INNER JOIN ratings ON ratings.item_id = items.id
