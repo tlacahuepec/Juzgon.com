@@ -53,6 +53,62 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun loadedScreenRendersMovementIndicators() {
+        setContent(
+            loadedState().copy(
+                rankedAttributes =
+                    listOf(
+                        RankedAttributeCardUiModel(
+                            rank = 1,
+                            label = "Speed",
+                            valueText = "8",
+                            maxText = "10",
+                            progressPercent = 80,
+                            progressFraction = 0.8f,
+                            sizeVariant = AttributeRankSizeVariant.Rank1,
+                            movement =
+                                AttributeMovement(
+                                    rank = AttributeMovementDirection.Improved,
+                                    value = AttributeMovementDirection.Declined,
+                                ),
+                        ),
+                        RankedAttributeCardUiModel(
+                            rank = 2,
+                            label = "Brakes",
+                            valueText = "7",
+                            maxText = "10",
+                            progressPercent = 70,
+                            progressFraction = 0.7f,
+                            sizeVariant = AttributeRankSizeVariant.Rank2,
+                            movement =
+                                AttributeMovement(
+                                    rank = AttributeMovementDirection.Unchanged,
+                                    value = AttributeMovementDirection.Unchanged,
+                                ),
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Rank ↑").assertIsDisplayed()
+        composeRule.onNodeWithText("Value ↓").assertIsDisplayed()
+        composeRule.onNodeWithText("Rank =").assertIsDisplayed()
+        composeRule.onNodeWithText("Value =").assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenOmitsMovementIndicatorsWithoutHistory() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithText("Rank ↑").assertDoesNotExist()
+        composeRule.onNodeWithText("Rank ↓").assertDoesNotExist()
+        composeRule.onNodeWithText("Rank =").assertDoesNotExist()
+        composeRule.onNodeWithText("Value ↑").assertDoesNotExist()
+        composeRule.onNodeWithText("Value ↓").assertDoesNotExist()
+        composeRule.onNodeWithText("Value =").assertDoesNotExist()
+    }
+
+    @Test
     fun loadedScreenAppliesRankedAttributeSizeVariants() {
         setContent(loadedState())
 

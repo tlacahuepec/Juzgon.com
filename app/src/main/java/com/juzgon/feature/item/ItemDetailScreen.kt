@@ -244,6 +244,7 @@ private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
                         text = rankedAttribute.label,
                         style = MaterialTheme.typography.bodyLarge,
                     )
+                    AttributeMovementIndicators(rankedAttribute.movement)
                 }
                 Text(
                     text = "${rankedAttribute.valueText} / ${rankedAttribute.maxText}",
@@ -260,6 +261,43 @@ private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
             )
         }
     }
+}
+
+@Composable
+private fun AttributeMovementIndicators(movement: AttributeMovement?) {
+    if (movement == null) return
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AttributeMovementIndicator(label = "Rank", direction = movement.rank)
+        AttributeMovementIndicator(label = "Value", direction = movement.value)
+    }
+}
+
+@Composable
+private fun AttributeMovementIndicator(
+    label: String,
+    direction: AttributeMovementDirection,
+) {
+    val symbol =
+        when (direction) {
+            AttributeMovementDirection.Improved -> "↑"
+            AttributeMovementDirection.Declined -> "↓"
+            AttributeMovementDirection.Unchanged -> "="
+        }
+    val color =
+        when (direction) {
+            AttributeMovementDirection.Improved -> MaterialTheme.colorScheme.primary
+            AttributeMovementDirection.Declined -> MaterialTheme.colorScheme.error
+            AttributeMovementDirection.Unchanged -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    Text(
+        text = "$label $symbol",
+        color = color,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
 }
 
 private data class RankedAttributeCardSizeStyle(

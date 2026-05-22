@@ -1,5 +1,6 @@
 package com.juzgon.feature.item
 
+import com.juzgon.domain.AttributeRankSnapshot
 import java.util.Locale
 
 private const val SCORE_MIN_DISPLAY = 0
@@ -15,6 +16,7 @@ private const val FIFTH_RANK = 5
 data class ItemDetailAttributeScore(
     val label: String,
     val score: Int,
+    val attributeId: String = label,
 )
 
 enum class AttributeRankSizeVariant {
@@ -26,6 +28,17 @@ enum class AttributeRankSizeVariant {
     Standard,
 }
 
+enum class AttributeMovementDirection {
+    Improved,
+    Declined,
+    Unchanged,
+}
+
+data class AttributeMovement(
+    val rank: AttributeMovementDirection,
+    val value: AttributeMovementDirection,
+)
+
 data class RankedAttributeCardUiModel(
     val rank: Int,
     val label: String,
@@ -34,9 +47,14 @@ data class RankedAttributeCardUiModel(
     val progressPercent: Int,
     val progressFraction: Float,
     val sizeVariant: AttributeRankSizeVariant = AttributeRankSizeVariant.Standard,
+    val movement: AttributeMovement? = null,
 ) {
     val accessibleDescription: String
-        get() = "Rank $rank, $label, $valueText out of $maxText, $progressPercent percent"
+        get() =
+            listOfNotNull(
+                "Rank $rank, $label, $valueText out of $maxText, $progressPercent percent",
+                movement?.accessibleDescription(),
+            ).joinToString(", ")
 
     val testTag: String
         get() = "RankedAttributeCard:$sizeVariant:$rank"
@@ -58,7 +76,18 @@ data class ItemDetailUiState(
     val errorMessage: String? = null,
 )
 
-internal fun rankedAttributeCards(attributeScores: List<ItemDetailAttributeScore>): List<RankedAttributeCardUiModel> =
+internal fun rankedAttributeCards(
+    attributeScores: List<ItemDetailAttributeScore>,
+    previousSnapshots: List<AttributeRankSnapshot> = emptyList(),
+): List<RankedAttributeCardUiModel> {
+    val previousSnapshotsByAttributeId = previousSnapshots.associateBy { it.attributeId }
+    return rankedAttributeCards(attributeScores, previousSnapshotsByAttributeId)
+}
+
+private fun rankedAttributeCards(
+    attributeScores: List<ItemDetailAttributeScore>,
+    previousSnapshotsByAttributeId: Map<String, AttributeRankSnapshot>,
+): List<RankedAttributeCardUiModel> =
     attributeScores
         .map { score ->
             score to score.score.coerceIn(SCORE_MIN_DISPLAY, SCORE_MAX_DISPLAY)
@@ -77,8 +106,28 @@ internal fun rankedAttributeCards(attributeScores: List<ItemDetailAttributeScore
                 progressPercent = progressPercent,
                 progressFraction = progressPercent / PERCENT_SCALE.toFloat(),
                 sizeVariant = attributeRankSizeVariant(rank),
+                movement =
+                    attributeMovement(
+                        currentRank = rank,
+                        currentValue = score.score,
+                        previousSnapshot = previousSnapshotsByAttributeId[score.attributeId],
+                    ),
             )
         }
+
+internal fun latestPreviousAttributeRankSnapshots(
+    snapshots: List<AttributeRankSnapshot>,
+    currentUpdatedAt: Long,
+): List<AttributeRankSnapshot> {
+    val latestPreviousCapturedAt =
+        snapshots
+            .asSequence()
+            .map { it.capturedAt }
+            .filter { it < currentUpdatedAt }
+            .maxOrNull()
+            ?: return emptyList()
+    return snapshots.filter { it.capturedAt == latestPreviousCapturedAt }
+}
 
 internal fun attributeRankSizeVariant(rank: Int): AttributeRankSizeVariant =
     when (rank) {
@@ -88,6 +137,51 @@ internal fun attributeRankSizeVariant(rank: Int): AttributeRankSizeVariant =
         FOURTH_RANK -> AttributeRankSizeVariant.Rank4
         FIFTH_RANK -> AttributeRankSizeVariant.Rank5
         else -> AttributeRankSizeVariant.Standard
+    }
+
+private fun attributeMovement(
+    currentRank: Int,
+    currentValue: Int,
+    previousSnapshot: AttributeRankSnapshot?,
+): AttributeMovement? =
+    previousSnapshot?.let { snapshot ->
+        AttributeMovement(
+            rank = rankMovement(currentRank = currentRank, previousRank = snapshot.rank),
+            value = valueMovement(currentValue = currentValue, previousValue = snapshot.value),
+        )
+    }
+
+private fun rankMovement(
+    currentRank: Int,
+    previousRank: Int,
+): AttributeMovementDirection =
+    when {
+        currentRank < previousRank -> AttributeMovementDirection.Improved
+        currentRank > previousRank -> AttributeMovementDirection.Declined
+        else -> AttributeMovementDirection.Unchanged
+    }
+
+private fun valueMovement(
+    currentValue: Int,
+    previousValue: Int,
+): AttributeMovementDirection =
+    when {
+        currentValue > previousValue -> AttributeMovementDirection.Improved
+        currentValue < previousValue -> AttributeMovementDirection.Declined
+        else -> AttributeMovementDirection.Unchanged
+    }
+
+internal fun AttributeMovement.accessibleDescription(): String =
+    listOf(
+        "rank ${rank.accessibleLabel()}",
+        "value ${value.accessibleLabel()}",
+    ).joinToString(", ")
+
+internal fun AttributeMovementDirection.accessibleLabel(): String =
+    when (this) {
+        AttributeMovementDirection.Improved -> "improved"
+        AttributeMovementDirection.Declined -> "declined"
+        AttributeMovementDirection.Unchanged -> "unchanged"
     }
 
 internal fun computeWeightedAverageText(attributeScores: List<Pair<Double, Int>>): String {

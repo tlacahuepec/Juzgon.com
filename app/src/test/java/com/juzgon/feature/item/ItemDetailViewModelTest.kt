@@ -1,11 +1,13 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -23,12 +26,14 @@ class ItemDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: FakeDetailRatedItemRepository
+    private lateinit var snapshotRepository: FakeDetailAttributeRankSnapshotRepository
     private lateinit var viewModel: ItemDetailViewModel
 
     @Before
     fun setUp() {
         repository = FakeDetailRatedItemRepository()
-        viewModel = ItemDetailViewModel(repository)
+        snapshotRepository = FakeDetailAttributeRankSnapshotRepository()
+        viewModel = ItemDetailViewModel(repository, snapshotRepository)
     }
 
     @Test
@@ -76,6 +81,59 @@ class ItemDetailViewModelTest {
             assertEquals(listOf("Brakes", "Speed", "Control"), cards.map { it.label })
             assertEquals(listOf(1, 2, 3), cards.map { it.rank })
             assertEquals(listOf(100, 80, 60), cards.map { it.progressPercent })
+        }
+
+    @Test
+    fun loadItemBuildsRankAndValueMovementFromLatestPreviousSnapshots() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    updatedAt = 300L,
+                    scores =
+                        listOf(
+                            ScoreEntry(Attribute("Speed"), 9),
+                            ScoreEntry(Attribute("Brakes"), 8),
+                        ),
+                )
+            snapshotRepository.snapshots.value = movementHistorySnapshots()
+
+            viewModel.loadItem("Roadster")
+
+            val cards = viewModel.state.value.rankedAttributes
+            assertEquals(AttributeMovementDirection.Improved, cards[0].movement?.rank)
+            assertEquals(AttributeMovementDirection.Improved, cards[0].movement?.value)
+            assertEquals(AttributeMovementDirection.Declined, cards[1].movement?.rank)
+            assertEquals(AttributeMovementDirection.Declined, cards[1].movement?.value)
+        }
+
+    @Test
+    fun loadItemOmitsMovementWithoutPreviousSnapshots() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    updatedAt = 300L,
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                )
+            snapshotRepository.snapshots.value =
+                listOf(
+                    AttributeRankSnapshot(
+                        itemId = "Roadster",
+                        capturedAt = 300L,
+                        attributeId = "Speed",
+                        value = 8,
+                        rank = 1,
+                    ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            assertNull(
+                viewModel.state.value.rankedAttributes
+                    .single()
+                    .movement,
+            )
         }
 
     @Test
@@ -196,4 +254,56 @@ class ItemDetailViewModelTest {
 
         override suspend fun deleteRatedItem(id: String) = error("not used")
     }
+
+    private class FakeDetailAttributeRankSnapshotRepository : AttributeRankSnapshotRepository {
+        val snapshots = MutableStateFlow<List<AttributeRankSnapshot>>(emptyList())
+
+        override fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshot>> = snapshots
+    }
+
+    private fun movementHistorySnapshots(): List<AttributeRankSnapshot> =
+        listOf(
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 100L,
+                attributeId = "Speed",
+                value = 6,
+                rank = 2,
+            ),
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 100L,
+                attributeId = "Brakes",
+                value = 10,
+                rank = 1,
+            ),
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 200L,
+                attributeId = "Speed",
+                value = 7,
+                rank = 2,
+            ),
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 200L,
+                attributeId = "Brakes",
+                value = 9,
+                rank = 1,
+            ),
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 300L,
+                attributeId = "Speed",
+                value = 9,
+                rank = 1,
+            ),
+            AttributeRankSnapshot(
+                itemId = "Roadster",
+                capturedAt = 300L,
+                attributeId = "Brakes",
+                value = 8,
+                rank = 2,
+            ),
+        )
 }
