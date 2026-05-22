@@ -1,7 +1,10 @@
-@file:Suppress("FunctionName", "LongMethod")
+@file:Suppress("FunctionName", "LongMethod", "TooManyFunctions")
 
 package com.juzgon.feature.item
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +36,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -42,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.domain.AttributeType
 
 @Composable
 fun ItemDetailRoute(
@@ -165,6 +172,10 @@ private fun ItemDetailContent(
         OverallScoreSection(overallScoreText = state.overallScoreText)
         HorizontalDivider()
         RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
+        if (state.attributeValues.isNotEmpty()) {
+            HorizontalDivider()
+            AttributeValuesSection(attributeValues = state.attributeValues)
+        }
         if (state.notes.isNotBlank()) {
             HorizontalDivider()
             NotesSection(notes = state.notes)
@@ -299,6 +310,85 @@ private fun AttributeMovementIndicator(
         fontWeight = FontWeight.SemiBold,
     )
 }
+
+@Composable
+private fun AttributeValuesSection(attributeValues: List<ItemDetailAttributeValue>) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = "Attributes", style = MaterialTheme.typography.titleSmall)
+        attributeValues.forEach { attributeValue ->
+            AttributeValueRow(attributeValue)
+        }
+    }
+}
+
+@Composable
+private fun AttributeValueRow(attributeValue: ItemDetailAttributeValue) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = attributeValue.label,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (attributeValue.type == AttributeType.IMAGE) {
+            ImageAttributePreview(
+                value = attributeValue.value,
+                contentDescription = "${attributeValue.label} image preview",
+            )
+        } else {
+            Text(text = attributeValue.value, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun ImageAttributePreview(
+    value: String,
+    contentDescription: String,
+) {
+    val context = LocalContext.current
+    val bitmap =
+        androidx.compose.runtime.remember(value) {
+            imageBitmapFromValue(context.contentResolver, value)
+        }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+        )
+    } else {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.small,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp)
+                    .semantics { this.contentDescription = contentDescription },
+        ) {
+            Text(
+                text = "Image selected",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+private fun imageBitmapFromValue(
+    contentResolver: android.content.ContentResolver,
+    value: String,
+) = runCatching {
+    val uri = Uri.parse(value)
+    contentResolver.openInputStream(uri)?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream)
+    }
+}.getOrNull()
 
 private data class RankedAttributeCardSizeStyle(
     val minHeight: Dp,

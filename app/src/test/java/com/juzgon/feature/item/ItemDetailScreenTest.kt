@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import com.juzgon.domain.AttributeType
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -41,6 +42,46 @@ class ItemDetailScreenTest {
         composeRule.onNodeWithText("8 / 10").assertIsDisplayed()
         composeRule.onNodeWithText("Brakes").assertIsDisplayed()
         composeRule.onNodeWithText("7 / 10").assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersImageAttributePreview() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Photo",
+                            value = "content://images/roadster",
+                            type = AttributeType.IMAGE,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Photo image preview").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("content://images/roadster").assertDoesNotExist()
+    }
+
+    @Test
+    fun loadedScreenRendersNonImageAttributeValues() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Details",
+                            value = "Very fast car",
+                            type = AttributeType.NOTES,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Details").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Very fast car").performScrollTo().assertIsDisplayed()
     }
 
     @Test

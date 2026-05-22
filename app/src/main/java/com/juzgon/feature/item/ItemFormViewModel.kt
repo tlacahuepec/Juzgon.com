@@ -176,6 +176,56 @@ class ItemFormViewModel
             }
         }
 
+        fun onImageSelected(
+            attributeId: String,
+            imageUri: String,
+            mimeType: String?,
+            sizeBytes: Long?,
+            displayName: String?,
+        ) {
+            mutableState.update {
+                it.copy(
+                    values =
+                        it.values.map { valueInput ->
+                            if (valueInput.attribute.id == attributeId) {
+                                valueInput.copy(
+                                    valueText = imageUri,
+                                    imageMimeType = mimeType,
+                                    imageSizeBytes = sizeBytes,
+                                    imageDisplayName = displayName,
+                                )
+                            } else {
+                                valueInput
+                            }
+                        },
+                    saveCompleted = false,
+                    errorMessage = null,
+                )
+            }
+        }
+
+        fun onImageRemoved(attributeId: String) {
+            mutableState.update {
+                it.copy(
+                    values =
+                        it.values.map { valueInput ->
+                            if (valueInput.attribute.id == attributeId) {
+                                valueInput.copy(
+                                    valueText = "",
+                                    imageMimeType = null,
+                                    imageSizeBytes = null,
+                                    imageDisplayName = null,
+                                )
+                            } else {
+                                valueInput
+                            }
+                        },
+                    saveCompleted = false,
+                    errorMessage = null,
+                )
+            }
+        }
+
         fun onScoreIncrement(attributeId: String) {
             adjustScore(attributeId) { current -> (current + 1).coerceAtMost(SCORE_MAX) }
         }

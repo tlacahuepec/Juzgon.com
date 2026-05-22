@@ -1,6 +1,7 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.AttributeRankSnapshot
+import com.juzgon.domain.AttributeType
 import java.util.Locale
 
 private const val SCORE_MIN_DISPLAY = 0
@@ -63,6 +64,7 @@ data class RankedAttributeCardUiModel(
 data class ItemDetailAttributeValue(
     val label: String,
     val value: String,
+    val type: AttributeType,
 )
 
 data class ItemDetailUiState(

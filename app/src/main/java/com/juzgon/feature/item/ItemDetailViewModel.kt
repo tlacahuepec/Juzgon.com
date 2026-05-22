@@ -61,6 +61,7 @@ class ItemDetailViewModel
                                 ItemDetailAttributeValue(
                                     label = valueEntry.attribute.id,
                                     value = valueEntry.value,
+                                    type = valueEntry.attribute.type,
                                 )
                             },
                         notes = item.notes,

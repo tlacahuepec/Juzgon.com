@@ -405,13 +405,14 @@ class ItemFormViewModelTest {
         runTest {
             val colorAttr = Attribute("Color", type = AttributeType.BOOLEAN)
             val detailsAttr = Attribute("Details", type = AttributeType.NOTES)
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE)
             categoryRepository.categories.value =
-                listOf(Category(name = "Mixed", attributes = listOf(speed, colorAttr, detailsAttr)))
+                listOf(Category(name = "Mixed", attributes = listOf(speed, colorAttr, detailsAttr, imageAttr)))
 
             viewModel.loadCategory("Mixed")
 
             assertEquals(listOf("Speed"), currentState.scores.map { it.attribute.id })
-            assertEquals(listOf("Color", "Details"), currentState.values.map { it.attribute.id })
+            assertEquals(listOf("Color", "Details", "Photo"), currentState.values.map { it.attribute.id })
         }
 
     @Test
@@ -472,6 +473,87 @@ class ItemFormViewModelTest {
             assertEquals(1, saved.values.size)
             assertEquals("Details", saved.values[0].attribute.id)
             assertEquals("Very fast car", saved.values[0].value)
+        }
+
+    @Test
+    fun onImageSelectedStoresMetadataAndPersistsImageValue() =
+        runTest {
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, imageAttr)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+
+            viewModel.onImageSelected(
+                attributeId = "Photo",
+                imageUri = "content://images/roadster",
+                mimeType = "image/png",
+                sizeBytes = IMAGE_MAX_SIZE_BYTES,
+                displayName = "roadster.png",
+            )
+
+            val imageInput = currentState.values.single()
+            assertEquals("content://images/roadster", imageInput.valueText)
+            assertEquals("image/png", imageInput.imageMimeType)
+            assertEquals(IMAGE_MAX_SIZE_BYTES, imageInput.imageSizeBytes)
+            assertEquals("roadster.png", imageInput.imageDisplayName)
+
+            viewModel.onSaveClick()
+
+            val saved = ratedItemRepository.savedItem!!
+            val savedImage = saved.values.single()
+            assertEquals("Photo", savedImage.attribute.id)
+            assertEquals("content://images/roadster", savedImage.value)
+        }
+
+    @Test
+    fun oversizedSelectedImageBlocksSave() =
+        runTest {
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, imageAttr)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+
+            viewModel.onImageSelected(
+                attributeId = "Photo",
+                imageUri = "content://images/roadster",
+                mimeType = "image/png",
+                sizeBytes = IMAGE_MAX_SIZE_BYTES + 1,
+                displayName = "roadster.png",
+            )
+
+            assertFalse(currentState.saveEnabled)
+            assertEquals("Image must be 5 MB or smaller", currentState.valueErrors.single().value)
+        }
+
+    @Test
+    fun onImageRemovedClearsOptionalImageValueAndMetadata() =
+        runTest {
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, imageAttr)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+            viewModel.onImageSelected(
+                attributeId = "Photo",
+                imageUri = "content://images/roadster",
+                mimeType = "image/png",
+                sizeBytes = IMAGE_MAX_SIZE_BYTES,
+                displayName = "roadster.png",
+            )
+
+            viewModel.onImageRemoved("Photo")
+
+            val imageInput = currentState.values.single()
+            assertEquals("", imageInput.valueText)
+            assertEquals(null, imageInput.imageMimeType)
+            assertEquals(null, imageInput.imageSizeBytes)
+            assertEquals(null, imageInput.imageDisplayName)
+            assertTrue(currentState.saveEnabled)
         }
 
     @Test
