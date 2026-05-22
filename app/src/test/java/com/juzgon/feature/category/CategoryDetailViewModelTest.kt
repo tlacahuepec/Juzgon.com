@@ -78,8 +78,8 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
-                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "8.3"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 2, id = "coupe", averageScoreText = "8.3"),
                     ),
                     state.items,
                 )
@@ -214,6 +214,7 @@ class CategoryDetailViewModelTest {
                     listOf("sedan", "coupe"),
                     state.items.map { it.id },
                 )
+                assertEquals(listOf(1, 2), state.items.map { it.rank })
             }
         }
 
@@ -241,6 +242,7 @@ class CategoryDetailViewModelTest {
                     listOf("coupe", "sedan"),
                     state.items.map { it.id },
                 )
+                assertEquals(listOf(1, 2), state.items.map { it.rank })
             }
         }
 
@@ -286,12 +288,14 @@ class CategoryDetailViewModelTest {
                 if (state.isLoading) state = awaitItem()
 
                 assertEquals(listOf("sedan", "coupe"), state.items.map { it.id })
+                assertEquals(listOf(1, 2), state.items.map { it.rank })
                 assertEquals(CategoryDetailSortOption.Score, state.sortOption)
 
                 viewModel.onSortOptionSelected(CategoryDetailSortOption.Name)
                 state = awaitItem()
 
                 assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
+                assertEquals(listOf(1, 2), state.items.map { it.rank })
                 assertEquals(CategoryDetailSortOption.Name, state.sortOption)
             }
         }
@@ -371,6 +375,7 @@ class CategoryDetailViewModelTest {
                 state = awaitItem()
 
                 assertEquals(listOf("coupe", "sedan", "wagon"), state.items.map { item -> item.id })
+                assertEquals(listOf(1, 2, 3), state.items.map { item -> item.rank })
             }
         }
 
@@ -418,6 +423,7 @@ class CategoryDetailViewModelTest {
                 state = awaitItem()
 
                 assertEquals(listOf("coupe", "wagon", "sedan", "roadster"), state.items.map { item -> item.id })
+                assertEquals(listOf(1, 2, 3, 4), state.items.map { item -> item.rank })
             }
         }
 

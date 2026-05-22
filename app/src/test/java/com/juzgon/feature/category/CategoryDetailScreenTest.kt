@@ -50,8 +50,8 @@ class CategoryDetailScreenTest {
                 attributeSummary = "4 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
-                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "7.4"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 2, id = "coupe", averageScoreText = "7.4"),
                     ),
                 isLoading = false,
             ),
@@ -59,8 +59,10 @@ class CategoryDetailScreenTest {
 
         composeRule.onNodeWithText("4 attributes").assertIsDisplayed()
         composeRule.onNodeWithText("sedan").assertIsDisplayed()
+        composeRule.onNodeWithText("#1").assertIsDisplayed()
         composeRule.onNodeWithText("8.7").assertIsDisplayed()
         composeRule.onNodeWithText("coupe").assertIsDisplayed()
+        composeRule.onNodeWithText("#2").assertIsDisplayed()
         composeRule.onNodeWithText("7.4").assertIsDisplayed()
     }
 
@@ -73,11 +75,12 @@ class CategoryDetailScreenTest {
                 items =
                     listOf(
                         CategoryDetailItemUiModel(
+                            rank = 1,
                             id = "sedan",
                             averageScoreText = "8.7",
                             imageValue = "content://images/sedan",
                         ),
-                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "7.4"),
+                        CategoryDetailItemUiModel(rank = 2, id = "coupe", averageScoreText = "7.4"),
                     ),
                 isLoading = false,
             ),
@@ -95,13 +98,13 @@ class CategoryDetailScreenTest {
                 attributeSummary = "4 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 isLoading = false,
             ),
         )
 
-        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7").assertIsDisplayed()
     }
 
     @Test
@@ -114,14 +117,14 @@ class CategoryDetailScreenTest {
                     attributeSummary = "4 attributes",
                     items =
                         listOf(
-                            CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                         ),
                     isLoading = false,
                 ),
             onEditItemClick = { editedItemId = it },
         )
 
-        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").performClick()
+        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7").performClick()
 
         assertEquals("sedan", editedItemId)
     }
@@ -134,7 +137,7 @@ class CategoryDetailScreenTest {
                 attributeSummary = "4 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 isLoading = false,
             ),
@@ -142,7 +145,9 @@ class CategoryDetailScreenTest {
 
         composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Add item").assertMinimumTouchTarget()
-        composeRule.onNodeWithContentDescription("Rated item sedan, average score 8.7").assertMinimumTouchTarget()
+        composeRule
+            .onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7")
+            .assertMinimumTouchTarget()
     }
 
     @Test
@@ -188,7 +193,7 @@ class CategoryDetailScreenTest {
                 attributeSummary = "4 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 isLoading = false,
             ),
@@ -237,7 +242,7 @@ class CategoryDetailScreenTest {
                 attributeSummary = "2 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 isLoading = false,
             ),
@@ -255,7 +260,7 @@ class CategoryDetailScreenTest {
                 attributeSummary = "2 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 isLoading = false,
             ),
@@ -273,7 +278,7 @@ class CategoryDetailScreenTest {
                 attributeSummary = "3 attributes",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                     ),
                 sortOptions =
                     listOf(
@@ -310,7 +315,7 @@ class CategoryDetailScreenTest {
                     attributeSummary = "3 attributes",
                     items =
                         listOf(
-                            CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
                         ),
                     sortOptions =
                         listOf(
@@ -400,8 +405,8 @@ class CategoryDetailScreenTest {
                 categoryName = "Cars",
                 items =
                     listOf(
-                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
-                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "7.4"),
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        CategoryDetailItemUiModel(rank = 2, id = "coupe", averageScoreText = "7.4"),
                     ),
                 isLoading = false,
                 showDeleteWithItemsWarning = true,
