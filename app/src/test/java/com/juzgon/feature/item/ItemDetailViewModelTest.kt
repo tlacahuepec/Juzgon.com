@@ -241,6 +241,26 @@ class ItemDetailViewModelTest {
             assertEquals("Very fast car", state.attributeValues[0].value)
         }
 
+    @Test
+    fun loadItemMapsImageAttributeValuesToAttributeValues() =
+        runTest {
+            val photoAttr = Attribute("Photo", type = AttributeType.IMAGE)
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                    values = listOf(ItemAttributeValue(photoAttr, "content://images/roadster")),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            val state = viewModel.state.value
+            assertEquals(1, state.attributeValues.size)
+            assertEquals("Photo", state.attributeValues.single().label)
+            assertEquals("content://images/roadster", state.attributeValues.single().value)
+            assertEquals(AttributeType.IMAGE, state.attributeValues.single().type)
+        }
+
     private class FakeDetailRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
 

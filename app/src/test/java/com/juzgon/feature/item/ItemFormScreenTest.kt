@@ -284,6 +284,80 @@ class ItemFormScreenTest {
     }
 
     @Test
+    fun imageAttributeRendersSelectControlAndPreview() {
+        setContent(
+            loadedState().copy(
+                values =
+                    listOf(
+                        ItemValueInput(
+                            attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false),
+                            valueText = "content://images/roadster",
+                            imageDisplayName = "roadster.png",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Photo image value").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Photo image preview").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Select Photo image").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Remove Photo image").assertIsDisplayed()
+    }
+
+    @Test
+    fun imageSelectButtonInvokesCallback() {
+        var selectedAttribute: String? = null
+        setContent(
+            loadedState().copy(
+                values = listOf(ItemValueInput(Attribute("Photo", type = AttributeType.IMAGE))),
+            ),
+            onImageSelectClick = { selectedAttribute = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Select Photo image").performScrollTo().performClick()
+
+        assertEquals("Photo", selectedAttribute)
+    }
+
+    @Test
+    fun imageRemoveButtonInvokesCallbackForOptionalImage() {
+        var removedAttribute: String? = null
+        setContent(
+            loadedState().copy(
+                values =
+                    listOf(
+                        ItemValueInput(
+                            attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false),
+                            valueText = "content://images/roadster",
+                        ),
+                    ),
+            ),
+            onImageRemoveClick = { removedAttribute = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Remove Photo image").performScrollTo().performClick()
+
+        assertEquals("Photo", removedAttribute)
+    }
+
+    @Test
+    fun requiredImageDoesNotRenderRemoveButton() {
+        setContent(
+            loadedState().copy(
+                values =
+                    listOf(
+                        ItemValueInput(
+                            attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true),
+                            valueText = "content://images/roadster",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Remove Photo image").assertDoesNotExist()
+    }
+
+    @Test
     fun requiredValueAttributeShowsErrorAfterSaveAttempt() {
         setContent(
             loadedState().copy(
@@ -310,6 +384,8 @@ class ItemFormScreenTest {
         onScoreIncrement: (String) -> Unit = {},
         onScoreDecrement: (String) -> Unit = {},
         onValueChange: (String, String) -> Unit = { _, _ -> },
+        onImageSelectClick: (String) -> Unit = {},
+        onImageRemoveClick: (String) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -321,6 +397,8 @@ class ItemFormScreenTest {
                     onScoreIncrement = onScoreIncrement,
                     onScoreDecrement = onScoreDecrement,
                     onValueChange = onValueChange,
+                    onImageSelectClick = onImageSelectClick,
+                    onImageRemoveClick = onImageRemoveClick,
                     onSaveClick = {},
                     onBackClick = onBackClick,
                     onDeleteClick = onDeleteClick,

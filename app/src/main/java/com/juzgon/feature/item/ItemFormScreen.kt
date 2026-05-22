@@ -1,12 +1,21 @@
-@file:Suppress("FunctionName", "LongMethod", "LongParameterList")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions")
 
 package com.juzgon.feature.item
 
+import android.content.ContentResolver
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,8 +44,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -58,6 +74,22 @@ fun ItemFormRoute(
         viewModel.loadCategory(categoryName, itemId)
     }
 
+    val context = LocalContext.current
+    var pendingImageAttributeId by remember { mutableStateOf<String?>(null) }
+    val imagePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            val attributeId = pendingImageAttributeId ?: return@rememberLauncherForActivityResult
+            if (uri == null) return@rememberLauncherForActivityResult
+            val metadata = context.contentResolver.imageMetadata(uri)
+            viewModel.onImageSelected(
+                attributeId = attributeId,
+                imageUri = uri.toString(),
+                mimeType = metadata.mimeType,
+                sizeBytes = metadata.sizeBytes,
+                displayName = metadata.displayName,
+            )
+        }
+
     val state by viewModel.state.collectAsState()
     LaunchedEffect(state.saveCompleted) {
         if (state.saveCompleted) {
@@ -78,6 +110,11 @@ fun ItemFormRoute(
         onScoreIncrement = viewModel::onScoreIncrement,
         onScoreDecrement = viewModel::onScoreDecrement,
         onValueChange = viewModel::onValueChanged,
+        onImageSelectClick = { attributeId ->
+            pendingImageAttributeId = attributeId
+            imagePicker.launch("image/*")
+        },
+        onImageRemoveClick = viewModel::onImageRemoved,
         onSaveClick = viewModel::onSaveClick,
         onBackClick = onBackClick,
         onDeleteClick = viewModel::onDeleteClick,
@@ -96,6 +133,8 @@ fun ItemFormScreen(
     onScoreIncrement: (String) -> Unit = {},
     onScoreDecrement: (String) -> Unit = {},
     onValueChange: (String, String) -> Unit = { _, _ -> },
+    onImageSelectClick: (String) -> Unit = {},
+    onImageRemoveClick: (String) -> Unit = {},
     onSaveClick: () -> Unit,
     onBackClick: () -> Unit,
     onDeleteClick: () -> Unit = {},
@@ -199,6 +238,8 @@ fun ItemFormScreen(
                     onScoreIncrement = onScoreIncrement,
                     onScoreDecrement = onScoreDecrement,
                     onValueChange = onValueChange,
+                    onImageSelectClick = onImageSelectClick,
+                    onImageRemoveClick = onImageRemoveClick,
                     onSaveClick = onSaveClick,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -218,6 +259,8 @@ private fun ItemFormContent(
     onScoreIncrement: (String) -> Unit,
     onScoreDecrement: (String) -> Unit,
     onValueChange: (String, String) -> Unit,
+    onImageSelectClick: (String) -> Unit,
+    onImageRemoveClick: (String) -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -279,6 +322,8 @@ private fun ItemFormContent(
                 valueInput = valueInput,
                 validationError = valueErrors[index],
                 onValueChange = onValueChange,
+                onImageSelectClick = onImageSelectClick,
+                onImageRemoveClick = onImageRemoveClick,
             )
         }
 
@@ -386,6 +431,8 @@ private fun ItemAttributeValueField(
     valueInput: ItemValueInput,
     validationError: ItemValueValidationError,
     onValueChange: (String, String) -> Unit,
+    onImageSelectClick: (String) -> Unit,
+    onImageRemoveClick: (String) -> Unit,
 ) {
     val attributeId = valueInput.attribute.id
     val cd = "$attributeId value"
@@ -406,6 +453,14 @@ private fun ItemAttributeValueField(
                 )
             }
         }
+        AttributeType.IMAGE -> {
+            ImageAttributeValueField(
+                valueInput = valueInput,
+                validationError = validationError,
+                onImageSelectClick = onImageSelectClick,
+                onImageRemoveClick = onImageRemoveClick,
+            )
+        }
         else -> {
             OutlinedTextField(
                 value = valueInput.valueText,
@@ -423,3 +478,144 @@ private fun ItemAttributeValueField(
         }
     }
 }
+
+@Composable
+private fun ImageAttributeValueField(
+    valueInput: ItemValueInput,
+    validationError: ItemValueValidationError,
+    onImageSelectClick: (String) -> Unit,
+    onImageRemoveClick: (String) -> Unit,
+) {
+    val attributeId = valueInput.attribute.id
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "$attributeId image value" },
+    ) {
+        Text(text = attributeId, style = MaterialTheme.typography.bodyLarge)
+        if (valueInput.valueText.isNotBlank()) {
+            ImageAttributePreview(
+                value = valueInput.valueText,
+                displayName = valueInput.imageDisplayName,
+                contentDescription = "$attributeId image preview",
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = { onImageSelectClick(attributeId) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Select $attributeId image"
+                        role = Role.Button
+                    },
+            ) {
+                Text("Select image")
+            }
+            if (!valueInput.attribute.isRequired && valueInput.valueText.isNotBlank()) {
+                TextButton(
+                    onClick = { onImageRemoveClick(attributeId) },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Remove $attributeId image"
+                            role = Role.Button
+                        },
+                ) {
+                    Text("Remove image")
+                }
+            }
+        }
+        validationError.value?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImageAttributePreview(
+    value: String,
+    displayName: String?,
+    contentDescription: String,
+) {
+    val context = LocalContext.current
+    val bitmap =
+        remember(value) {
+            imageBitmapFromValue(context.contentResolver, value)
+        }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+        )
+    } else {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.small,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp)
+                    .semantics { this.contentDescription = contentDescription },
+        ) {
+            Text(
+                text = displayName ?: "Image selected",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+private data class PickedImageMetadata(
+    val mimeType: String?,
+    val sizeBytes: Long?,
+    val displayName: String?,
+)
+
+private fun ContentResolver.imageMetadata(uri: Uri): PickedImageMetadata {
+    var sizeBytes: Long? = null
+    var displayName: String? = null
+    query(uri, null, null, null, null)?.use { cursor ->
+        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+        val displayNameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (cursor.moveToFirst()) {
+            sizeBytes = cursor.longOrNull(sizeIndex)
+            displayName = cursor.stringOrNull(displayNameIndex)
+        }
+    }
+    return PickedImageMetadata(
+        mimeType = getType(uri),
+        sizeBytes = sizeBytes,
+        displayName = displayName,
+    )
+}
+
+private fun android.database.Cursor.longOrNull(columnIndex: Int): Long? =
+    if (columnIndex >= 0 && !isNull(columnIndex)) getLong(columnIndex) else null
+
+private fun android.database.Cursor.stringOrNull(columnIndex: Int): String? =
+    if (columnIndex >= 0 && !isNull(columnIndex)) getString(columnIndex) else null
+
+private fun imageBitmapFromValue(
+    contentResolver: ContentResolver,
+    value: String,
+) = runCatching {
+    val uri = Uri.parse(value)
+    contentResolver.openInputStream(uri)?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream)
+    }
+}.getOrNull()
