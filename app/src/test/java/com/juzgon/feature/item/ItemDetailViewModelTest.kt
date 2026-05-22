@@ -57,6 +57,28 @@ class ItemDetailViewModelTest {
         }
 
     @Test
+    fun loadItemBuildsRankedAttributeProgressCards() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores =
+                        listOf(
+                            ScoreEntry(Attribute("Speed"), 8),
+                            ScoreEntry(Attribute("Brakes"), 10),
+                            ScoreEntry(Attribute("Control"), 6),
+                        ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            val cards = viewModel.state.value.rankedAttributes
+            assertEquals(listOf("Brakes", "Speed", "Control"), cards.map { it.label })
+            assertEquals(listOf(1, 2, 3), cards.map { it.rank })
+            assertEquals(listOf(100, 80, 60), cards.map { it.progressPercent })
+        }
+
+    @Test
     fun loadItemComputesEqualWeightOverallAverage() =
         runTest {
             repository.item.value =

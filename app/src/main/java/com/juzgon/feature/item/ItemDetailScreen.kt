@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -159,7 +161,7 @@ private fun ItemDetailContent(
     ) {
         OverallScoreSection(overallScoreText = state.overallScoreText)
         HorizontalDivider()
-        AttributeScoreList(attributeScores = state.attributeScores)
+        RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
         if (state.notes.isNotBlank()) {
             HorizontalDivider()
             NotesSection(notes = state.notes)
@@ -191,24 +193,61 @@ private fun OverallScoreSection(overallScoreText: String) {
 }
 
 @Composable
-private fun AttributeScoreList(attributeScores: List<ItemDetailAttributeScore>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        attributeScores.forEach { attributeScore ->
+private fun RankedAttributeProgressCards(rankedAttributes: List<RankedAttributeCardUiModel>) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = "Ranked attributes", style = MaterialTheme.typography.titleSmall)
+        rankedAttributes.forEach { rankedAttribute ->
+            RankedAttributeCard(rankedAttribute)
+        }
+    }
+}
+
+@Composable
+private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = MaterialTheme.shapes.small,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) {
+                    contentDescription = rankedAttribute.accessibleDescription
+                },
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp),
+        ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "#${rankedAttribute.rank}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = rankedAttribute.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
                 Text(
-                    text = attributeScore.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = attributeScore.score.toString(),
+                    text = "${rankedAttribute.valueText} / ${rankedAttribute.maxText}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
+            LinearProgressIndicator(
+                progress = { rankedAttribute.progressFraction },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+            )
         }
     }
 }
