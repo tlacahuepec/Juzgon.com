@@ -616,6 +616,21 @@ class ItemFormViewModelTest {
         }
 
     @Test
+    fun imageSelectionFailureShowsDurableAccessError() =
+        runTest {
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, imageAttr)))
+            viewModel.loadCategory("Mixed")
+
+            viewModel.onImageSelectionFailed()
+
+            assertEquals("Unable to keep access to selected image", currentState.errorMessage)
+            assertFalse(currentState.saveCompleted)
+            assertEquals("", currentState.values.single().valueText)
+        }
+
+    @Test
     fun onImageRemovedClearsOptionalImageValueAndMetadata() =
         runTest {
             val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)

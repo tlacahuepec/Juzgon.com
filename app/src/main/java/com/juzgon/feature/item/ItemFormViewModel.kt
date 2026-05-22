@@ -201,6 +201,15 @@ class ItemFormViewModel
             }
         }
 
+        fun onImageSelectionFailed() {
+            mutableState.update {
+                it.copy(
+                    saveCompleted = false,
+                    errorMessage = "Unable to keep access to selected image",
+                )
+            }
+        }
+
         fun onImageRemoved(attributeId: String) {
             mutableState.update {
                 it.copy(

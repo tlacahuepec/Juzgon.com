@@ -77,9 +77,13 @@ fun ItemFormRoute(
     val context = LocalContext.current
     var pendingImageAttributeId by remember { mutableStateOf<String?>(null) }
     val imagePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             val attributeId = pendingImageAttributeId ?: return@rememberLauncherForActivityResult
             if (uri == null) return@rememberLauncherForActivityResult
+            if (!context.contentResolver.persistReadAccessForPickedImage(uri)) {
+                viewModel.onImageSelectionFailed()
+                return@rememberLauncherForActivityResult
+            }
             val metadata = context.contentResolver.imageMetadata(uri)
             viewModel.onImageSelected(
                 attributeId = attributeId,
@@ -112,7 +116,7 @@ fun ItemFormRoute(
         onValueChange = viewModel::onValueChanged,
         onImageSelectClick = { attributeId ->
             pendingImageAttributeId = attributeId
-            imagePicker.launch("image/*")
+            imagePicker.launch(arrayOf(IMAGE_PICKER_MIME_TYPE))
         },
         onImageRemoveClick = viewModel::onImageRemoved,
         onSaveClick = viewModel::onSaveClick,
