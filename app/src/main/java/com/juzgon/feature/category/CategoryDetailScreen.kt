@@ -1,7 +1,11 @@
-@file:Suppress("FunctionName", "LongMethod", "LongParameterList")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions")
 
 package com.juzgon.feature.category
 
+import android.content.ContentResolver
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -36,13 +41,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -393,27 +403,140 @@ private fun CategoryDetailItemRow(
     item: CategoryDetailItemUiModel,
     onEditItemClick: (String) -> Unit,
 ) {
-    ListItem(
-        headlineContent = { Text(item.id) },
-        trailingContent = {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = MaterialTheme.shapes.small,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(172.dp)
+                .clickable(
+                    role = Role.Button,
+                    onClick = { onEditItemClick(item.id) },
+                ).semantics {
+                    contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
+                    role = Role.Button
+                },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CategoryDetailItemVisual(item = item)
+            CategoryDetailItemOverlay(
+                item = item,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailItemVisual(item: CategoryDetailItemUiModel) {
+    val imageValue = item.imageValue
+    if (imageValue.isNullOrBlank()) {
+        CategoryDetailItemImagePlaceholder(
+            text = "No image",
+            contentDescription = "${item.id} image placeholder",
+        )
+        return
+    }
+
+    val context = LocalContext.current
+    val bitmap =
+        remember(imageValue) {
+            imageBitmapFromValue(context.contentResolver, imageValue)
+        }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "${item.id} image preview",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    } else {
+        CategoryDetailItemImagePlaceholder(
+            text = "Image selected",
+            contentDescription = "${item.id} image preview",
+        )
+    }
+}
+
+@Composable
+private fun CategoryDetailItemImagePlaceholder(
+    text: String,
+    contentDescription: String,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .semantics { this.contentDescription = contentDescription },
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailItemOverlay(
+    item: CategoryDetailItemUiModel,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        modifier = modifier,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+        ) {
+            Text(
+                text = item.id,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
                     text = item.averageScoreText,
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
-        },
-        modifier =
-            Modifier
-                .clickable { onEditItemClick(item.id) }
-                .semantics(mergeDescendants = true) {
-                    contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
-                    role = Role.Button
-                },
-    )
+        }
+    }
 }
+
+private fun imageBitmapFromValue(
+    contentResolver: ContentResolver,
+    value: String,
+) = runCatching {
+    val uri = Uri.parse(value)
+    contentResolver.openInputStream(uri)?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream)
+    }
+}.getOrNull()

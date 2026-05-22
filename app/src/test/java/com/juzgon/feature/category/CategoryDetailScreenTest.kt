@@ -65,6 +65,29 @@ class CategoryDetailScreenTest {
     }
 
     @Test
+    fun contentStateRendersVisualItemCards() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            imageValue = "content://images/sedan",
+                        ),
+                        CategoryDetailItemUiModel(id = "coupe", averageScoreText = "7.4"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("sedan image preview").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("coupe image placeholder").assertIsDisplayed()
+    }
+
+    @Test
     fun itemRowsExposeAccessibleSummarySemantics() {
         setContent(
             CategoryDetailUiState(

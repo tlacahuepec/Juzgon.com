@@ -132,17 +132,23 @@ class RoomRatedItemRepository(
             itemDao.observeRankedItemsForCategory(categoryName),
             categoryDao.observeAttributes(),
         ) { rankedItems, attributes ->
-            val categoryNumberAttributes = attributes.filter { it.categoryName == categoryName && it.type == "NUMBER" }
+            val categoryAttributes = attributes.filter { it.categoryName == categoryName }
+            val categoryNumberAttributes = categoryAttributes.filter { it.type == "NUMBER" }
             if (categoryNumberAttributes.isEmpty()) {
                 emptyList()
             } else {
-                val attributesById = categoryNumberAttributes.associate { it.id to it.toDomain() }
-                val ratingSystem = RatingSystem(attributesById.values.toList())
+                val attributesById = categoryAttributes.associate { it.id to it.toDomain() }
+                val numberAttributeIds = categoryNumberAttributes.map { it.id }.toSet()
+                val ratingSystem =
+                    RatingSystem(
+                        categoryNumberAttributes.map { it.toDomain() },
+                    )
                 val ratedItems =
                     rankedItems.map { rankedItem ->
                         rankedItem.item.toDomain(
-                            ratings = rankedItem.ratings.filter { it.attributeId in attributesById },
+                            ratings = rankedItem.ratings.filter { it.attributeId in numberAttributeIds },
                             attributesById = attributesById,
+                            valueEntities = rankedItem.values.filter { it.attributeId in attributesById },
                         )
                     }
                 rankRatedItemsUseCase(ratingSystem, ratedItems)

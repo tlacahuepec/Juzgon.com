@@ -2,7 +2,9 @@ package com.juzgon.feature.category
 
 import app.cash.turbine.test
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -81,6 +83,64 @@ class CategoryDetailViewModelTest {
                     ),
                     state.items,
                 )
+            }
+        }
+
+    @Test
+    fun rankedItemsResolvePrimaryImageFromFirstImageAttribute() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            val alternatePhoto = Attribute("Alternate", type = AttributeType.IMAGE)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, photo, alternatePhoto))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            ratedItem("sedan").copy(
+                                values =
+                                    listOf(
+                                        ItemAttributeValue(alternatePhoto, "content://images/alternate"),
+                                        ItemAttributeValue(photo, "content://images/sedan"),
+                                    ),
+                            ),
+                        aggregateScore = 8.74,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) {
+                    state = awaitItem()
+                }
+
+                assertEquals("content://images/sedan", state.items.single().imageValue)
+            }
+        }
+
+    @Test
+    fun rankedItemsUsePlaceholderWhenImageValueIsMissing() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            categoryRepository.category.value = Category(name = "Cars", attributes = listOf(speed, photo))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) {
+                    state = awaitItem()
+                }
+
+                assertEquals(null, state.items.single().imageValue)
             }
         }
 
