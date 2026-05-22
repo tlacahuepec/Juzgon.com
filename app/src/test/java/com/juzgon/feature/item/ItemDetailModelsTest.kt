@@ -20,6 +20,36 @@ class ItemDetailModelsTest {
     }
 
     @Test
+    fun itemAttributeDiamondChartPointsUsesIncludedNumericScoresInConfiguredOrder() {
+        val points =
+            itemAttributeDiamondChartPoints(
+                listOf(
+                    ItemDetailAttributeScore(label = "Speed", score = 8, diamondOrder = 2),
+                    ItemDetailAttributeScore(label = "Brakes", score = 10, diamondOrder = 1),
+                    ItemDetailAttributeScore(label = "Photo", score = 7, displayInDiamond = false),
+                ),
+            )
+
+        assertEquals(listOf("Brakes", "Speed"), points.map { it.label })
+        assertEquals(listOf(10, 8), points.map { it.value })
+        assertEquals(listOf(1.0f, 0.8f), points.map { it.fraction })
+    }
+
+    @Test
+    fun itemAttributeDiamondChartPointsClampsScoresToTenPointScale() {
+        val points =
+            itemAttributeDiamondChartPoints(
+                listOf(
+                    ItemDetailAttributeScore(label = "Too high", score = 12),
+                    ItemDetailAttributeScore(label = "Too low", score = -1),
+                    ItemDetailAttributeScore(label = "Normal", score = 5),
+                ),
+            )
+
+        assertEquals(listOf(10, 5, 0), points.map { it.value }.sortedDescending())
+    }
+
+    @Test
     fun rankedAttributeCardsSortsScoresHighestFirst() {
         val cards =
             rankedAttributeCards(

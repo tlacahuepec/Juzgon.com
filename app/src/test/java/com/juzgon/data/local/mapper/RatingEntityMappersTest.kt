@@ -5,6 +5,7 @@ import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -80,6 +81,23 @@ class RatingEntityMappersTest {
         val mappedDomain = attributeEntity.toDomain()
 
         assertEquals(Attribute(id = "price", weight = 1.0), mappedDomain)
+    }
+
+    @Test
+    fun attributeEntity_roundTrip_preservesDiamondChartConfiguration() {
+        val category =
+            Category(
+                name = "Cars",
+                attributes =
+                    listOf(
+                        Attribute(id = "speed", displayInDiamond = true, diamondOrder = 2),
+                        Attribute(id = "photo", type = AttributeType.IMAGE),
+                    ),
+            )
+
+        val mappedBack = category.toEntity().toDomain(category.toAttributeEntities())
+
+        assertEquals(category, mappedBack)
     }
 
     @Test

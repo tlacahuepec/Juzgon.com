@@ -25,6 +25,8 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
             position = index,
             type = attribute.type.name,
             isRequired = attribute.isRequired,
+            displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
+            diamondOrder = attribute.diamondOrder,
         )
     }
 
@@ -102,4 +104,8 @@ fun AttributeEntity.toDomain(): Attribute =
         weight = weight,
         type = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER),
         isRequired = isRequired,
+        displayInDiamond =
+            runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER) == AttributeType.NUMBER &&
+                displayInDiamond,
+        diamondOrder = diamondOrder,
     )

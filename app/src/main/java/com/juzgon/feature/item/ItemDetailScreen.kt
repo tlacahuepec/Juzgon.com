@@ -4,6 +4,7 @@ package com.juzgon.feature.item
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,6 +42,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +57,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
+
+private const val CHART_MIN_POINTS = 3
+private const val CHART_GRID_RINGS = 4
+private const val CHART_RADIUS_FRACTION = 0.38f
 
 @Composable
 fun ItemDetailRoute(
@@ -248,6 +259,8 @@ private fun ItemDetailContent(
         )
         OverallScoreSection(overallScoreText = state.overallScoreText)
         HorizontalDivider()
+        DiamondChartSection(points = state.diamondChartPoints)
+        HorizontalDivider()
         RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
         if (state.attributeValues.isNotEmpty()) {
             HorizontalDivider()
@@ -281,6 +294,123 @@ private fun OverallScoreSection(overallScoreText: String) {
             )
         }
     }
+}
+
+@Composable
+private fun DiamondChartSection(points: List<DiamondChartPoint>) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = "Diamond chart", style = MaterialTheme.typography.titleSmall)
+        if (points.size < CHART_MIN_POINTS) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = MaterialTheme.shapes.small,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 96.dp)
+                        .semantics { contentDescription = "Diamond chart empty state" },
+            ) {
+                Text(
+                    text = "Add at least 3 numeric chart attributes",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            return
+        }
+
+        ItemAttributeDiamondChart(points = points)
+        points.forEach { point ->
+            Text(
+                text = "${point.label}: ${point.value} / ${point.maxValue}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ItemAttributeDiamondChart(points: List<DiamondChartPoint>) {
+    val primary = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    Canvas(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .widthIn(max = 320.dp)
+                .height(240.dp)
+                .semantics { contentDescription = "Attribute diamond chart" },
+    ) {
+        val center =
+            androidx.compose.ui.geometry
+                .Offset(size.width / 2f, size.height / 2f)
+        val radius = min(size.width, size.height) * CHART_RADIUS_FRACTION
+        repeat(CHART_GRID_RINGS) { index ->
+            val scale = (index + 1) / CHART_GRID_RINGS.toFloat()
+            drawPath(
+                path = points.regularPolygonPath(center, radius * scale),
+                color = gridColor,
+                style =
+                    androidx.compose.ui.graphics.drawscope
+                        .Stroke(width = 1.dp.toPx()),
+            )
+        }
+        points.forEachIndexed { index, _ ->
+            val outer = chartOffset(center, radius, index, points.size)
+            drawLine(color = gridColor, start = center, end = outer, strokeWidth = 1.dp.toPx())
+        }
+        drawPath(
+            path = points.valuePolygonPath(center, radius),
+            color = primary.copy(alpha = 0.32f),
+        )
+        drawPath(
+            path = points.valuePolygonPath(center, radius),
+            color = primary,
+            style =
+                androidx.compose.ui.graphics.drawscope
+                    .Stroke(width = 2.dp.toPx()),
+        )
+    }
+}
+
+private fun List<DiamondChartPoint>.regularPolygonPath(
+    center: androidx.compose.ui.geometry.Offset,
+    radius: Float,
+): Path =
+    mapIndexed { index, _ -> chartOffset(center, radius, index, size) }
+        .toPath()
+
+private fun List<DiamondChartPoint>.valuePolygonPath(
+    center: androidx.compose.ui.geometry.Offset,
+    radius: Float,
+): Path =
+    mapIndexed { index, point -> chartOffset(center, radius * point.fraction, index, size) }
+        .toPath()
+
+private fun List<androidx.compose.ui.geometry.Offset>.toPath(): Path =
+    Path().also { path ->
+        forEachIndexed { index, point ->
+            if (index == 0) {
+                path.moveTo(point.x, point.y)
+            } else {
+                path.lineTo(point.x, point.y)
+            }
+        }
+        path.close()
+    }
+
+private fun chartOffset(
+    center: androidx.compose.ui.geometry.Offset,
+    radius: Float,
+    index: Int,
+    count: Int,
+): androidx.compose.ui.geometry.Offset {
+    val angle = -PI / 2.0 + (2.0 * PI * index / count)
+    return androidx.compose.ui.geometry.Offset(
+        x = center.x + (cos(angle) * radius).toFloat(),
+        y = center.y + (sin(angle) * radius).toFloat(),
+    )
 }
 
 @Composable

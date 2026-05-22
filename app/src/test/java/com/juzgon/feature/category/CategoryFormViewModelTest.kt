@@ -233,6 +233,45 @@ class CategoryFormViewModelTest {
         }
 
     @Test
+    fun diamondChartConfigurationIsPreservedInSavedCategory() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onNameChanged("Cars")
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onAttributeDisplayInDiamondChanged(key, false)
+            viewModel.onAttributeDiamondOrderChanged(key, "2")
+
+            viewModel.onSaveClick()
+
+            assertEquals(
+                Category(
+                    name = "Cars",
+                    attributes =
+                        listOf(
+                            Attribute(
+                                id = "Speed",
+                                displayInDiamond = false,
+                                diamondOrder = 2,
+                            ),
+                        ),
+                ),
+                repository.savedCategory,
+            )
+        }
+
+    @Test
+    fun invalidDiamondOrderBlocksSave() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onNameChanged("Cars")
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onAttributeDiamondOrderChanged(key, "0")
+
+            assertFalse(currentState.saveEnabled)
+            assertEquals("Diamond order must be greater than 0", attributeErrors.single().diamondOrder)
+        }
+
+    @Test
     fun changingTypeOfDirtyAttributeShowsTypeChangeWarning() =
         runTest {
             repository.categories.value =

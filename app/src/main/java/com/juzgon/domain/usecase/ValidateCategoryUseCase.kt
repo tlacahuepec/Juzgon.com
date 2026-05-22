@@ -1,5 +1,6 @@
 package com.juzgon.domain.usecase
 
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import java.util.Locale
 import javax.inject.Inject
@@ -14,6 +15,15 @@ class ValidateCategoryUseCase
             val normalized = category.attributes.map { it.id.trim().lowercase(Locale.ROOT) }
             require(normalized.distinct().size == normalized.size) {
                 "Category attributes must be unique (case-insensitive)"
+            }
+
+            val diamondAttributes = category.attributes.filter { it.displayInDiamond }
+            require(diamondAttributes.all { it.type == AttributeType.NUMBER }) {
+                "Diamond chart attributes must be numeric"
+            }
+            val diamondOrders = diamondAttributes.mapNotNull { it.diamondOrder }
+            require(diamondOrders.distinct().size == diamondOrders.size) {
+                "Diamond chart orders must be unique"
             }
         }
     }

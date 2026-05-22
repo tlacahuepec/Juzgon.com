@@ -23,6 +23,7 @@ class ItemDetailViewModel
 
         val state: StateFlow<ItemDetailUiState> = mutableState
 
+        @Suppress("LongMethod")
         fun loadItem(itemId: String) {
             if (!mutableState.value.isLoading && mutableState.value.itemId == itemId) return
             viewModelScope.launch {
@@ -37,6 +38,8 @@ class ItemDetailViewModel
                             label = scoreEntry.attribute.id,
                             score = scoreEntry.score,
                             attributeId = scoreEntry.attribute.id,
+                            displayInDiamond = scoreEntry.attribute.displayInDiamond,
+                            diamondOrder = scoreEntry.attribute.diamondOrder,
                         )
                     }
                 val previousSnapshots =
@@ -63,6 +66,7 @@ class ItemDetailViewModel
                                 attributeScores = attributeScores,
                                 previousSnapshots = previousSnapshots,
                             ),
+                        diamondChartPoints = itemAttributeDiamondChartPoints(attributeScores),
                         attributeValues =
                             item.values.map { valueEntry ->
                                 ItemDetailAttributeValue(

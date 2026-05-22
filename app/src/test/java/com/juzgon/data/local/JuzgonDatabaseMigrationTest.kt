@@ -221,6 +221,32 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(8, listOf(DatabaseMigrations.MIGRATION_7_8)).close()
     }
 
+    @Test
+    fun migrate8To9_addsDiamondChartAttributeColumns() {
+        val connection = helper.createDatabase(8)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, 'NUMBER', 1)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(9, listOf(DatabaseMigrations.MIGRATION_8_9)).use { conn ->
+            conn.prepare("SELECT display_in_diamond, diamond_order FROM attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(1L, stmt.getLong(0))
+                assertTrue(stmt.isNull(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate8To9_validatesLatestSchema() {
+        helper.createDatabase(8).close()
+        helper.runMigrationsAndValidate(9, listOf(DatabaseMigrations.MIGRATION_8_9)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

@@ -21,7 +21,17 @@ data class ItemDetailAttributeScore(
     val label: String,
     val score: Int,
     val attributeId: String = label,
+    val displayInDiamond: Boolean = true,
+    val diamondOrder: Int? = null,
 )
+
+data class DiamondChartPoint(
+    val label: String,
+    val value: Int,
+    val maxValue: Int = SCORE_MAX_DISPLAY,
+) {
+    val fraction: Float = value.coerceIn(SCORE_MIN_DISPLAY, SCORE_MAX_DISPLAY) / SCORE_MAX_DISPLAY.toFloat()
+}
 
 enum class AttributeRankSizeVariant {
     Rank1,
@@ -77,6 +87,7 @@ data class ItemDetailUiState(
     val overallScoreText: String = "",
     val attributeScores: List<ItemDetailAttributeScore> = emptyList(),
     val rankedAttributes: List<RankedAttributeCardUiModel> = emptyList(),
+    val diamondChartPoints: List<DiamondChartPoint> = emptyList(),
     val attributeValues: List<ItemDetailAttributeValue> = emptyList(),
     val notes: String = "",
     val isLoading: Boolean = true,
@@ -132,6 +143,20 @@ private fun rankedAttributeCards(
                         currentValue = score.score,
                         previousSnapshot = previousSnapshotsByAttributeId[score.attributeId],
                     ),
+            )
+        }
+
+internal fun itemAttributeDiamondChartPoints(attributeScores: List<ItemDetailAttributeScore>): List<DiamondChartPoint> =
+    attributeScores
+        .filter { it.displayInDiamond }
+        .sortedWith(
+            compareBy<ItemDetailAttributeScore> { it.diamondOrder ?: Int.MAX_VALUE }
+                .thenBy { it.label.lowercase(Locale.ROOT) }
+                .thenBy { it.label },
+        ).map { score ->
+            DiamondChartPoint(
+                label = score.label,
+                value = score.score.coerceIn(SCORE_MIN_DISPLAY, SCORE_MAX_DISPLAY),
             )
         }
 
