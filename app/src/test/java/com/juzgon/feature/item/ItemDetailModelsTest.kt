@@ -1,11 +1,24 @@
 package com.juzgon.feature.item
 
 import com.juzgon.domain.AttributeRankSnapshot
+import com.juzgon.domain.AttributeType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ItemDetailModelsTest {
+    @Test
+    fun formatAttributeValueFormatsBooleanAndDateValues() {
+        assertEquals("Yes", formatAttributeValue(AttributeType.BOOLEAN, "true"))
+        assertEquals("No", formatAttributeValue(AttributeType.BOOLEAN, "false"))
+        assertEquals("Jan 2, 2026", formatAttributeValue(AttributeType.DATE, "2026-01-02"))
+    }
+
+    @Test
+    fun formatAttributeValueLeavesUnknownDateTextUnchanged() {
+        assertEquals("next friday", formatAttributeValue(AttributeType.DATE, "next friday"))
+    }
+
     @Test
     fun rankedAttributeCardsSortsScoresHighestFirst() {
         val cards =

@@ -1,10 +1,11 @@
-@file:Suppress("FunctionName", "LongMethod", "TooManyFunctions")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions")
 
 package com.juzgon.feature.item
 
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -55,6 +60,7 @@ fun ItemDetailRoute(
     itemId: String,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
+    onDeleteCompleted: () -> Unit,
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(itemId) {
@@ -62,10 +68,18 @@ fun ItemDetailRoute(
     }
 
     val state by viewModel.state.collectAsState()
+    LaunchedEffect(state.deleteCompleted) {
+        if (state.deleteCompleted) {
+            onDeleteCompleted()
+        }
+    }
     ItemDetailScreen(
         state = state,
         onBackClick = onBackClick,
         onEditClick = onEditClick,
+        onDeleteClick = viewModel::onDeleteClick,
+        onDeleteConfirmed = viewModel::onDeleteConfirmed,
+        onDeleteDialogDismissed = viewModel::onDeleteDialogDismissed,
     )
 }
 
@@ -75,8 +89,20 @@ fun ItemDetailScreen(
     state: ItemDetailUiState,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
+    onDeleteConfirmed: () -> Unit = {},
+    onDeleteDialogDismissed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    if (state.showDeleteConfirmDialog) {
+        DeleteItemDialog(
+            itemId = state.itemId,
+            isDeleting = state.isDeleting,
+            onConfirm = onDeleteConfirmed,
+            onDismiss = onDeleteDialogDismissed,
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -112,6 +138,21 @@ fun ItemDetailScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
+                                contentDescription = null,
+                            )
+                        }
+                        IconButton(
+                            onClick = onDeleteClick,
+                            modifier =
+                                Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .semantics {
+                                        contentDescription = "Delete item"
+                                        role = Role.Button
+                                    },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
                                 contentDescription = null,
                             )
                         }
@@ -157,6 +198,38 @@ fun ItemDetailScreen(
 }
 
 @Composable
+private fun DeleteItemDialog(
+    itemId: String,
+    isDeleting: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete item") },
+        text = { Text("Delete $itemId? This will permanently remove the item and its ratings.") },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = !isDeleting,
+                modifier = Modifier.semantics { contentDescription = "Confirm delete item" },
+            ) {
+                Text(if (isDeleting) "Deleting" else "Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isDeleting,
+                modifier = Modifier.semantics { contentDescription = "Cancel delete item" },
+            ) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
 private fun ItemDetailContent(
     state: ItemDetailUiState,
     modifier: Modifier = Modifier,
@@ -169,6 +242,10 @@ private fun ItemDetailContent(
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
     ) {
+        PrimaryImageSection(
+            itemId = state.itemId,
+            imageValue = state.primaryImageValue,
+        )
         OverallScoreSection(overallScoreText = state.overallScoreText)
         HorizontalDivider()
         RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
@@ -203,6 +280,39 @@ private fun OverallScoreSection(overallScoreText: String) {
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun PrimaryImageSection(
+    itemId: String,
+    imageValue: String?,
+) {
+    if (imageValue.isNullOrBlank()) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.small,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 180.dp)
+                    .semantics { contentDescription = "$itemId image placeholder" },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+    } else {
+        ImageAttributePreview(
+            value = imageValue,
+            contentDescription = "$itemId image preview",
+            height = 220.dp,
+        )
     }
 }
 
@@ -334,16 +444,38 @@ private fun AttributeValueRow(attributeValue: ItemDetailAttributeValue) {
                 value = attributeValue.value,
                 contentDescription = "${attributeValue.label} image preview",
             )
+        } else if (attributeValue.type == AttributeType.URL) {
+            UrlAttributeValue(attributeValue)
         } else {
-            Text(text = attributeValue.value, style = MaterialTheme.typography.bodyMedium)
+            Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+@Composable
+private fun UrlAttributeValue(attributeValue: ItemDetailAttributeValue) {
+    val uriHandler = LocalUriHandler.current
+    Text(
+        text = attributeValue.displayValue,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier =
+            Modifier
+                .clickable(
+                    role = Role.Button,
+                    onClick = { uriHandler.openUri(attributeValue.value) },
+                ).semantics {
+                    contentDescription = "Open ${attributeValue.label} URL"
+                    role = Role.Button
+                },
+    )
 }
 
 @Composable
 private fun ImageAttributePreview(
     value: String,
     contentDescription: String,
+    height: Dp = 160.dp,
 ) {
     val context = LocalContext.current
     val bitmap =
@@ -358,7 +490,7 @@ private fun ImageAttributePreview(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(160.dp),
+                    .height(height),
         )
     } else {
         Surface(
@@ -368,7 +500,7 @@ private fun ImageAttributePreview(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 96.dp)
+                    .heightIn(min = height)
                     .semantics { this.contentDescription = contentDescription },
         ) {
             Text(

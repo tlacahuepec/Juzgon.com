@@ -185,7 +185,7 @@ class JuzgonNavigationTest {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemDetailContent = { itemId, _, _ -> Text("Item detail $itemId") },
+                    itemDetailContent = { itemId, _, _, _ -> Text("Item detail $itemId") },
                     itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
@@ -219,7 +219,7 @@ class JuzgonNavigationTest {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemDetailContent = { _, _, onEditClick ->
+                    itemDetailContent = { _, _, onEditClick, _ ->
                         Button(onClick = onEditClick) {
                             Text("Item detail route")
                         }
@@ -237,6 +237,46 @@ class JuzgonNavigationTest {
         composeRule.onNodeWithText("Edit item route Fast Cars / SUVs Roadster / 2026").assertIsDisplayed()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.EDIT_ITEM, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun itemDetailReturnsToCategoryAfterDelete() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, onOpenCategory ->
+                        Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
+                            Text("Open detail")
+                        }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, _, _, onItemClick, _, _ ->
+                        Button(onClick = { onItemClick("Roadster / 2026") }) {
+                            Text("Detail route $categoryName")
+                        }
+                    },
+                    itemDetailContent = { _, _, _, onDeleteCompleted ->
+                        Button(onClick = onDeleteCompleted) {
+                            Text("Item detail route")
+                        }
+                    },
+                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open detail").performClick()
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").performClick()
+        composeRule.onNodeWithText("Item detail route").performClick()
+
+        composeRule.onNodeWithText("Detail route Fast Cars / SUVs").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
         }
     }
 

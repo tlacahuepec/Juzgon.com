@@ -261,8 +261,64 @@ class ItemDetailViewModelTest {
             assertEquals(AttributeType.IMAGE, state.attributeValues.single().type)
         }
 
+    @Test
+    fun loadItemMapsFirstImageValueAsPrimaryImage() =
+        runTest {
+            val photoAttr = Attribute("Photo", type = AttributeType.IMAGE)
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                    values = listOf(ItemAttributeValue(photoAttr, "content://images/roadster")),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            assertEquals("content://images/roadster", viewModel.state.value.primaryImageValue)
+        }
+
+    @Test
+    fun loadItemFormatsTypedAttributeValuesForDisplay() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                    values =
+                        listOf(
+                            ItemAttributeValue(Attribute("Available", type = AttributeType.BOOLEAN), "true"),
+                            ItemAttributeValue(Attribute("Release", type = AttributeType.DATE), "2026-01-02"),
+                            ItemAttributeValue(Attribute("Website", type = AttributeType.URL), "https://example.com"),
+                        ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            assertEquals(
+                listOf("Yes", "Jan 2, 2026", "https://example.com"),
+                viewModel.state.value.attributeValues
+                    .map { it.displayValue },
+            )
+        }
+
+    @Test
+    fun deleteConfirmedDeletesItemAndMarksCompletion() =
+        runTest {
+            repository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(Attribute("Speed"), 8)))
+            viewModel.loadItem("Roadster")
+
+            viewModel.onDeleteClick()
+            viewModel.onDeleteConfirmed()
+
+            assertEquals("Roadster", repository.deletedItemId)
+            assertEquals(true, viewModel.state.value.deleteCompleted)
+            assertEquals(false, viewModel.state.value.showDeleteConfirmDialog)
+        }
+
     private class FakeDetailRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
+        var deletedItemId: String? = null
 
         override fun observeRatedItems(): Flow<List<RatedItem>> = error("not used")
 
@@ -272,7 +328,9 @@ class ItemDetailViewModelTest {
 
         override suspend fun saveRatedItem(ratedItem: RatedItem) = error("not used")
 
-        override suspend fun deleteRatedItem(id: String) = error("not used")
+        override suspend fun deleteRatedItem(id: String) {
+            deletedItemId = id
+        }
     }
 
     private class FakeDetailAttributeRankSnapshotRepository : AttributeRankSnapshotRepository {

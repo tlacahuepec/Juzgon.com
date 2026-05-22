@@ -123,11 +123,13 @@ internal fun JuzgonNavHost(
         itemId: String,
         onBack: () -> Unit,
         onEditClick: () -> Unit,
-    ) -> Unit = { itemId, onBack, onEditClick ->
+        onDeleteCompleted: () -> Unit,
+    ) -> Unit = { itemId, onBack, onEditClick, onDeleteCompleted ->
         ItemDetailRoute(
             itemId = itemId,
             onBackClick = onBack,
             onEditClick = onEditClick,
+            onDeleteCompleted = onDeleteCompleted,
         )
     },
 ) {
@@ -266,7 +268,7 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
-            itemDetailContent(itemId, returnBack, openEdit)
+            itemDetailContent(itemId, returnBack, openEdit, returnBack)
         }
         composable(
             route = JuzgonRoutes.CREATE_ITEM,

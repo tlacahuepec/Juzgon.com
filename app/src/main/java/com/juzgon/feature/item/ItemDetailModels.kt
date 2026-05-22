@@ -1,7 +1,10 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.item
 
 import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 private const val SCORE_MIN_DISPLAY = 0
@@ -65,10 +68,12 @@ data class ItemDetailAttributeValue(
     val label: String,
     val value: String,
     val type: AttributeType,
+    val displayValue: String = formatAttributeValue(type, value),
 )
 
 data class ItemDetailUiState(
     val itemId: String = "",
+    val primaryImageValue: String? = null,
     val overallScoreText: String = "",
     val attributeScores: List<ItemDetailAttributeScore> = emptyList(),
     val rankedAttributes: List<RankedAttributeCardUiModel> = emptyList(),
@@ -76,7 +81,20 @@ data class ItemDetailUiState(
     val notes: String = "",
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    val showDeleteConfirmDialog: Boolean = false,
+    val isDeleting: Boolean = false,
+    val deleteCompleted: Boolean = false,
 )
+
+internal fun formatAttributeValue(
+    type: AttributeType,
+    value: String,
+): String =
+    when (type) {
+        AttributeType.BOOLEAN -> if (value.equals("true", ignoreCase = true)) "Yes" else "No"
+        AttributeType.DATE -> value.toDisplayDate()
+        else -> value
+    }
 
 internal fun rankedAttributeCards(
     attributeScores: List<ItemDetailAttributeScore>,
@@ -185,6 +203,15 @@ internal fun AttributeMovementDirection.accessibleLabel(): String =
         AttributeMovementDirection.Declined -> "declined"
         AttributeMovementDirection.Unchanged -> "unchanged"
     }
+
+private fun String.toDisplayDate(): String {
+    val parsedDate =
+        runCatching {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(this)
+        }.getOrNull()
+            ?: return this
+    return SimpleDateFormat("MMM d, yyyy", Locale.US).format(parsedDate)
+}
 
 internal fun computeWeightedAverageText(attributeScores: List<Pair<Double, Int>>): String {
     if (attributeScores.isEmpty()) return "—"
