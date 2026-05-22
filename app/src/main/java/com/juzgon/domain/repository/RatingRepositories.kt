@@ -1,9 +1,14 @@
 package com.juzgon.domain.repository
 
+import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import kotlinx.coroutines.flow.Flow
+
+interface AttributeRankSnapshotRepository {
+    fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshot>>
+}
 
 interface CategoryRepository {
     fun observeCategories(): Flow<List<Category>>

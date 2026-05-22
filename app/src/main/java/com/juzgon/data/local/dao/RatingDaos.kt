@@ -8,6 +8,7 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Upsert
 import com.juzgon.data.local.entity.AttributeEntity
+import com.juzgon.data.local.entity.AttributeRankSnapshotEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.ItemValueEntity
@@ -163,4 +164,19 @@ interface ItemDao {
 
     @Query("DELETE FROM items WHERE id = :id")
     suspend fun deleteItemById(id: String)
+}
+
+@Dao
+interface AttributeRankSnapshotDao {
+    @Upsert
+    suspend fun upsertSnapshots(snapshots: List<AttributeRankSnapshotEntity>)
+
+    @Query(
+        """
+        SELECT * FROM attribute_rank_snapshots
+        WHERE item_id = :itemId
+        ORDER BY captured_at DESC, rank ASC, attribute_id ASC
+        """,
+    )
+    fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshotEntity>>
 }

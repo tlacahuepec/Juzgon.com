@@ -2,9 +2,11 @@ package com.juzgon.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.juzgon.data.local.dao.AttributeRankSnapshotDao
 import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.ItemDao
 import com.juzgon.data.local.entity.AttributeEntity
+import com.juzgon.data.local.entity.AttributeRankSnapshotEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
 import com.juzgon.data.local.entity.ItemValueEntity
@@ -17,12 +19,15 @@ import com.juzgon.data.local.entity.RatingEntity
         ItemEntity::class,
         RatingEntity::class,
         ItemValueEntity::class,
+        AttributeRankSnapshotEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
 
     abstract fun itemDao(): ItemDao
+
+    abstract fun attributeRankSnapshotDao(): AttributeRankSnapshotDao
 }

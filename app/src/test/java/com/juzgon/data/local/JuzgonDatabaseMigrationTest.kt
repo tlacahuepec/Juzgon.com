@@ -180,6 +180,47 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(7, listOf(DatabaseMigrations.MIGRATION_6_7)).close()
     }
 
+    @Test
+    fun migrate7To8_createsAttributeRankSnapshotsTableWithCorrectColumns() {
+        val connection = helper.createDatabase(7)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, 'NUMBER', 1)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(8, listOf(DatabaseMigrations.MIGRATION_7_8)).use { conn ->
+            val insertSnapshotSql =
+                "INSERT INTO attribute_rank_snapshots " +
+                    "(item_id, captured_at, attribute_id, value, rank) " +
+                    "VALUES ('$ITEM_ID', 1500, '$ATTRIBUTE_ID', 8, 1)"
+            conn
+                .prepare(insertSnapshotSql)
+                .use { it.step() }
+            conn
+                .prepare("SELECT item_id, captured_at, attribute_id, value, rank FROM attribute_rank_snapshots")
+                .use { stmt ->
+                    assertTrue(stmt.step())
+                    assertEquals(ITEM_ID, stmt.getText(0))
+                    assertEquals(1_500L, stmt.getLong(1))
+                    assertEquals(ATTRIBUTE_ID, stmt.getText(2))
+                    assertEquals(8L, stmt.getLong(3))
+                    assertEquals(1L, stmt.getLong(4))
+                }
+        }
+    }
+
+    @Test
+    fun migrate7To8_validatesLatestSchema() {
+        helper.createDatabase(7).close()
+        helper.runMigrationsAndValidate(8, listOf(DatabaseMigrations.MIGRATION_7_8)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

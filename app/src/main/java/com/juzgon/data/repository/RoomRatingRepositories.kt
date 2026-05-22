@@ -11,10 +11,13 @@ import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
 import com.juzgon.data.local.mapper.toItemValueEntities
 import com.juzgon.data.local.mapper.toRatingEntities
+import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.RatingSystem
+import com.juzgon.domain.buildAttributeRankSnapshots
+import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.RankRatedItemsUseCase
@@ -85,12 +88,25 @@ class RoomCategoryRepository(
     }
 }
 
+class RoomAttributeRankSnapshotRepository(
+    database: JuzgonDatabase,
+) : AttributeRankSnapshotRepository {
+    private val snapshotDao = database.attributeRankSnapshotDao()
+
+    override fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshot>> =
+        snapshotDao
+            .observeSnapshotsForItem(itemId)
+            .map { snapshots -> snapshots.map { it.toDomain() } }
+            .distinctUntilChanged()
+}
+
 class RoomRatedItemRepository(
     private val database: JuzgonDatabase,
     private val currentTimeMillis: () -> Long = { System.currentTimeMillis() },
 ) : RatedItemRepository {
     private val categoryDao = database.categoryDao()
     private val itemDao = database.itemDao()
+    private val snapshotDao = database.attributeRankSnapshotDao()
     private val rankRatedItemsUseCase = RankRatedItemsUseCase()
 
     override fun observeRatedItems(): Flow<List<RatedItem>> =
@@ -136,11 +152,15 @@ class RoomRatedItemRepository(
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
             val existingItemWithRatings = itemDao.getItemWithRatings(ratedItem.id)
+            val ratingEntities = ratedItem.toRatingEntities()
             if (existingItemWithRatings?.hasSameSavedContent(ratedItem) == true) {
                 return@withTransaction
             }
 
             val updatedAt = currentTimeMillis()
+            val shouldSnapshotRanks =
+                existingItemWithRatings == null ||
+                    existingItemWithRatings.ratings.toRatingSnapshot() != ratingEntities.toRatingSnapshot()
             itemDao.upsertItem(
                 ratedItem.toItemEntity(
                     createdAt = existingItemWithRatings?.item?.createdAt ?: updatedAt,
@@ -148,9 +168,14 @@ class RoomRatedItemRepository(
                 ),
             )
             itemDao.deleteRatingsForItem(ratedItem.id)
-            val ratingEntities = ratedItem.toRatingEntities()
             if (ratingEntities.isNotEmpty()) {
                 itemDao.upsertRatings(ratingEntities)
+            }
+            if (shouldSnapshotRanks) {
+                val snapshots = buildAttributeRankSnapshots(ratedItem.id, updatedAt, ratedItem.scores)
+                if (snapshots.isNotEmpty()) {
+                    snapshotDao.upsertSnapshots(snapshots.map { it.toEntity() })
+                }
             }
             itemDao.deleteItemValuesForItem(ratedItem.id)
             val valueEntities = ratedItem.toItemValueEntities()

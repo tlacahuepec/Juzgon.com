@@ -59,6 +59,14 @@ data class ItemAttributeValue(
     val value: String,
 )
 
+data class AttributeRankSnapshot(
+    val itemId: String,
+    val capturedAt: Long,
+    val attributeId: String,
+    val value: Int,
+    val rank: Int,
+)
+
 data class RankedRatedItem(
     val item: RatedItem,
     val aggregateScore: Double,
@@ -69,3 +77,20 @@ data class Category(
     val attributes: List<Attribute>,
     val itemCount: Int = 0,
 )
+
+fun buildAttributeRankSnapshots(
+    itemId: String,
+    capturedAt: Long,
+    scores: List<ScoreEntry>,
+): List<AttributeRankSnapshot> =
+    scores
+        .sortedWith(compareByDescending<ScoreEntry> { it.score }.thenBy { it.attribute.id })
+        .mapIndexed { index, score ->
+            AttributeRankSnapshot(
+                itemId = itemId,
+                capturedAt = capturedAt,
+                attributeId = score.attribute.id,
+                value = score.score,
+                rank = index + 1,
+            )
+        }
