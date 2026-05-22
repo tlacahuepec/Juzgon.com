@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -34,17 +35,27 @@ class ItemDetailScreenTest {
     fun loadedScreenRendersAttributeScoreRows() {
         setContent(loadedState())
 
+        composeRule.onNodeWithText("Ranked attributes").assertIsDisplayed()
         composeRule.onNodeWithText("Speed").assertIsDisplayed()
-        composeRule.onNodeWithText("8").assertIsDisplayed()
+        composeRule.onNodeWithText("8 / 10").assertIsDisplayed()
         composeRule.onNodeWithText("Brakes").assertIsDisplayed()
-        composeRule.onNodeWithText("7").assertIsDisplayed()
+        composeRule.onNodeWithText("7 / 10").assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersRankedAttributeCardSemantics() {
+        setContent(loadedState())
+
+        composeRule
+            .onNodeWithContentDescription("Rank 1, Speed, 8 out of 10, 80 percent")
+            .assertIsDisplayed()
     }
 
     @Test
     fun notesShownWhenPresent() {
         setContent(loadedState().copy(notes = "weekend car"))
 
-        composeRule.onNodeWithText("weekend car").assertIsDisplayed()
+        composeRule.onNodeWithText("weekend car").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -113,6 +124,25 @@ class ItemDetailScreenTest {
                 listOf(
                     ItemDetailAttributeScore(label = "Speed", score = 8),
                     ItemDetailAttributeScore(label = "Brakes", score = 7),
+                ),
+            rankedAttributes =
+                listOf(
+                    RankedAttributeCardUiModel(
+                        rank = 1,
+                        label = "Speed",
+                        valueText = "8",
+                        maxText = "10",
+                        progressPercent = 80,
+                        progressFraction = 0.8f,
+                    ),
+                    RankedAttributeCardUiModel(
+                        rank = 2,
+                        label = "Brakes",
+                        valueText = "7",
+                        maxText = "10",
+                        progressPercent = 70,
+                        progressFraction = 0.7f,
+                    ),
                 ),
             notes = "",
             isLoading = false,

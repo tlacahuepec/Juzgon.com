@@ -28,6 +28,13 @@ class ItemDetailViewModel
                     mutableState.value = ItemDetailUiState(isLoading = false, errorMessage = "Item not found")
                     return@launch
                 }
+                val attributeScores =
+                    item.scores.map { scoreEntry ->
+                        ItemDetailAttributeScore(
+                            label = scoreEntry.attribute.id,
+                            score = scoreEntry.score,
+                        )
+                    }
                 mutableState.value =
                     ItemDetailUiState(
                         itemId = item.id,
@@ -35,13 +42,8 @@ class ItemDetailViewModel
                             computeWeightedAverageText(
                                 item.scores.map { it.attribute.weight to it.score },
                             ),
-                        attributeScores =
-                            item.scores.map { scoreEntry ->
-                                ItemDetailAttributeScore(
-                                    label = scoreEntry.attribute.id,
-                                    score = scoreEntry.score,
-                                )
-                            },
+                        attributeScores = attributeScores,
+                        rankedAttributes = rankedAttributeCards(attributeScores),
                         attributeValues =
                             item.values.map { valueEntry ->
                                 ItemDetailAttributeValue(
