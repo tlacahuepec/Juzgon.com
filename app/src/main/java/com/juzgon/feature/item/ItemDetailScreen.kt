@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
@@ -32,11 +33,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -204,6 +207,7 @@ private fun RankedAttributeProgressCards(rankedAttributes: List<RankedAttributeC
 
 @Composable
 private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
+    val sizeStyle = rankedAttribute.sizeVariant.cardSizeStyle()
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -211,13 +215,19 @@ private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
         modifier =
             Modifier
                 .fillMaxWidth()
+                .heightIn(min = sizeStyle.minHeight)
+                .testTag(rankedAttribute.testTag)
                 .semantics(mergeDescendants = true) {
                     contentDescription = rankedAttribute.accessibleDescription
                 },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp),
+            modifier =
+                Modifier.padding(
+                    horizontal = sizeStyle.horizontalPadding,
+                    vertical = sizeStyle.verticalPadding,
+                ),
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -246,11 +256,64 @@ private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(8.dp),
+                        .height(sizeStyle.progressHeight),
             )
         }
     }
 }
+
+private data class RankedAttributeCardSizeStyle(
+    val minHeight: Dp,
+    val horizontalPadding: Dp,
+    val verticalPadding: Dp,
+    val progressHeight: Dp,
+)
+
+private fun AttributeRankSizeVariant.cardSizeStyle(): RankedAttributeCardSizeStyle =
+    when (this) {
+        AttributeRankSizeVariant.Rank1 ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 136.dp,
+                horizontalPadding = 20.dp,
+                verticalPadding = 22.dp,
+                progressHeight = 10.dp,
+            )
+        AttributeRankSizeVariant.Rank2 ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 128.dp,
+                horizontalPadding = 20.dp,
+                verticalPadding = 20.dp,
+                progressHeight = 9.dp,
+            )
+        AttributeRankSizeVariant.Rank3 ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 120.dp,
+                horizontalPadding = 18.dp,
+                verticalPadding = 18.dp,
+                progressHeight = 8.dp,
+            )
+        AttributeRankSizeVariant.Rank4 ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 112.dp,
+                horizontalPadding = 18.dp,
+                verticalPadding = 16.dp,
+                progressHeight = 7.dp,
+            )
+        AttributeRankSizeVariant.Rank5 ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 104.dp,
+                horizontalPadding = 16.dp,
+                verticalPadding = 14.dp,
+                progressHeight = 6.dp,
+            )
+        AttributeRankSizeVariant.Standard ->
+            RankedAttributeCardSizeStyle(
+                minHeight = 96.dp,
+                horizontalPadding = 16.dp,
+                verticalPadding = 14.dp,
+                progressHeight = 6.dp,
+            )
+    }
 
 @Composable
 private fun NotesSection(notes: String) {
