@@ -113,3 +113,35 @@ data class ItemValueEntity(
     @ColumnInfo(name = "value_text")
     val valueText: String,
 )
+
+@Entity(
+    tableName = "attribute_rank_snapshots",
+    primaryKeys = ["item_id", "captured_at", "attribute_id"],
+    foreignKeys = [
+        ForeignKey(
+            entity = ItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["item_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = AttributeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["attribute_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"])],
+)
+data class AttributeRankSnapshotEntity(
+    @ColumnInfo(name = "item_id")
+    val itemId: String,
+    @ColumnInfo(name = "captured_at")
+    val capturedAt: Long,
+    @ColumnInfo(name = "attribute_id")
+    val attributeId: String,
+    @ColumnInfo(name = "value")
+    val value: Int,
+    @ColumnInfo(name = "rank")
+    val rank: Int,
+)

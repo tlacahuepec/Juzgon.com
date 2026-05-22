@@ -10,9 +10,11 @@ import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.data.local.RoomSampleDataStore
+import com.juzgon.data.repository.RoomAttributeRankSnapshotRepository
 import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
 import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import dagger.Module
@@ -47,6 +49,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_4_5,
                     DatabaseMigrations.MIGRATION_5_6,
                     DatabaseMigrations.MIGRATION_6_7,
+                    DatabaseMigrations.MIGRATION_7_8,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -78,4 +81,9 @@ object DataModule {
     @Provides
     @Singleton
     fun provideRatedItemRepository(database: JuzgonDatabase): RatedItemRepository = RoomRatedItemRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideAttributeRankSnapshotRepository(database: JuzgonDatabase): AttributeRankSnapshotRepository =
+        RoomAttributeRankSnapshotRepository(database)
 }

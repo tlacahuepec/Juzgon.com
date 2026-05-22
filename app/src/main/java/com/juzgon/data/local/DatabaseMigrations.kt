@@ -10,6 +10,7 @@ private const val DATABASE_VERSION_4 = 4
 private const val DATABASE_VERSION_5 = 5
 private const val DATABASE_VERSION_6 = 6
 private const val DATABASE_VERSION_7 = 7
+private const val DATABASE_VERSION_8 = 8
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -66,6 +67,31 @@ object DatabaseMigrations {
                 )
                 db.execSQL("CREATE INDEX index_item_values_item_id ON item_values(item_id)")
                 db.execSQL("CREATE INDEX index_item_values_attribute_id ON item_values(attribute_id)")
+            }
+        }
+
+    val MIGRATION_7_8: Migration =
+        object : Migration(DATABASE_VERSION_7, DATABASE_VERSION_8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE attribute_rank_snapshots (
+                        item_id TEXT NOT NULL,
+                        captured_at INTEGER NOT NULL,
+                        attribute_id TEXT NOT NULL,
+                        value INTEGER NOT NULL,
+                        rank INTEGER NOT NULL,
+                        PRIMARY KEY (item_id, captured_at, attribute_id),
+                        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                        FOREIGN KEY (attribute_id) REFERENCES attributes(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX index_attribute_rank_snapshots_item_id ON attribute_rank_snapshots(item_id)")
+                db.execSQL(
+                    "CREATE INDEX index_attribute_rank_snapshots_attribute_id " +
+                        "ON attribute_rank_snapshots(attribute_id)",
+                )
             }
         }
 }
