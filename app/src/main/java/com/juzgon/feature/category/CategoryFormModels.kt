@@ -18,11 +18,14 @@ data class CategoryAttributeInput(
     val weightText: String = "",
     val type: AttributeType = AttributeType.NUMBER,
     val isRequired: Boolean = true,
+    val displayInDiamond: Boolean = type == AttributeType.NUMBER,
+    val diamondOrderText: String = "",
 )
 
 data class CategoryAttributeValidationError(
     val name: String? = null,
     val weight: String? = null,
+    val diamondOrder: String? = null,
 )
 
 data class CategoryFormUiState(
@@ -54,7 +57,7 @@ data class CategoryFormUiState(
             !isSaving &&
                 nameError == null &&
                 formError == null &&
-                attributeErrors.all { it.name == null && it.weight == null }
+                attributeErrors.all { it.name == null && it.weight == null && it.diamondOrder == null }
 
     fun toCategory(): Category =
         Category(
@@ -66,6 +69,8 @@ data class CategoryFormUiState(
                         weight = attribute.parsedWeight(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,
+                        displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
+                        diamondOrder = attribute.parsedDiamondOrder(),
                     )
                 },
         )
@@ -87,6 +92,8 @@ object CategoryFormReducer {
                         weightText = attribute.weight.toString(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,
+                        displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
+                        diamondOrderText = attribute.diamondOrder?.toString().orEmpty(),
                     )
                 },
         )
@@ -117,6 +124,14 @@ private object CategoryFormValidator {
                         attribute.weightText.toDouble() <= 0.0 -> "Weight must be greater than 0"
                         else -> null
                     },
+                diamondOrder =
+                    when {
+                        attribute.type != AttributeType.NUMBER -> null
+                        attribute.diamondOrderText.isBlank() -> null
+                        attribute.diamondOrderText.toIntOrNull() == null -> "Diamond order must be a whole number"
+                        attribute.diamondOrderText.toInt() <= 0 -> "Diamond order must be greater than 0"
+                        else -> null
+                    },
             )
         }
     }
@@ -127,3 +142,8 @@ private fun CategoryAttributeInput.parsedWeight(): Double =
         .takeIf { it.isNotBlank() }
         ?.toDouble()
         ?: DEFAULT_WEIGHT
+
+private fun CategoryAttributeInput.parsedDiamondOrder(): Int? =
+    diamondOrderText
+        .takeIf { type == AttributeType.NUMBER && it.isNotBlank() }
+        ?.toInt()

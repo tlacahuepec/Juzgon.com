@@ -76,6 +76,8 @@ fun CategoryFormRoute(
         onAttributeWeightChange = viewModel::onAttributeWeightChanged,
         onAttributeTypeChange = viewModel::onAttributeTypeChanged,
         onAttributeRequiredChange = viewModel::onAttributeRequiredChanged,
+        onAttributeDisplayInDiamondChange = viewModel::onAttributeDisplayInDiamondChanged,
+        onAttributeDiamondOrderChange = viewModel::onAttributeDiamondOrderChanged,
         onAddAttribute = viewModel::addAttribute,
         onRemoveAttribute = viewModel::removeAttribute,
         onMoveAttributeUp = viewModel::moveAttributeUp,
@@ -98,6 +100,8 @@ fun CategoryFormScreen(
     onAttributeWeightChange: (Long, String) -> Unit,
     onAttributeTypeChange: (Long, AttributeType) -> Unit,
     onAttributeRequiredChange: (Long, Boolean) -> Unit,
+    onAttributeDisplayInDiamondChange: (Long, Boolean) -> Unit,
+    onAttributeDiamondOrderChange: (Long, String) -> Unit,
     onAddAttribute: () -> Unit,
     onRemoveAttribute: (Long) -> Unit,
     onMoveAttributeUp: (Long) -> Unit,
@@ -256,6 +260,8 @@ fun CategoryFormScreen(
                     onWeightChange = onAttributeWeightChange,
                     onTypeChange = onAttributeTypeChange,
                     onRequiredChange = onAttributeRequiredChange,
+                    onDisplayInDiamondChange = onAttributeDisplayInDiamondChange,
+                    onDiamondOrderChange = onAttributeDiamondOrderChange,
                     onRemove = onRemoveAttribute,
                     onMoveUp = onMoveAttributeUp,
                     onMoveDown = onMoveAttributeDown,
@@ -312,6 +318,8 @@ private fun CategoryAttributeRow(
     onWeightChange: (Long, String) -> Unit,
     onTypeChange: (Long, AttributeType) -> Unit,
     onRequiredChange: (Long, Boolean) -> Unit,
+    onDisplayInDiamondChange: (Long, Boolean) -> Unit,
+    onDiamondOrderChange: (Long, String) -> Unit,
     onRemove: (Long) -> Unit,
     onMoveUp: (Long) -> Unit,
     onMoveDown: (Long) -> Unit,
@@ -390,6 +398,41 @@ private fun CategoryAttributeRow(
                     Modifier.semantics {
                         contentDescription = "Attribute $position required"
                     },
+            )
+        }
+
+        if (attribute.type == AttributeType.NUMBER) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Diamond chart", style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = attribute.displayInDiamond,
+                    onCheckedChange = { onDisplayInDiamondChange(attribute.key, it) },
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Attribute $position diamond chart"
+                        },
+                )
+            }
+
+            OutlinedTextField(
+                value = attribute.diamondOrderText,
+                onValueChange = { onDiamondOrderChange(attribute.key, it) },
+                label = { Text("Diamond order") },
+                isError = validationError.diamondOrder != null,
+                supportingText = {
+                    validationError.diamondOrder?.let { Text(it) }
+                },
+                singleLine = true,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Attribute $position diamond order"
+                        },
             )
         }
 

@@ -159,6 +159,35 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun loadedScreenRendersDiamondChartWithLabels() {
+        setContent(
+            loadedState().copy(
+                diamondChartPoints =
+                    listOf(
+                        DiamondChartPoint(label = "Speed", value = 8),
+                        DiamondChartPoint(label = "Brakes", value = 7),
+                        DiamondChartPoint(label = "Control", value = 6),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Attribute diamond chart").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Speed: 8 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Brakes: 7 / 10").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersDiamondChartEmptyStateWithTooFewPoints() {
+        setContent(
+            loadedState().copy(
+                diamondChartPoints = listOf(DiamondChartPoint(label = "Speed", value = 8)),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Diamond chart empty state").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun loadedScreenRendersMovementIndicators() {
         setContent(
             loadedState().copy(

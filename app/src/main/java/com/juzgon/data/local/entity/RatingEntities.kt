@@ -41,6 +41,10 @@ data class AttributeEntity(
     val type: String = "NUMBER",
     @ColumnInfo(name = "is_required")
     val isRequired: Boolean = true,
+    @ColumnInfo(name = "display_in_diamond")
+    val displayInDiamond: Boolean = true,
+    @ColumnInfo(name = "diamond_order")
+    val diamondOrder: Int? = null,
 )
 
 @Entity(

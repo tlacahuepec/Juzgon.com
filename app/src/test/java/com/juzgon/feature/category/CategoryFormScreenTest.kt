@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
@@ -186,6 +187,24 @@ class CategoryFormScreenTest {
     }
 
     @Test
+    fun diamondChartControlsRenderForNumericAttributesOnly() {
+        setContent(
+            CategoryFormUiState(
+                name = "Cars",
+                attributes =
+                    listOf(
+                        CategoryAttributeInput(key = 0L, name = "Speed", type = AttributeType.NUMBER),
+                        CategoryAttributeInput(key = 1L, name = "Photo", type = AttributeType.IMAGE),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Attribute 1 diamond chart").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 diamond order").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 2 diamond chart").assertDoesNotExist()
+    }
+
+    @Test
     fun typeChangeWarningDialogIsShownWhenFlagSet() {
         setContent(
             CategoryFormUiState(
@@ -241,6 +260,8 @@ class CategoryFormScreenTest {
                     onAttributeWeightChange = { _, _ -> },
                     onAttributeTypeChange = { _, _ -> },
                     onAttributeRequiredChange = { _, _ -> },
+                    onAttributeDisplayInDiamondChange = { _, _ -> },
+                    onAttributeDiamondOrderChange = { _, _ -> },
                     onAddAttribute = {},
                     onRemoveAttribute = {},
                     onMoveAttributeUp = {},

@@ -84,6 +84,27 @@ class ItemDetailViewModelTest {
         }
 
     @Test
+    fun loadItemBuildsDiamondChartPointsFromConfiguredNumericAttributes() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores =
+                        listOf(
+                            ScoreEntry(Attribute("Speed", diamondOrder = 2), 8),
+                            ScoreEntry(Attribute("Brakes", diamondOrder = 1), 10),
+                            ScoreEntry(Attribute("Comfort", displayInDiamond = false), 6),
+                        ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            val points = viewModel.state.value.diamondChartPoints
+            assertEquals(listOf("Brakes", "Speed"), points.map { it.label })
+            assertEquals(listOf(10, 8), points.map { it.value })
+        }
+
+    @Test
     fun loadItemBuildsRankAndValueMovementFromLatestPreviousSnapshots() =
         runTest {
             repository.item.value =

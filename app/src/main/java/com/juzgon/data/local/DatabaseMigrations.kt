@@ -11,6 +11,7 @@ private const val DATABASE_VERSION_5 = 5
 private const val DATABASE_VERSION_6 = 6
 private const val DATABASE_VERSION_7 = 7
 private const val DATABASE_VERSION_8 = 8
+private const val DATABASE_VERSION_9 = 9
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -92,6 +93,14 @@ object DatabaseMigrations {
                     "CREATE INDEX index_attribute_rank_snapshots_attribute_id " +
                         "ON attribute_rank_snapshots(attribute_id)",
                 )
+            }
+        }
+
+    val MIGRATION_8_9: Migration =
+        object : Migration(DATABASE_VERSION_8, DATABASE_VERSION_9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE attributes ADD COLUMN display_in_diamond INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE attributes ADD COLUMN diamond_order INTEGER")
             }
         }
 }

@@ -100,7 +100,7 @@ class CategoryFormViewModel
                     )
                 }
             } else {
-                updateAttribute(key) { it.copy(type = type) }
+                updateAttribute(key) { it.withType(type) }
             }
         }
 
@@ -111,11 +111,37 @@ class CategoryFormViewModel
             updateAttribute(key) { it.copy(isRequired = isRequired) }
         }
 
+        fun onAttributeDisplayInDiamondChanged(
+            key: Long,
+            displayInDiamond: Boolean,
+        ) {
+            updateAttribute(key) { attribute ->
+                if (attribute.type == AttributeType.NUMBER) {
+                    attribute.copy(displayInDiamond = displayInDiamond)
+                } else {
+                    attribute
+                }
+            }
+        }
+
+        fun onAttributeDiamondOrderChanged(
+            key: Long,
+            diamondOrderText: String,
+        ) {
+            updateAttribute(key) { attribute ->
+                if (attribute.type == AttributeType.NUMBER) {
+                    attribute.copy(diamondOrderText = diamondOrderText)
+                } else {
+                    attribute
+                }
+            }
+        }
+
         fun onTypeChangeConfirmed() {
             val state = mutableState.value
             val key = state.pendingTypeChangeKey ?: return
             val type = state.pendingTypeChange ?: return
-            updateAttribute(key) { it.copy(type = type) }
+            updateAttribute(key) { it.withType(type) }
             mutableState.update {
                 it.copy(
                     showTypeChangeWarning = false,
@@ -239,6 +265,13 @@ class CategoryFormViewModel
                 )
             }
         }
+
+        private fun CategoryAttributeInput.withType(type: AttributeType): CategoryAttributeInput =
+            copy(
+                type = type,
+                displayInDiamond = type == AttributeType.NUMBER && displayInDiamond,
+                diamondOrderText = if (type == AttributeType.NUMBER) diamondOrderText else "",
+            )
 
         private fun moveAttribute(
             key: Long,
