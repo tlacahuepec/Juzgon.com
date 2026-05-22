@@ -6,12 +6,15 @@ import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -64,6 +67,30 @@ class RoomRatingRepositoryRankingTest {
             }
         }
 
+    @Test
+    fun observeRankedItems_includesImageValuesForCategoryItems() =
+        runTest {
+            val photoAttribute = Attribute(PHOTO, type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.saveCategory(
+                Category(
+                    name = FOOD_CATEGORY,
+                    attributes = listOf(Attribute(TASTE), Attribute(SERVICE), photoAttribute),
+                ),
+            )
+            ratedItemRepository.saveRatedItem(
+                foodItem(id = "item-a", score = 8).copy(
+                    values = listOf(ItemAttributeValue(photoAttribute, "content://images/item-a")),
+                ),
+            )
+
+            val rankedItems = ratedItemRepository.observeRankedItems(FOOD_CATEGORY).first { it.isNotEmpty() }
+
+            assertEquals(
+                listOf(ItemAttributeValue(photoAttribute, "content://images/item-a")),
+                rankedItems.single().item.values,
+            )
+        }
+
     private fun assertRankingEquals(
         expected: List<String>,
         actual: List<RankedRatedItem>,
@@ -94,5 +121,6 @@ class RoomRatingRepositoryRankingTest {
         const val FOOD_CATEGORY = "Food"
         const val TASTE = "taste"
         const val SERVICE = "service"
+        const val PHOTO = "photo"
     }
 }

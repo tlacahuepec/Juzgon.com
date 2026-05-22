@@ -58,6 +58,12 @@ data class RankedItemWithRatings(
         entityColumn = "item_id",
     )
     val ratings: List<RatingEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "item_id",
+        entity = ItemValueEntity::class,
+    )
+    val values: List<ItemValueEntity>,
 )
 
 @Dao

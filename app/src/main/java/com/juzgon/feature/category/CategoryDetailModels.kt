@@ -1,7 +1,9 @@
 package com.juzgon.feature.category
 
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
+import com.juzgon.domain.RatedItem
 import java.util.Locale
 
 enum class CategoryDetailSortOption {
@@ -18,6 +20,7 @@ sealed interface CategoryDetailNavigationEvent {
 data class CategoryDetailItemUiModel(
     val id: String,
     val averageScoreText: String,
+    val imageValue: String? = null,
 )
 
 data class CategoryDetailUiState(
@@ -70,12 +73,24 @@ object CategoryDetailReducer {
                     CategoryDetailItemUiModel(
                         id = rankedItem.item.id,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
+                        imageValue = rankedItem.item.primaryImageValue(category),
                     )
                 },
             isLoading = false,
             sortOption = sortOption,
         )
     }
+}
+
+private fun RatedItem.primaryImageValue(category: Category): String? {
+    val imageAttribute =
+        category.attributes.firstOrNull { attribute ->
+            attribute.type == AttributeType.IMAGE
+        } ?: return null
+    return values
+        .firstOrNull { value -> value.attribute.id == imageAttribute.id }
+        ?.value
+        ?.takeIf { value -> value.isNotBlank() }
 }
 
 private fun Int.toAttributeSummary(): String =
