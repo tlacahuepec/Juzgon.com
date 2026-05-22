@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -49,6 +50,14 @@ class ItemDetailScreenTest {
         composeRule
             .onNodeWithContentDescription("Rank 1, Speed, 8 out of 10, 80 percent")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenAppliesRankedAttributeSizeVariants() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithTag("RankedAttributeCard:Rank1:1").assertIsDisplayed()
+        composeRule.onNodeWithTag("RankedAttributeCard:Rank2:2").assertIsDisplayed()
     }
 
     @Test
@@ -134,6 +143,7 @@ class ItemDetailScreenTest {
                         maxText = "10",
                         progressPercent = 80,
                         progressFraction = 0.8f,
+                        sizeVariant = AttributeRankSizeVariant.Rank1,
                     ),
                     RankedAttributeCardUiModel(
                         rank = 2,
@@ -142,6 +152,7 @@ class ItemDetailScreenTest {
                         maxText = "10",
                         progressPercent = 70,
                         progressFraction = 0.7f,
+                        sizeVariant = AttributeRankSizeVariant.Rank2,
                     ),
                 ),
             notes = "",

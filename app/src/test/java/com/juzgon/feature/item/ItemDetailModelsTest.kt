@@ -20,6 +20,41 @@ class ItemDetailModelsTest {
     }
 
     @Test
+    fun rankedAttributeCardsMapsTopFiveRanksToDistinctSizeVariants() {
+        val cards =
+            rankedAttributeCards(
+                listOf(
+                    ItemDetailAttributeScore(label = "One", score = 10),
+                    ItemDetailAttributeScore(label = "Two", score = 9),
+                    ItemDetailAttributeScore(label = "Three", score = 8),
+                    ItemDetailAttributeScore(label = "Four", score = 7),
+                    ItemDetailAttributeScore(label = "Five", score = 6),
+                    ItemDetailAttributeScore(label = "Six", score = 5),
+                    ItemDetailAttributeScore(label = "Seven", score = 4),
+                ),
+            )
+
+        assertEquals(
+            listOf(
+                AttributeRankSizeVariant.Rank1,
+                AttributeRankSizeVariant.Rank2,
+                AttributeRankSizeVariant.Rank3,
+                AttributeRankSizeVariant.Rank4,
+                AttributeRankSizeVariant.Rank5,
+                AttributeRankSizeVariant.Standard,
+                AttributeRankSizeVariant.Standard,
+            ),
+            cards.map { it.sizeVariant },
+        )
+    }
+
+    @Test
+    fun attributeRankSizeVariantUsesStandardVariantForInvalidRanks() {
+        assertEquals(AttributeRankSizeVariant.Standard, attributeRankSizeVariant(0))
+        assertEquals(AttributeRankSizeVariant.Standard, attributeRankSizeVariant(6))
+    }
+
+    @Test
     fun rankedAttributeCardsCalculatesProgressFromTenPointScale() {
         val cards =
             rankedAttributeCards(
