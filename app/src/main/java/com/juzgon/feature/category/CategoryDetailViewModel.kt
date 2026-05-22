@@ -26,7 +26,7 @@ class CategoryDetailViewModel
         private val mutableNavigationEvents = MutableSharedFlow<CategoryDetailNavigationEvent>()
         private var activeCategoryName: String? = null
         private var loadJob: Job? = null
-        private val sortOption = MutableStateFlow(CategoryDetailSortOption.Score)
+        private val sortOption = MutableStateFlow<CategoryDetailSortOption>(CategoryDetailSortOption.Score)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()

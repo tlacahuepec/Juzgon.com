@@ -266,6 +266,76 @@ class CategoryDetailScreenTest {
     }
 
     @Test
+    fun sortControlsRenderAttributeSortOption() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "3 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions =
+                    listOf(
+                        CategoryDetailSortOptionUiModel(
+                            option = CategoryDetailSortOption.Score,
+                            label = "Score",
+                            contentDescription = "Sort items by score",
+                        ),
+                        CategoryDetailSortOptionUiModel(
+                            option = CategoryDetailSortOption.Name,
+                            label = "Name",
+                            contentDescription = "Sort items by name",
+                        ),
+                        CategoryDetailSortOptionUiModel(
+                            option = CategoryDetailSortOption.Attribute("Speed"),
+                            label = "Speed",
+                            contentDescription = "Sort items by Speed",
+                        ),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Sort items by Speed").assertIsDisplayed()
+    }
+
+    @Test
+    fun sortControlInvokesCallbackForAttributeOption() {
+        var selectedSort: CategoryDetailSortOption? = null
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "3 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    sortOptions =
+                        listOf(
+                            CategoryDetailSortOptionUiModel(
+                                option = CategoryDetailSortOption.Score,
+                                label = "Score",
+                                contentDescription = "Sort items by score",
+                            ),
+                            CategoryDetailSortOptionUiModel(
+                                option = CategoryDetailSortOption.Attribute("Speed"),
+                                label = "Speed",
+                                contentDescription = "Sort items by Speed",
+                            ),
+                        ),
+                    isLoading = false,
+                ),
+            onSortOptionSelected = { selectedSort = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Sort items by Speed").performClick()
+
+        assertEquals(CategoryDetailSortOption.Attribute("Speed"), selectedSort)
+    }
+
+    @Test
     fun editAndDeleteActionsAreAvailableWhenLoaded() {
         setContent(
             CategoryDetailUiState(

@@ -336,6 +336,7 @@ private fun CategoryDetailItemList(
         item {
             CategoryDetailSortControls(
                 selectedOption = state.sortOption,
+                sortOptions = state.sortOptions,
                 onSortOptionSelected = onSortOptionSelected,
             )
         }
@@ -354,34 +355,26 @@ private fun CategoryDetailItemList(
 @Composable
 private fun CategoryDetailSortControls(
     selectedOption: CategoryDetailSortOption,
+    sortOptions: List<CategoryDetailSortOptionUiModel>,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChip(
-            selected = selectedOption == CategoryDetailSortOption.Score,
-            onClick = { onSortOptionSelected(CategoryDetailSortOption.Score) },
-            label = { Text("Score") },
-            modifier =
-                Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                    .semantics {
-                        contentDescription = "Sort items by score"
-                    },
-        )
-        FilterChip(
-            selected = selectedOption == CategoryDetailSortOption.Name,
-            onClick = { onSortOptionSelected(CategoryDetailSortOption.Name) },
-            label = { Text("Name") },
-            modifier =
-                Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                    .semantics {
-                        contentDescription = "Sort items by name"
-                    },
-        )
+        sortOptions.forEach { sortOption ->
+            FilterChip(
+                selected = selectedOption == sortOption.option,
+                onClick = { onSortOptionSelected(sortOption.option) },
+                label = { Text(sortOption.label) },
+                modifier =
+                    Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = sortOption.contentDescription
+                        },
+            )
+        }
     }
 }
 

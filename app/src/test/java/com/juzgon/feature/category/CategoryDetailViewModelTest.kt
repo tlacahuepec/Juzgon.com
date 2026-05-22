@@ -297,6 +297,131 @@ class CategoryDetailViewModelTest {
         }
 
     @Test
+    fun sortOptionsIncludeNonImageAttributesOnly() =
+        runTest {
+            val notes = Attribute("Notes", type = AttributeType.NOTES, isRequired = false)
+            val available = Attribute("Available", type = AttributeType.BOOLEAN, isRequired = false)
+            val photo = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.category.value =
+                Category(
+                    name = "Cars",
+                    attributes = listOf(speed, notes, available, photo),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf(
+                        "Sort items by score",
+                        "Sort items by name",
+                        "Sort items by Speed",
+                        "Sort items by Notes",
+                        "Sort items by Available",
+                    ),
+                    state.sortOptions.map { option -> option.contentDescription },
+                )
+            }
+        }
+
+    @Test
+    fun numericAttributeSortOrdersDescendingAndPlacesMissingLast() =
+        runTest {
+            val handling = Attribute("Handling")
+            categoryRepository.category.value = Category(name = "Cars", attributes = listOf(speed, handling))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(attribute = speed, score = 5)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores = listOf(ScoreEntry(attribute = speed, score = 9)),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "wagon",
+                                scores = listOf(ScoreEntry(attribute = handling, score = 8)),
+                            ),
+                        aggregateScore = 9.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSortOptionSelected(CategoryDetailSortOption.Attribute(speed.id))
+                state = awaitItem()
+
+                assertEquals(listOf("coupe", "sedan", "wagon"), state.items.map { item -> item.id })
+            }
+        }
+
+    @Test
+    fun textAttributeSortOrdersByValueAndTieBreaksByName() =
+        runTest {
+            val notes = Attribute("Notes", type = AttributeType.NOTES, isRequired = false)
+            categoryRepository.category.value = Category(name = "Cars", attributes = listOf(speed, notes))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            ratedItem("sedan").copy(
+                                values = listOf(ItemAttributeValue(notes, "zeta")),
+                            ),
+                        aggregateScore = 9.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            ratedItem("coupe").copy(
+                                values = listOf(ItemAttributeValue(notes, "alpha")),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            ratedItem("wagon").copy(
+                                values = listOf(ItemAttributeValue(notes, "alpha")),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                    RankedRatedItem(
+                        item = ratedItem("roadster"),
+                        aggregateScore = 6.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSortOptionSelected(CategoryDetailSortOption.Attribute(notes.id))
+                state = awaitItem()
+
+                assertEquals(listOf("coupe", "wagon", "sedan", "roadster"), state.items.map { item -> item.id })
+            }
+        }
+
+    @Test
     fun deleteCategoryEmitsNavigateBackEventOnSuccess() =
         runTest {
             categoryRepository.category.value = carsCategory
