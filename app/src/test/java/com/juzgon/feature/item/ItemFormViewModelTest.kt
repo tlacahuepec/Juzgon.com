@@ -203,6 +203,74 @@ class ItemFormViewModelTest {
         }
 
     @Test
+    fun editModeAllowsTitleChangeForRename() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.item.value =
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)))
+            viewModel.loadCategory("Cars", itemId = "Jetta")
+
+            viewModel.onTitleChanged("GLI")
+
+            assertEquals("GLI", currentState.title)
+        }
+
+    @Test
+    fun editSaveRenamesItemAndPreservesScoresAndValues() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.categories.value = listOf(Category("Cars", attributes = listOf(speed, brakes, photo)))
+            ratedItemRepository.itemsById.value =
+                mapOf(
+                    "Jetta" to
+                        RatedItem(
+                            id = "Jetta",
+                            notes = "daily driver",
+                            scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)),
+                            values = listOf(ItemAttributeValue(photo, "content://images/jetta")),
+                            createdAt = 100,
+                            updatedAt = 200,
+                        ),
+                )
+            viewModel.loadCategory("Cars", itemId = "Jetta")
+
+            viewModel.onTitleChanged("GLI")
+            viewModel.onSaveClick()
+
+            assertEquals("Jetta", ratedItemRepository.renamedOriginalId)
+            assertEquals(
+                RatedItem(
+                    id = "GLI",
+                    notes = "daily driver",
+                    scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)),
+                    values = listOf(ItemAttributeValue(photo, "content://images/jetta")),
+                ),
+                ratedItemRepository.renamedItem,
+            )
+            assertEquals(null, ratedItemRepository.savedItem)
+            assertTrue(currentState.saveCompleted)
+        }
+
+    @Test
+    fun duplicateRenameShowsErrorAndDoesNotRename() =
+        runTest {
+            categoryRepository.categories.value = listOf(carsCategory)
+            ratedItemRepository.itemsById.value =
+                mapOf(
+                    "Jetta" to RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7))),
+                    "Passat" to RatedItem(id = "Passat", scores = listOf(ScoreEntry(speed, 8), ScoreEntry(brakes, 8))),
+                )
+            viewModel.loadCategory("Cars", itemId = "Jetta")
+
+            viewModel.onTitleChanged("Passat")
+            viewModel.onSaveClick()
+
+            assertEquals("Item already exists", currentState.errorMessage)
+            assertEquals(null, ratedItemRepository.renamedItem)
+            assertFalse(currentState.saveCompleted)
+        }
+
+    @Test
     fun saveFailureShowsErrorAndDoesNotComplete() =
         runTest {
             categoryRepository.categories.value = listOf(carsCategory)
@@ -367,7 +435,10 @@ class ItemFormViewModelTest {
 
     private class FakeRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
+        val itemsById = MutableStateFlow(emptyMap<String, RatedItem>())
         var savedItem: RatedItem? = null
+        var renamedOriginalId: String? = null
+        var renamedItem: RatedItem? = null
         var deletedItemId: String? = null
         var errorOnSave: Throwable? = null
 
@@ -375,7 +446,14 @@ class ItemFormViewModelTest {
             error("ItemFormViewModel does not observe all rated items")
         }
 
-        override fun observeRatedItem(id: String): Flow<RatedItem?> = item
+        override fun observeRatedItem(id: String): Flow<RatedItem?> =
+            itemsById.map { items ->
+                if (items.isEmpty()) {
+                    item.value
+                } else {
+                    items[id]
+                }
+            }
 
         override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> {
             error("ItemFormViewModel does not observe ranked items")
@@ -384,6 +462,14 @@ class ItemFormViewModelTest {
         override suspend fun saveRatedItem(ratedItem: RatedItem) {
             errorOnSave?.let { throw it }
             savedItem = ratedItem
+        }
+
+        override suspend fun renameRatedItem(
+            originalId: String,
+            ratedItem: RatedItem,
+        ) {
+            renamedOriginalId = originalId
+            renamedItem = ratedItem
         }
 
         override suspend fun deleteRatedItem(id: String) {

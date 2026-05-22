@@ -126,9 +126,6 @@ class ItemFormViewModel
         }
 
         fun onTitleChanged(title: String) {
-            if (!mutableState.value.titleEditable) {
-                return
-            }
             mutableState.update { it.copy(title = title, saveCompleted = false, errorMessage = null) }
         }
 
@@ -300,12 +297,7 @@ class ItemFormViewModel
                                     },
                         )
                     }
-                    if (current.mode == ItemFormMode.Create) {
-                        require(ratedItemRepository.observeRatedItem(current.title.trim()).first() == null) {
-                            "Item already exists"
-                        }
-                    }
-                    ratedItemRepository.saveRatedItem(current.toRatedItem())
+                    saveCurrentItem(current)
                 }.onSuccess {
                     mutableState.update {
                         it.copy(
@@ -320,6 +312,32 @@ class ItemFormViewModel
                             errorMessage = error.message ?: "Unable to save item",
                             saveCompleted = false,
                         )
+                    }
+                }
+            }
+        }
+
+        private suspend fun saveCurrentItem(current: ItemFormUiState) {
+            val ratedItem = current.toRatedItem()
+            when (current.mode) {
+                ItemFormMode.Create -> {
+                    require(ratedItemRepository.observeRatedItem(ratedItem.id).first() == null) {
+                        "Item already exists"
+                    }
+                    ratedItemRepository.saveRatedItem(ratedItem)
+                }
+                ItemFormMode.Edit -> {
+                    val originalId =
+                        checkNotNull(current.originalItemId) {
+                            "Item not found"
+                        }
+                    if (originalId == ratedItem.id) {
+                        ratedItemRepository.saveRatedItem(ratedItem)
+                    } else {
+                        require(ratedItemRepository.observeRatedItem(ratedItem.id).first() == null) {
+                            "Item already exists"
+                        }
+                        ratedItemRepository.renameRatedItem(originalId, ratedItem)
                     }
                 }
             }

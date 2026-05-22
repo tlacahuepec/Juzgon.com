@@ -185,4 +185,13 @@ interface AttributeRankSnapshotDao {
         """,
     )
     fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshotEntity>>
+
+    @Query(
+        """
+        SELECT * FROM attribute_rank_snapshots
+        WHERE item_id = :itemId
+        ORDER BY captured_at DESC, rank ASC, attribute_id ASC
+        """,
+    )
+    fun getSnapshotsForItem(itemId: String): List<AttributeRankSnapshotEntity>
 }

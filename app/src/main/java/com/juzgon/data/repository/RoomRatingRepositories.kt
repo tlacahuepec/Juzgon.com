@@ -191,6 +191,58 @@ class RoomRatedItemRepository(
         }
     }
 
+    override suspend fun renameRatedItem(
+        originalId: String,
+        ratedItem: RatedItem,
+    ) {
+        if (originalId == ratedItem.id) {
+            saveRatedItem(ratedItem)
+            return
+        }
+
+        database.withTransaction {
+            require(itemDao.getItemWithRatings(ratedItem.id) == null) {
+                "Item already exists"
+            }
+            val existingItemWithRatings =
+                checkNotNull(itemDao.getItemWithRatings(originalId)) {
+                    "Item not found"
+                }
+            val ratingEntities = ratedItem.toRatingEntities()
+            val updatedAt = currentTimeMillis()
+            val shouldSnapshotRanks =
+                existingItemWithRatings.ratings.toRatingSnapshot() != ratingEntities.toRatingSnapshot()
+
+            itemDao.upsertItem(
+                ratedItem.toItemEntity(
+                    createdAt = existingItemWithRatings.item.createdAt,
+                    updatedAt = updatedAt,
+                ),
+            )
+            if (ratingEntities.isNotEmpty()) {
+                itemDao.upsertRatings(ratingEntities)
+            }
+            val valueEntities = ratedItem.toItemValueEntities()
+            if (valueEntities.isNotEmpty()) {
+                itemDao.upsertItemValues(valueEntities)
+            }
+            val copiedSnapshots =
+                snapshotDao
+                    .getSnapshotsForItem(originalId)
+                    .map { snapshot -> snapshot.copy(itemId = ratedItem.id) }
+            if (copiedSnapshots.isNotEmpty()) {
+                snapshotDao.upsertSnapshots(copiedSnapshots)
+            }
+            if (shouldSnapshotRanks) {
+                val snapshots = buildAttributeRankSnapshots(ratedItem.id, updatedAt, ratedItem.scores)
+                if (snapshots.isNotEmpty()) {
+                    snapshotDao.upsertSnapshots(snapshots.map { it.toEntity() })
+                }
+            }
+            itemDao.deleteItemById(originalId)
+        }
+    }
+
     override suspend fun deleteRatedItem(id: String) {
         database.withTransaction {
             itemDao.deleteItemById(id)

@@ -10,6 +10,13 @@ import org.junit.Test
 
 class ItemFormModelsTest {
     @Test
+    fun editModeKeepsTitleEditableForRename() {
+        val state = ItemFormUiState(mode = ItemFormMode.Edit)
+
+        assertTrue(state.titleEditable)
+    }
+
+    @Test
     fun requiredImageAttributeWithBlankValueBlocksSave() {
         val state =
             imageFormState(

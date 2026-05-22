@@ -59,7 +59,7 @@ data class ItemFormUiState(
     val errorMessage: String? = null,
 ) {
     val titleEditable: Boolean
-        get() = mode == ItemFormMode.Create
+        get() = true
 
     val titleError: String?
         get() = if (title.isBlank()) "Title is required" else null
