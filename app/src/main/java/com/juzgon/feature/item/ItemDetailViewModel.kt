@@ -2,6 +2,7 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +47,12 @@ class ItemDetailViewModel
                 mutableState.value =
                     ItemDetailUiState(
                         itemId = item.id,
+                        primaryImageValue =
+                            item.values
+                                .firstOrNull { valueEntry ->
+                                    valueEntry.attribute.type == AttributeType.IMAGE &&
+                                        valueEntry.value.isNotBlank()
+                                }?.value,
                         overallScoreText =
                             computeWeightedAverageText(
                                 item.scores.map { it.attribute.weight to it.score },
@@ -62,10 +69,42 @@ class ItemDetailViewModel
                                     label = valueEntry.attribute.id,
                                     value = valueEntry.value,
                                     type = valueEntry.attribute.type,
+                                    displayValue =
+                                        formatAttributeValue(
+                                            type = valueEntry.attribute.type,
+                                            value = valueEntry.value,
+                                        ),
                                 )
                             },
                         notes = item.notes,
                         isLoading = false,
+                    )
+            }
+        }
+
+        fun onDeleteClick() {
+            mutableState.value = mutableState.value.copy(showDeleteConfirmDialog = true)
+        }
+
+        fun onDeleteDialogDismissed() {
+            mutableState.value =
+                mutableState.value.copy(
+                    showDeleteConfirmDialog = false,
+                    isDeleting = false,
+                )
+        }
+
+        fun onDeleteConfirmed() {
+            val itemId = mutableState.value.itemId
+            if (itemId.isBlank()) return
+            mutableState.value = mutableState.value.copy(isDeleting = true)
+            viewModelScope.launch {
+                ratedItemRepository.deleteRatedItem(itemId)
+                mutableState.value =
+                    mutableState.value.copy(
+                        showDeleteConfirmDialog = false,
+                        isDeleting = false,
+                        deleteCompleted = true,
                     )
             }
         }

@@ -1,6 +1,9 @@
+@file:Suppress("LongParameterList")
+
 package com.juzgon.feature.item
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -37,11 +40,11 @@ class ItemDetailScreenTest {
     fun loadedScreenRendersAttributeScoreRows() {
         setContent(loadedState())
 
-        composeRule.onNodeWithText("Ranked attributes").assertIsDisplayed()
-        composeRule.onNodeWithText("Speed").assertIsDisplayed()
-        composeRule.onNodeWithText("8 / 10").assertIsDisplayed()
-        composeRule.onNodeWithText("Brakes").assertIsDisplayed()
-        composeRule.onNodeWithText("7 / 10").assertIsDisplayed()
+        composeRule.onNodeWithText("Ranked attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Speed").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("8 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Brakes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("7 / 10").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -65,6 +68,20 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun loadedScreenRendersProminentPrimaryImage() {
+        setContent(loadedState().copy(primaryImageValue = "content://images/roadster"))
+
+        composeRule.onNodeWithContentDescription("Roadster image preview").assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersPrimaryImagePlaceholderWhenMissing() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithContentDescription("Roadster image placeholder").assertIsDisplayed()
+    }
+
+    @Test
     fun loadedScreenRendersNonImageAttributeValues() {
         setContent(
             loadedState().copy(
@@ -85,11 +102,59 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun loadedScreenRendersFormattedTypedAttributeValues() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Available",
+                            value = "true",
+                            type = AttributeType.BOOLEAN,
+                            displayValue = "Yes",
+                        ),
+                        ItemDetailAttributeValue(
+                            label = "Release",
+                            value = "2026-01-02",
+                            type = AttributeType.DATE,
+                            displayValue = "Jan 2, 2026",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Yes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Jan 2, 2026").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersUrlAttributeAsClickable() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Website",
+                            value = "https://example.com",
+                            type = AttributeType.URL,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Open Website URL")
+            .performScrollTo()
+            .assertHasClickAction()
+    }
+
+    @Test
     fun loadedScreenRendersRankedAttributeCardSemantics() {
         setContent(loadedState())
 
         composeRule
             .onNodeWithContentDescription("Rank 1, Speed, 8 out of 10, 80 percent")
+            .performScrollTo()
             .assertIsDisplayed()
     }
 
@@ -131,10 +196,10 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Rank ↑").assertIsDisplayed()
-        composeRule.onNodeWithText("Value ↓").assertIsDisplayed()
-        composeRule.onNodeWithText("Rank =").assertIsDisplayed()
-        composeRule.onNodeWithText("Value =").assertIsDisplayed()
+        composeRule.onNodeWithText("Rank ↑").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Value ↓").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Rank =").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Value =").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -153,8 +218,8 @@ class ItemDetailScreenTest {
     fun loadedScreenAppliesRankedAttributeSizeVariants() {
         setContent(loadedState())
 
-        composeRule.onNodeWithTag("RankedAttributeCard:Rank1:1").assertIsDisplayed()
-        composeRule.onNodeWithTag("RankedAttributeCard:Rank2:2").assertIsDisplayed()
+        composeRule.onNodeWithTag("RankedAttributeCard:Rank1:1").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("RankedAttributeCard:Rank2:2").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -189,6 +254,36 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun deleteButtonInvokesCallback() {
+        var deleteClicked = false
+        setContent(loadedState(), onDeleteClick = { deleteClicked = true })
+
+        composeRule.onNodeWithContentDescription("Delete item").performClick()
+
+        assertTrue(deleteClicked)
+    }
+
+    @Test
+    fun deleteDialogIsShownWhenFlagSet() {
+        setContent(loadedState().copy(showDeleteConfirmDialog = true))
+
+        composeRule.onNodeWithContentDescription("Confirm delete item").assertIsDisplayed()
+    }
+
+    @Test
+    fun confirmDeleteInvokesCallback() {
+        var deleteConfirmed = false
+        setContent(
+            loadedState().copy(showDeleteConfirmDialog = true),
+            onDeleteConfirmed = { deleteConfirmed = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Confirm delete item").performClick()
+
+        assertTrue(deleteConfirmed)
+    }
+
+    @Test
     fun backButtonInvokesCallback() {
         var backClicked = false
         setContent(loadedState(), onBackClick = { backClicked = true })
@@ -204,12 +299,16 @@ class ItemDetailScreenTest {
 
         composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Edit item").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("Delete item").assertMinimumTouchTarget()
     }
 
     private fun setContent(
         state: ItemDetailUiState,
         onBackClick: () -> Unit = {},
         onEditClick: () -> Unit = {},
+        onDeleteClick: () -> Unit = {},
+        onDeleteConfirmed: () -> Unit = {},
+        onDeleteDialogDismissed: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -217,6 +316,9 @@ class ItemDetailScreenTest {
                     state = state,
                     onBackClick = onBackClick,
                     onEditClick = onEditClick,
+                    onDeleteClick = onDeleteClick,
+                    onDeleteConfirmed = onDeleteConfirmed,
+                    onDeleteDialogDismissed = onDeleteDialogDismissed,
                 )
             }
         }
