@@ -1,6 +1,8 @@
 package com.juzgon.feature.item
 
+import com.juzgon.domain.AttributeRankSnapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ItemDetailModelsTest {
@@ -94,5 +96,116 @@ class ItemDetailModelsTest {
             )
 
         assertEquals(listOf("Agility", "Speed"), cards.map { it.label })
+    }
+
+    @Test
+    fun rankedAttributeCardsCalculatesRankAndValueMovementFromPreviousSnapshots() {
+        val cards =
+            rankedAttributeCards(
+                attributeScores =
+                    listOf(
+                        ItemDetailAttributeScore(label = "Speed", score = 9),
+                        ItemDetailAttributeScore(label = "Brakes", score = 8),
+                        ItemDetailAttributeScore(label = "Control", score = 6),
+                    ),
+                previousSnapshots =
+                    listOf(
+                        AttributeRankSnapshot(
+                            itemId = "Roadster",
+                            capturedAt = 100L,
+                            attributeId = "Speed",
+                            value = 7,
+                            rank = 2,
+                        ),
+                        AttributeRankSnapshot(
+                            itemId = "Roadster",
+                            capturedAt = 100L,
+                            attributeId = "Brakes",
+                            value = 9,
+                            rank = 1,
+                        ),
+                        AttributeRankSnapshot(
+                            itemId = "Roadster",
+                            capturedAt = 100L,
+                            attributeId = "Control",
+                            value = 6,
+                            rank = 3,
+                        ),
+                    ),
+            )
+
+        assertEquals(AttributeMovementDirection.Improved, cards[0].movement?.rank)
+        assertEquals(AttributeMovementDirection.Improved, cards[0].movement?.value)
+        assertEquals(AttributeMovementDirection.Declined, cards[1].movement?.rank)
+        assertEquals(AttributeMovementDirection.Declined, cards[1].movement?.value)
+        assertEquals(AttributeMovementDirection.Unchanged, cards[2].movement?.rank)
+        assertEquals(AttributeMovementDirection.Unchanged, cards[2].movement?.value)
+    }
+
+    @Test
+    fun rankedAttributeCardsOmitsMovementWithoutPreviousSnapshots() {
+        val cards =
+            rankedAttributeCards(
+                listOf(ItemDetailAttributeScore(label = "Speed", score = 8)),
+            )
+
+        assertNull(cards.single().movement)
+    }
+
+    @Test
+    fun rankedAttributeCardsOmitsMovementWhenPreviousAttributeIsMissing() {
+        val cards =
+            rankedAttributeCards(
+                attributeScores = listOf(ItemDetailAttributeScore(label = "Speed", score = 8)),
+                previousSnapshots =
+                    listOf(
+                        AttributeRankSnapshot(
+                            itemId = "Roadster",
+                            capturedAt = 100L,
+                            attributeId = "Brakes",
+                            value = 6,
+                            rank = 1,
+                        ),
+                    ),
+            )
+
+        assertNull(cards.single().movement)
+    }
+
+    @Test
+    fun latestPreviousAttributeRankSnapshotsUsesMostRecentSnapshotBeforeCurrentUpdate() {
+        val snapshots =
+            listOf(
+                AttributeRankSnapshot(
+                    itemId = "Roadster",
+                    capturedAt = 100L,
+                    attributeId = "Speed",
+                    value = 6,
+                    rank = 2,
+                ),
+                AttributeRankSnapshot(
+                    itemId = "Roadster",
+                    capturedAt = 200L,
+                    attributeId = "Speed",
+                    value = 7,
+                    rank = 2,
+                ),
+                AttributeRankSnapshot(
+                    itemId = "Roadster",
+                    capturedAt = 300L,
+                    attributeId = "Speed",
+                    value = 9,
+                    rank = 1,
+                ),
+            )
+
+        val previousSnapshots =
+            latestPreviousAttributeRankSnapshots(
+                snapshots = snapshots,
+                currentUpdatedAt = 300L,
+            )
+
+        assertEquals(listOf(200L), previousSnapshots.map { it.capturedAt }.distinct())
+        assertEquals(7, previousSnapshots.single().value)
     }
 }

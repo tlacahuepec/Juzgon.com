@@ -2,6 +2,7 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,7 @@ class ItemDetailViewModel
     @Inject
     constructor(
         private val ratedItemRepository: RatedItemRepository,
+        private val attributeRankSnapshotRepository: AttributeRankSnapshotRepository,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemDetailUiState())
 
@@ -33,8 +35,14 @@ class ItemDetailViewModel
                         ItemDetailAttributeScore(
                             label = scoreEntry.attribute.id,
                             score = scoreEntry.score,
+                            attributeId = scoreEntry.attribute.id,
                         )
                     }
+                val previousSnapshots =
+                    latestPreviousAttributeRankSnapshots(
+                        snapshots = attributeRankSnapshotRepository.observeSnapshotsForItem(itemId).first(),
+                        currentUpdatedAt = item.updatedAt,
+                    )
                 mutableState.value =
                     ItemDetailUiState(
                         itemId = item.id,
@@ -43,7 +51,11 @@ class ItemDetailViewModel
                                 item.scores.map { it.attribute.weight to it.score },
                             ),
                         attributeScores = attributeScores,
-                        rankedAttributes = rankedAttributeCards(attributeScores),
+                        rankedAttributes =
+                            rankedAttributeCards(
+                                attributeScores = attributeScores,
+                                previousSnapshots = previousSnapshots,
+                            ),
                         attributeValues =
                             item.values.map { valueEntry ->
                                 ItemDetailAttributeValue(
