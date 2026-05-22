@@ -6,7 +6,9 @@ import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.domain.Attribute
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.repository.CategoryRepository
@@ -127,6 +129,73 @@ class RoomRatingRepositoryTest {
         }
 
     @Test
+    fun renameRatedItemMovesItemAndPreservesRatingsValuesAndSnapshots() =
+        runTest {
+            val speed = Attribute("Speed")
+            val photo = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, photo)))
+            currentTime = 1_500L
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Jetta",
+                    notes = "daily driver",
+                    scores = listOf(ScoreEntry(speed, 8)),
+                    values = listOf(ItemAttributeValue(photo, "content://images/jetta")),
+                ),
+            )
+
+            currentTime = 2_500L
+            ratedItemRepository.renameRatedItem(
+                originalId = "Jetta",
+                ratedItem =
+                    RatedItem(
+                        id = "GLI",
+                        notes = "daily driver",
+                        scores = listOf(ScoreEntry(speed, 8)),
+                        values = listOf(ItemAttributeValue(photo, "content://images/jetta")),
+                    ),
+            )
+
+            assertEquals(null, ratedItemRepository.observeRatedItem("Jetta").first())
+            val renamedItem = ratedItemRepository.observeRatedItem("GLI").first()
+            assertEquals("GLI", renamedItem?.id)
+            assertEquals("daily driver", renamedItem?.notes)
+            assertEquals(listOf("Speed:8:1.0"), renamedItem?.toScorePairs())
+            assertEquals(listOf("Photo:content://images/jetta"), renamedItem?.toValuePairs())
+            assertEquals(listOf("GLI"), ratedItemRepository.observeRankedItems("Cars").first().map { it.item.id })
+
+            val snapshotRepository = RoomAttributeRankSnapshotRepository(database)
+            assertEquals(emptyList<Any>(), snapshotRepository.observeSnapshotsForItem("Jetta").first())
+            val renamedSnapshots = snapshotRepository.observeSnapshotsForItem("GLI").first()
+            assertEquals(listOf("Speed"), renamedSnapshots.map { it.attributeId })
+            assertEquals(listOf("GLI"), renamedSnapshots.map { it.itemId })
+        }
+
+    @Test
+    fun renameRatedItemToDuplicateNameRollsBackWithoutDataChanges() =
+        runTest {
+            val speed = Attribute("Speed")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed)))
+            val jetta = RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 7)), notes = "original")
+            val passat = RatedItem(id = "Passat", scores = listOf(ScoreEntry(speed, 9)), notes = "existing")
+            ratedItemRepository.saveRatedItem(jetta)
+            ratedItemRepository.saveRatedItem(passat)
+
+            val result =
+                runCatching {
+                    ratedItemRepository.renameRatedItem(
+                        originalId = "Jetta",
+                        ratedItem = RatedItem(id = "Passat", scores = listOf(ScoreEntry(speed, 8)), notes = "renamed"),
+                    )
+                }
+
+            assertEquals(true, result.isFailure)
+            assertEquals("Item already exists", result.exceptionOrNull()?.message)
+            assertRatedItemEquals(jetta, ratedItemRepository.observeRatedItem("Jetta").first())
+            assertRatedItemEquals(passat, ratedItemRepository.observeRatedItem("Passat").first())
+        }
+
+    @Test
     fun saveRatedItemPersistsNotesAndRatingsTogether() =
         runTest {
             categoryRepository.saveCategory(foodCategory())
@@ -234,6 +303,11 @@ class RoomRatingRepositoryTest {
             .map { scoreEntry ->
                 "${scoreEntry.attribute.id}:${scoreEntry.score}:${scoreEntry.attribute.weight}"
             }.sorted()
+
+    private fun RatedItem.toValuePairs(): List<String> =
+        values
+            .map { value -> "${value.attribute.id}:${value.value}" }
+            .sorted()
 
     private fun foodCategory(): Category = category(foodAttributes())
 

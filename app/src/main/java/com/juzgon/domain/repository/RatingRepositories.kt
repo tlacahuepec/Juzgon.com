@@ -34,5 +34,10 @@ interface RatedItemRepository {
 
     suspend fun saveRatedItem(ratedItem: RatedItem)
 
+    suspend fun renameRatedItem(
+        originalId: String,
+        ratedItem: RatedItem,
+    )
+
     suspend fun deleteRatedItem(id: String)
 }

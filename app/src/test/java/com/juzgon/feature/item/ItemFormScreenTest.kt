@@ -59,6 +59,7 @@ class ItemFormScreenTest {
         )
 
         composeRule.onNodeWithText("Edit item").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Item title").assertIsEnabled()
         composeRule.onNodeWithText("Roadster").assertIsDisplayed()
         composeRule.onNodeWithText("weekend car").assertIsDisplayed()
         composeRule.onNodeWithText("6").assertIsDisplayed()

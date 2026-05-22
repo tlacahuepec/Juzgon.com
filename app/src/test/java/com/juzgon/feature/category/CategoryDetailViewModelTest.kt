@@ -435,6 +435,13 @@ class CategoryDetailViewModelTest {
             error("CategoryDetailViewModel does not save rated items")
         }
 
+        override suspend fun renameRatedItem(
+            originalId: String,
+            ratedItem: RatedItem,
+        ) {
+            error("CategoryDetailViewModel does not rename rated items")
+        }
+
         override suspend fun deleteRatedItem(id: String) {
             error("CategoryDetailViewModel does not delete rated items")
         }

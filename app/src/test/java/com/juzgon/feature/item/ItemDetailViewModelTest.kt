@@ -349,6 +349,11 @@ class ItemDetailViewModelTest {
 
         override suspend fun saveRatedItem(ratedItem: RatedItem) = error("not used")
 
+        override suspend fun renameRatedItem(
+            originalId: String,
+            ratedItem: RatedItem,
+        ) = error("not used")
+
         override suspend fun deleteRatedItem(id: String) {
             deletedItemId = id
         }
