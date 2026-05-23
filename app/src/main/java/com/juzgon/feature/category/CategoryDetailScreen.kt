@@ -344,7 +344,7 @@ private fun CategoryDetailItemList(
             items = state.items,
             key = { item -> item.id },
         ) { item ->
-            CategoryDetailItemRow(
+            CategoryDetailItemCard(
                 item = item,
                 onEditItemClick = onEditItemClick,
             )
@@ -392,7 +392,7 @@ private fun CenteredContent(
 }
 
 @Composable
-private fun CategoryDetailItemRow(
+private fun CategoryDetailItemCard(
     item: CategoryDetailItemUiModel,
     onEditItemClick: (String) -> Unit,
 ) {
@@ -513,12 +513,8 @@ private fun CategoryDetailItemOverlay(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
-            Text(
-                text = item.id,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            CategoryDetailItemTitle(
+                title = item.id,
                 modifier = Modifier.weight(1f),
             )
             Surface(
@@ -541,6 +537,35 @@ private fun CategoryDetailItemOverlay(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryDetailItemTitle(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    val parts = CategoryDetailItemCardTitleFormatter.split(title)
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = parts.primaryWord,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (parts.remainingTitle != null) {
+            Text(
+                text = parts.remainingTitle,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
