@@ -289,6 +289,8 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(listOf("sedan", "coupe"), state.items.map { it.id })
                 assertEquals(listOf(1, 2), state.items.map { it.rank })
+                assertEquals(listOf("Score", "Score"), state.items.map { it.metricLabel })
+                assertEquals(listOf("9.0", "7.0"), state.items.map { it.metricValueText })
                 assertEquals(CategoryDetailSortOption.Score, state.sortOption)
 
                 viewModel.onSortOptionSelected(CategoryDetailSortOption.Name)
@@ -296,6 +298,8 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
                 assertEquals(listOf(1, 2), state.items.map { it.rank })
+                assertEquals(listOf("Score", "Score"), state.items.map { it.metricLabel })
+                assertEquals(listOf("7.0", "9.0"), state.items.map { it.metricValueText })
                 assertEquals(CategoryDetailSortOption.Name, state.sortOption)
             }
         }
@@ -376,6 +380,8 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(listOf("coupe", "sedan", "wagon"), state.items.map { item -> item.id })
                 assertEquals(listOf(1, 2, 3), state.items.map { item -> item.rank })
+                assertEquals(listOf("Speed", "Speed", "Speed"), state.items.map { item -> item.metricLabel })
+                assertEquals(listOf("9", "5", "Not rated"), state.items.map { item -> item.metricValueText })
             }
         }
 
@@ -424,6 +430,11 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(listOf("coupe", "wagon", "sedan", "roadster"), state.items.map { item -> item.id })
                 assertEquals(listOf(1, 2, 3, 4), state.items.map { item -> item.rank })
+                assertEquals(listOf("Notes", "Notes", "Notes", "Notes"), state.items.map { item -> item.metricLabel })
+                assertEquals(
+                    listOf("alpha", "alpha", "zeta", "Not rated"),
+                    state.items.map { item -> item.metricValueText },
+                )
             }
         }
 

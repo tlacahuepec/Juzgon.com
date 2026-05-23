@@ -104,7 +104,7 @@ class CategoryDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, Score 8.7").assertIsDisplayed()
     }
 
     @Test
@@ -124,7 +124,7 @@ class CategoryDetailScreenTest {
             onEditItemClick = { editedItemId = it },
         )
 
-        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7").performClick()
+        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, Score 8.7").performClick()
 
         assertEquals("sedan", editedItemId)
     }
@@ -146,8 +146,35 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Add item").assertMinimumTouchTarget()
         composeRule
-            .onNodeWithContentDescription("Rated item sedan, rank 1, average score 8.7")
+            .onNodeWithContentDescription("Rated item sedan, rank 1, Score 8.7")
             .assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun attributeSortCardDisplaysAttributeMetricInsteadOfGeneralScore() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            metricLabel = "Speed",
+                            metricValueText = "9",
+                        ),
+                    ),
+                sortOption = CategoryDetailSortOption.Attribute("Speed"),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithText("Speed").assertIsDisplayed()
+        composeRule.onNodeWithText("9").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Rated item sedan, rank 1, Speed 9").assertIsDisplayed()
+        composeRule.onNodeWithText("8.7").assertDoesNotExist()
     }
 
     @Test

@@ -27,6 +27,8 @@ data class CategoryDetailItemUiModel(
     val id: String,
     val averageScoreText: String,
     val imageValue: String? = null,
+    val metricLabel: String = "Score",
+    val metricValueText: String = averageScoreText,
 )
 
 data class CategoryDetailUiState(
@@ -94,11 +96,18 @@ object CategoryDetailReducer {
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
                 sortedItems.mapIndexed { index, rankedItem ->
+                    val cardMetric =
+                        rankedItem.toCardMetric(
+                            category = category,
+                            selectedSortOption = selectedSortOption,
+                        )
                     CategoryDetailItemUiModel(
                         rank = index + 1,
                         id = rankedItem.item.id,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
                         imageValue = rankedItem.item.primaryImageValue(category),
+                        metricLabel = cardMetric.label,
+                        metricValueText = cardMetric.valueText,
                     )
                 },
             isLoading = false,
@@ -107,6 +116,36 @@ object CategoryDetailReducer {
         )
     }
 }
+
+private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
+
+private data class CategoryDetailCardMetric(
+    val label: String,
+    val valueText: String,
+)
+
+private fun RankedRatedItem.toCardMetric(
+    category: Category,
+    selectedSortOption: CategoryDetailSortOption,
+): CategoryDetailCardMetric =
+    when (selectedSortOption) {
+        is CategoryDetailSortOption.Attribute -> {
+            val attribute =
+                category.attributes.firstOrNull { current ->
+                    current.id == selectedSortOption.attributeId && current.type != AttributeType.IMAGE
+                } ?: return CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
+
+            val valueText =
+                if (attribute.type == AttributeType.NUMBER) {
+                    item.scoreForAttribute(attribute.id)?.toString()
+                } else {
+                    item.textValueForAttribute(attribute.id)
+                } ?: MISSING_ATTRIBUTE_VALUE_TEXT
+            CategoryDetailCardMetric(label = attribute.id, valueText = valueText)
+        }
+
+        else -> CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
+    }
 
 private fun Category.toSortOptions(): List<CategoryDetailSortOptionUiModel> =
     defaultSortOptions() +
