@@ -181,11 +181,11 @@ class JuzgonNavigationTest {
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
                     categoryDetailContent = { categoryName, _, _, onItemClick, _, _, _ ->
-                        Button(onClick = { onItemClick("Roadster / 2026") }) {
+                        Button(onClick = { onItemClick("Roadster / 2026", null) }) {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemDetailContent = { itemId, _, _, _ -> Text("Item detail $itemId") },
+                    itemDetailContent = { itemId, _, _, _, _, _ -> Text("Item detail $itemId") },
                     itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
@@ -215,11 +215,11 @@ class JuzgonNavigationTest {
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
                     categoryDetailContent = { categoryName, _, _, onItemClick, _, _, _ ->
-                        Button(onClick = { onItemClick("Roadster / 2026") }) {
+                        Button(onClick = { onItemClick("Roadster / 2026", null) }) {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemDetailContent = { _, _, onEditClick, _ ->
+                    itemDetailContent = { _, _, _, _, onEditClick, _ ->
                         Button(onClick = onEditClick) {
                             Text("Item detail route")
                         }
@@ -256,11 +256,11 @@ class JuzgonNavigationTest {
                     },
                     createCategoryContent = { _, _ -> Text("Create category route") },
                     categoryDetailContent = { categoryName, _, _, onItemClick, _, _, _ ->
-                        Button(onClick = { onItemClick("Roadster / 2026") }) {
+                        Button(onClick = { onItemClick("Roadster / 2026", null) }) {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemDetailContent = { _, _, _, onDeleteCompleted ->
+                    itemDetailContent = { _, _, _, _, _, onDeleteCompleted ->
                         Button(onClick = onDeleteCompleted) {
                             Text("Item detail route")
                         }

@@ -338,6 +338,33 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun profileBannerDisplayedWhenBreakdownPresent() {
+        setContent(
+            loadedState().copy(
+                profileBreakdown =
+                    ItemProfileBreakdown(
+                        profileName = "Speed Focus",
+                        profileScoreText = "8.0",
+                        profileRank = 1,
+                        totalItems = 3,
+                        includedAttributeIds = setOf("Speed"),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Speed Focus").assertIsDisplayed()
+        composeRule.onNodeWithText("8.0").assertIsDisplayed()
+        composeRule.onNodeWithText("#1 of 3").assertIsDisplayed()
+    }
+
+    @Test
+    fun noBannerWhenBreakdownNull() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithText("#1 of").assertDoesNotExist()
+    }
+
+    @Test
     fun screenActionsMeetMinimumTouchTargetSize() {
         setContent(loadedState())
 

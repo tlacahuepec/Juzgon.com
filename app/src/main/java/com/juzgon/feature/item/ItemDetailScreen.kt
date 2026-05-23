@@ -81,13 +81,15 @@ private const val CHART_RADIUS_FRACTION = 0.38f
 @Composable
 fun ItemDetailRoute(
     itemId: String,
+    categoryName: String = "",
+    activeProfileId: String? = null,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteCompleted: () -> Unit,
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(itemId) {
-        viewModel.loadItem(itemId)
+        viewModel.loadItem(itemId, categoryName, activeProfileId)
     }
 
     val state by viewModel.state.collectAsState()
@@ -325,6 +327,7 @@ private fun ItemDetailContent(
             onImageClick = { imageReference -> selectedImageForPreview = imageReference },
         )
         OverallScoreSection(overallScoreText = state.overallScoreText)
+        ProfileBreakdownSection(profileBreakdown = state.profileBreakdown)
         HorizontalDivider()
         DiamondChartSection(points = state.diamondChartPoints)
         HorizontalDivider()
@@ -362,6 +365,47 @@ private fun OverallScoreSection(overallScoreText: String) {
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun ProfileBreakdownSection(profileBreakdown: ItemProfileBreakdown?) {
+    if (profileBreakdown == null) return
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = profileBreakdown.profileName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "#${profileBreakdown.profileRank} of ${profileBreakdown.totalItems}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = profileBreakdown.profileScoreText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
         }
     }
 }
