@@ -3,15 +3,21 @@ package com.juzgon.feature.item
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoreProfile
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
+import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.repository.ScoreProfileRepository
+import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,13 +33,24 @@ class ItemDetailViewModelTest {
 
     private lateinit var repository: FakeDetailRatedItemRepository
     private lateinit var snapshotRepository: FakeDetailAttributeRankSnapshotRepository
+    private lateinit var categoryRepository: FakeDetailCategoryRepository
+    private lateinit var scoreProfileRepository: FakeDetailScoreProfileRepository
     private lateinit var viewModel: ItemDetailViewModel
 
     @Before
     fun setUp() {
         repository = FakeDetailRatedItemRepository()
         snapshotRepository = FakeDetailAttributeRankSnapshotRepository()
-        viewModel = ItemDetailViewModel(repository, snapshotRepository)
+        categoryRepository = FakeDetailCategoryRepository()
+        scoreProfileRepository = FakeDetailScoreProfileRepository()
+        viewModel =
+            ItemDetailViewModel(
+                repository,
+                snapshotRepository,
+                categoryRepository,
+                scoreProfileRepository,
+                CalculateProfileRankedItemsUseCase(),
+            )
     }
 
     @Test
@@ -335,6 +352,108 @@ class ItemDetailViewModelTest {
         }
 
     @Test
+    fun profileBreakdownShownWhenProfileActive() =
+        runTest {
+            val speedAttr = Attribute("Speed", weight = 1.0)
+            val brakesAttr = Attribute("Brakes", weight = 1.0)
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(speedAttr, 8), ScoreEntry(brakesAttr, 6)),
+                )
+            repository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "Roadster",
+                                scores = listOf(ScoreEntry(speedAttr, 8), ScoreEntry(brakesAttr, 6)),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "Sedan",
+                                scores = listOf(ScoreEntry(speedAttr, 5), ScoreEntry(brakesAttr, 4)),
+                            ),
+                        aggregateScore = 4.5,
+                    ),
+                )
+            categoryRepository.category =
+                Category(name = "Cars", attributes = listOf(speedAttr, brakesAttr))
+            scoreProfileRepository.profile =
+                ScoreProfile(
+                    id = "profile-1",
+                    categoryName = "Cars",
+                    name = "Speed Focus",
+                    includedAttributeIds = listOf("Speed"),
+                )
+
+            viewModel.loadItem("Roadster", "Cars", "profile-1")
+
+            val breakdown = viewModel.state.value.profileBreakdown
+            assertEquals("Speed Focus", breakdown?.profileName)
+            assertEquals("8.0", breakdown?.profileScoreText)
+            assertEquals(1, breakdown?.profileRank)
+            assertEquals(2, breakdown?.totalItems)
+            assertEquals(setOf("Speed"), breakdown?.includedAttributeIds)
+        }
+
+    @Test
+    fun profileBreakdownNullWhenNoProfile() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(Attribute("Speed"), 8)),
+                )
+
+            viewModel.loadItem("Roadster", "Cars", null)
+
+            assertNull(viewModel.state.value.profileBreakdown)
+        }
+
+    @Test
+    fun profileBreakdownReflectsCorrectRankAmongItems() =
+        runTest {
+            val speedAttr = Attribute("Speed", weight = 1.0)
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores = listOf(ScoreEntry(speedAttr, 5)),
+                )
+            repository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item = RatedItem(id = "Sedan", scores = listOf(ScoreEntry(speedAttr, 9))),
+                        aggregateScore = 9.0,
+                    ),
+                    RankedRatedItem(
+                        item = RatedItem(id = "Roadster", scores = listOf(ScoreEntry(speedAttr, 5))),
+                        aggregateScore = 5.0,
+                    ),
+                )
+            categoryRepository.category =
+                Category(name = "Cars", attributes = listOf(speedAttr))
+            scoreProfileRepository.profile =
+                ScoreProfile(
+                    id = "profile-1",
+                    categoryName = "Cars",
+                    name = "All",
+                    includedAttributeIds = listOf("Speed"),
+                )
+
+            viewModel.loadItem("Roadster", "Cars", "profile-1")
+
+            assertEquals(
+                2,
+                viewModel.state.value.profileBreakdown
+                    ?.profileRank,
+            )
+        }
+
+    @Test
     fun deleteConfirmedDeletesItemAndMarksCompletion() =
         runTest {
             repository.item.value =
@@ -351,13 +470,14 @@ class ItemDetailViewModelTest {
 
     private class FakeDetailRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
+        val rankedItems = MutableStateFlow<List<RankedRatedItem>>(emptyList())
         var deletedItemId: String? = null
 
         override fun observeRatedItems(): Flow<List<RatedItem>> = error("not used")
 
         override fun observeRatedItem(id: String): Flow<RatedItem?> = item
 
-        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> = error("not used")
+        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> = rankedItems
 
         override suspend fun saveRatedItem(ratedItem: RatedItem) = error("not used")
 
@@ -375,6 +495,36 @@ class ItemDetailViewModelTest {
         val snapshots = MutableStateFlow<List<AttributeRankSnapshot>>(emptyList())
 
         override fun observeSnapshotsForItem(itemId: String): Flow<List<AttributeRankSnapshot>> = snapshots
+    }
+
+    private class FakeDetailCategoryRepository : CategoryRepository {
+        var category: Category? = null
+
+        override fun observeCategories(): Flow<List<Category>> = error("not used")
+
+        override fun observeCategory(name: String): Flow<Category?> = flowOf(category)
+
+        override suspend fun saveCategory(category: Category) = error("not used")
+
+        override suspend fun renameCategory(
+            originalName: String,
+            category: Category,
+            renamedAttributeIds: Map<String, String>,
+        ) = error("not used")
+
+        override suspend fun deleteCategory(name: String) = error("not used")
+    }
+
+    private class FakeDetailScoreProfileRepository : ScoreProfileRepository {
+        var profile: ScoreProfile? = null
+
+        override fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfile>> = error("not used")
+
+        override fun observeProfile(id: String): Flow<ScoreProfile?> = flowOf(profile)
+
+        override suspend fun saveProfile(profile: ScoreProfile) = error("not used")
+
+        override suspend fun deleteProfile(id: String) = error("not used")
     }
 
     private fun movementHistorySnapshots(): List<AttributeRankSnapshot> =

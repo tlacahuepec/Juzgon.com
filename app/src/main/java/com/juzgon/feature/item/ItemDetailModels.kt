@@ -83,6 +83,14 @@ data class ItemDetailAttributeValue(
     val imageReferences: List<ItemImageReference> = emptyList(),
 )
 
+data class ItemProfileBreakdown(
+    val profileName: String,
+    val profileScoreText: String,
+    val profileRank: Int,
+    val totalItems: Int,
+    val includedAttributeIds: Set<String>,
+)
+
 data class ItemDetailUiState(
     val itemId: String = "",
     val primaryImage: ItemImageReference? = null,
@@ -97,6 +105,7 @@ data class ItemDetailUiState(
     val showDeleteConfirmDialog: Boolean = false,
     val isDeleting: Boolean = false,
     val deleteCompleted: Boolean = false,
+    val profileBreakdown: ItemProfileBreakdown? = null,
 )
 
 internal fun formatAttributeValue(

@@ -22,13 +22,16 @@ import com.juzgon.feature.scoreprofile.ScoreProfileListRoute
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 private const val ITEM_ID_ARGUMENT = "itemId"
 private const val PROFILE_ID_ARGUMENT = "profileId"
+private const val ACTIVE_PROFILE_ID_ARGUMENT = "activeProfileId"
 
 object JuzgonRoutes {
     const val HOME = "home"
     const val CREATE_CATEGORY = "category/create"
     const val EDIT_CATEGORY = "category/edit/{$CATEGORY_NAME_ARGUMENT}"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
-    const val ITEM_DETAIL = "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
+    const val ITEM_DETAIL =
+        "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}" +
+            "?$ACTIVE_PROFILE_ID_ARGUMENT={$ACTIVE_PROFILE_ID_ARGUMENT}"
     const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
     const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
     const val SCORE_PROFILES = "score-profiles/{$CATEGORY_NAME_ARGUMENT}"
@@ -42,7 +45,15 @@ object JuzgonRoutes {
     fun itemDetail(
         categoryName: String,
         itemId: String,
-    ): String = "item/detail/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
+        activeProfileId: String? = null,
+    ): String {
+        val base = "item/detail/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
+        return if (activeProfileId != null) {
+            "$base?$ACTIVE_PROFILE_ID_ARGUMENT=${Uri.encode(activeProfileId)}"
+        } else {
+            base
+        }
+    }
 
     fun createItem(categoryName: String): String = "item/create/${Uri.encode(categoryName)}"
 
@@ -107,7 +118,7 @@ internal fun JuzgonNavHost(
         categoryName: String,
         onBack: () -> Unit,
         onAddItem: () -> Unit,
-        onEditItem: (String) -> Unit,
+        onEditItem: (String, String?) -> Unit,
         onEditCategory: () -> Unit,
         onDeleteComplete: () -> Unit,
         onScoreProfiles: () -> Unit,
@@ -147,12 +158,16 @@ internal fun JuzgonNavHost(
     },
     itemDetailContent: @Composable (
         itemId: String,
+        categoryName: String,
+        activeProfileId: String?,
         onBack: () -> Unit,
         onEditClick: () -> Unit,
         onDeleteCompleted: () -> Unit,
-    ) -> Unit = { itemId, onBack, onEditClick, onDeleteCompleted ->
+    ) -> Unit = { itemId, categoryName, activeProfileId, onBack, onEditClick, onDeleteCompleted ->
         ItemDetailRoute(
             itemId = itemId,
+            categoryName = categoryName,
+            activeProfileId = activeProfileId,
             onBackClick = onBack,
             onEditClick = onEditClick,
             onDeleteCompleted = onDeleteCompleted,
@@ -241,8 +256,10 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
-            val openItemDetail = { itemId: String ->
-                navController.navigate(JuzgonRoutes.itemDetail(categoryName, itemId)) {
+            val openItemDetail = { itemId: String, activeProfileId: String? ->
+                navController.navigate(
+                    JuzgonRoutes.itemDetail(categoryName, itemId, activeProfileId),
+                ) {
                     launchSingleTop = true
                 }
             }
@@ -283,11 +300,17 @@ internal fun JuzgonNavHost(
                     navArgument(ITEM_ID_ARGUMENT) {
                         type = NavType.StringType
                     },
+                    navArgument(ACTIVE_PROFILE_ID_ARGUMENT) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
                 ),
         ) { backStackEntry ->
             val categoryName =
                 Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
             val itemId = Uri.decode(backStackEntry.arguments?.getString(ITEM_ID_ARGUMENT).orEmpty())
+            val activeProfileId = backStackEntry.arguments?.getString(ACTIVE_PROFILE_ID_ARGUMENT)
             val returnBack = {
                 if (!navController.navigateUp()) {
                     navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
@@ -300,7 +323,7 @@ internal fun JuzgonNavHost(
                     launchSingleTop = true
                 }
             }
-            itemDetailContent(itemId, returnBack, openEdit, returnBack)
+            itemDetailContent(itemId, categoryName, activeProfileId, returnBack, openEdit, returnBack)
         }
         composable(
             route = JuzgonRoutes.CREATE_ITEM,
