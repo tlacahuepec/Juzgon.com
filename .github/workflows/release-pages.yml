@@ -1,0 +1,138 @@
+name: Release to GitHub Pages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      tag_valid: ${{ steps.extract.outputs.tag_valid }}
+    steps:
+      - name: Extract and validate tag
+        id: extract
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag_valid=true" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_valid=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Invalid tag format: $TAG. Expected vX.Y.Z"
+            exit 1
+          fi
+
+  build-and-release:
+    runs-on: ubuntu-latest
+    needs: validate-tag
+    if: needs.validate-tag.outputs.tag_valid == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests before release
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build release APK and AAB
+        run: ./gradlew :app:assembleRelease :app:bundleRelease
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-tag.outputs.version }}
+          name: "Release ${{ needs.validate-tag.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    needs: [validate-tag, build-and-release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Prepare pages content
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          mkdir -p pages/${VERSION}
+          cp app/build/outputs/apk/release/*.apk pages/${VERSION}/
+
+          cat > pages/${VERSION}/index.html << 'PAGEEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Juzgon - VERSIONPLACEHOLDER</title></head>
+          <body>
+          <h1>Juzgon VERSIONPLACEHOLDER</h1>
+          <ul>
+          <li><a href="app-release.apk">Download APK</a></li>
+          </ul>
+          <p><a href="../latest/">Latest version</a> | <a href="../">All versions</a></p>
+          </body>
+          </html>
+          PAGEEOF
+          sed -i "s/VERSIONPLACEHOLDER/${VERSION}/g" pages/${VERSION}/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages
+          destination_dir: ${{ needs.validate-tag.outputs.version }}
+          keep_files: true
+
+      - name: Update latest
+        run: |
+          mkdir -p pages-latest/latest
+          cp app/build/outputs/apk/release/*.apk pages-latest/latest/
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          cat > pages-latest/latest/index.html << EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Juzgon - Latest</title></head>
+          <body>
+          <h1>Juzgon Latest (${VERSION})</h1>
+          <ul>
+          <li><a href="app-release.apk">Download APK</a></li>
+          </ul>
+          <p><a href="../${VERSION}/">This version</a> | <a href="../">All versions</a></p>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy latest to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages-latest/latest
+          destination_dir: latest
+          keep_files: false
