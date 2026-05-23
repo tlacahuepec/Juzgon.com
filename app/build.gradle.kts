@@ -11,6 +11,19 @@ plugins {
 
 val roomSchemaDir = "$projectDir/schemas"
 
+fun getGitSha(): String =
+    try {
+        ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+            .directory(projectDir)
+            .start()
+            .inputStream
+            .bufferedReader()
+            .readText()
+            .trim()
+    } catch (_: Exception) {
+        "unknown"
+    }
+
 android {
     namespace = "com.juzgon"
     compileSdk = 36
@@ -24,6 +37,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "BUILD_CHANNEL", "\"dev\"")
+        buildConfigField("String", "GIT_SHA", "\"${getGitSha()}\"")
+        buildConfigField("String", "BUILD_TIMESTAMP", "\"${System.currentTimeMillis()}\"")
     }
 
     buildTypes {

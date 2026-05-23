@@ -266,6 +266,39 @@ class HomeScreenTest {
         assertTrue(exportClicked)
     }
 
+    @Test
+    fun aboutButtonIsDisplayedAndInvokesCallback() {
+        var aboutClicked = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                            onAboutClick = { aboutClicked = true },
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("About").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("About").performClick()
+
+        assertTrue(aboutClicked)
+    }
+
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
         assertWidthIsAtLeast(48.dp)
         assertHeightIsAtLeast(48.dp)
