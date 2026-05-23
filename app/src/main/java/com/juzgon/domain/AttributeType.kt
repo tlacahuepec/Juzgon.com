@@ -8,4 +8,5 @@ enum class AttributeType {
     URL,
     NOTES,
     IMAGE,
+    NATIONALITY,
 }
