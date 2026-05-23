@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.juzgon.BuildConfig
 import com.juzgon.data.backup.JsonBackupService
+import com.juzgon.data.backup.JsonBackupValidator
 import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
@@ -17,6 +18,7 @@ import com.juzgon.data.repository.RoomScoreProfileRepository
 import com.juzgon.domain.AppClock
 import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.backup.BackupValidator
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
@@ -82,6 +84,10 @@ object DataModule {
             itemDao = database.itemDao(),
             scoreProfileDao = database.scoreProfileDao(),
         )
+
+    @Provides
+    @Singleton
+    fun provideBackupValidator(): BackupValidator = JsonBackupValidator()
 
     @Provides
     @Singleton
