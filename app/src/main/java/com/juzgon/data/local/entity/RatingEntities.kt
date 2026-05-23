@@ -45,6 +45,8 @@ data class AttributeEntity(
     val displayInDiamond: Boolean = true,
     @ColumnInfo(name = "diamond_order")
     val diamondOrder: Int? = null,
+    @ColumnInfo(name = "scoring_direction")
+    val scoringDirection: String? = null,
 )
 
 @Entity(

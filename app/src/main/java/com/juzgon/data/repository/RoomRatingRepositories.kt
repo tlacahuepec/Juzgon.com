@@ -11,11 +11,15 @@ import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
 import com.juzgon.data.local.mapper.toItemValueEntities
 import com.juzgon.data.local.mapper.toRatingEntities
+import com.juzgon.domain.AppClock
 import com.juzgon.domain.AttributeRankSnapshot
+import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.RatingSystem
+import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.buildAttributeRankSnapshots
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
@@ -135,6 +139,7 @@ class RoomAttributeRankSnapshotRepository(
 
 class RoomRatedItemRepository(
     private val database: JuzgonDatabase,
+    private val dateScoreCalculator: DateScoreCalculator = DateScoreCalculator(AppClock { java.time.LocalDate.now() }),
     private val currentTimeMillis: () -> Long = { System.currentTimeMillis() },
 ) : RatedItemRepository {
     private val categoryDao = database.categoryDao()
@@ -166,23 +171,39 @@ class RoomRatedItemRepository(
             categoryDao.observeAttributes(),
         ) { rankedItems, attributes ->
             val categoryAttributes = attributes.filter { it.categoryName == categoryName }
-            val categoryNumberAttributes = categoryAttributes.filter { it.type == "NUMBER" }
-            if (categoryNumberAttributes.isEmpty()) {
+            val attributesById = categoryAttributes.associate { it.id to it.toDomain() }
+            val rankableAttributes =
+                attributesById.values.filter { attribute -> attribute.isRankable }
+            if (rankableAttributes.isEmpty()) {
                 emptyList()
             } else {
-                val attributesById = categoryAttributes.associate { it.id to it.toDomain() }
-                val numberAttributeIds = categoryNumberAttributes.map { it.id }.toSet()
-                val ratingSystem =
-                    RatingSystem(
-                        categoryNumberAttributes.map { it.toDomain() },
-                    )
+                val numberAttributeIds =
+                    categoryAttributes.filter { it.type == "NUMBER" }.map { it.id }.toSet()
+                val ratingSystem = RatingSystem(rankableAttributes)
                 val ratedItems =
                     rankedItems.map { rankedItem ->
-                        rankedItem.item.toDomain(
-                            ratings = rankedItem.ratings.filter { it.attributeId in numberAttributeIds },
-                            attributesById = attributesById,
-                            valueEntities = rankedItem.values.filter { it.attributeId in attributesById },
-                        )
+                        val baseItem =
+                            rankedItem.item.toDomain(
+                                ratings = rankedItem.ratings.filter { it.attributeId in numberAttributeIds },
+                                attributesById = attributesById,
+                                valueEntities = rankedItem.values.filter { it.attributeId in attributesById },
+                            )
+                        val dateScores =
+                            rankableAttributes
+                                .filter { it.type == AttributeType.DATE }
+                                .mapNotNull { attribute ->
+                                    val dateValue =
+                                        baseItem.values
+                                            .firstOrNull { it.attribute.id == attribute.id }
+                                            ?.value
+                                            ?: return@mapNotNull null
+                                    val direction = attribute.scoringDirection ?: return@mapNotNull null
+                                    val score =
+                                        dateScoreCalculator.calculate(dateValue, direction)
+                                            ?: return@mapNotNull null
+                                    ScoreEntry(attribute = attribute, score = score)
+                                }
+                        baseItem.copy(scores = baseItem.scores + dateScores)
                     }
                 rankRatedItemsUseCase(ratingSystem, ratedItems)
             }

@@ -5,13 +5,16 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.juzgon.data.local.JuzgonDatabase
+import com.juzgon.domain.AppClock
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import kotlinx.coroutines.flow.first
@@ -23,6 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -116,6 +120,49 @@ class RoomRatingRepositoryRankingTest {
                     ScoreEntry(attribute = Attribute(id = SERVICE), score = score),
                 ),
         )
+
+    @Test
+    fun observeRankedItems_includesDateScoresInAggregate() =
+        runTest {
+            val fixedToday = LocalDate.of(2026, 5, 23)
+            val clock = AppClock { fixedToday }
+            val dateCalculator = DateScoreCalculator(clock)
+            val repoWithClock = RoomRatedItemRepository(database, dateCalculator)
+
+            val releasedAttr =
+                Attribute(
+                    id = "released",
+                    type = AttributeType.DATE,
+                    scoringDirection = ScoringDirection.NEWER_IS_BETTER,
+                )
+            categoryRepository.saveCategory(
+                Category(
+                    name = FOOD_CATEGORY,
+                    attributes = listOf(Attribute(TASTE), releasedAttr),
+                ),
+            )
+
+            val newItem =
+                RatedItem(
+                    id = "item-new",
+                    scores = listOf(ScoreEntry(attribute = Attribute(id = TASTE), score = 8)),
+                    values = listOf(ItemAttributeValue(releasedAttr, "2026-05-23")),
+                )
+            val oldItem =
+                RatedItem(
+                    id = "item-old",
+                    scores = listOf(ScoreEntry(attribute = Attribute(id = TASTE), score = 8)),
+                    values = listOf(ItemAttributeValue(releasedAttr, "2006-05-23")),
+                )
+            ratedItemRepository.saveRatedItem(newItem)
+            ratedItemRepository.saveRatedItem(oldItem)
+
+            val rankedItems = repoWithClock.observeRankedItems(FOOD_CATEGORY).first { it.size == 2 }
+
+            assertEquals("item-new", rankedItems[0].item.id)
+            assertEquals("item-old", rankedItems[1].item.id)
+            assert(rankedItems[0].aggregateScore > rankedItems[1].aggregateScore)
+        }
 
     private companion object {
         const val FOOD_CATEGORY = "Food"

@@ -3,6 +3,7 @@ package com.juzgon.feature.category
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ScoringDirection
 import java.util.Locale
 
 private const val DEFAULT_WEIGHT = 1.0
@@ -21,6 +22,7 @@ data class CategoryAttributeInput(
     val isRequired: Boolean = true,
     val displayInDiamond: Boolean = type == AttributeType.NUMBER,
     val diamondOrderText: String = "",
+    val scoringDirection: ScoringDirection? = null,
 )
 
 data class CategoryAttributeValidationError(
@@ -72,6 +74,8 @@ data class CategoryFormUiState(
                         isRequired = attribute.isRequired,
                         displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
                         diamondOrder = attribute.parsedDiamondOrder(),
+                        scoringDirection =
+                            if (attribute.type == AttributeType.DATE) attribute.scoringDirection else null,
                     )
                 },
         )
@@ -96,6 +100,7 @@ object CategoryFormReducer {
                         isRequired = attribute.isRequired,
                         displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
                         diamondOrderText = attribute.diamondOrder?.toString().orEmpty(),
+                        scoringDirection = attribute.scoringDirection,
                     )
                 },
         )

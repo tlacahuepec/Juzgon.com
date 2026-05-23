@@ -13,6 +13,7 @@ import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoringDirection
 
 fun Category.toEntity(): CategoryEntity = CategoryEntity(name = name)
 
@@ -27,6 +28,7 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
             isRequired = attribute.isRequired,
             displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
             diamondOrder = attribute.diamondOrder,
+            scoringDirection = attribute.scoringDirection?.name,
         )
     }
 
@@ -98,14 +100,16 @@ fun ItemEntity.toDomain(
 @Suppress("MaxLineLength")
 fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById, values)
 
-fun AttributeEntity.toDomain(): Attribute =
-    Attribute(
+fun AttributeEntity.toDomain(): Attribute {
+    val parsedType = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER)
+    val parsedDirection = scoringDirection?.let { runCatching { ScoringDirection.valueOf(it) }.getOrNull() }
+    return Attribute(
         id = id,
         weight = weight,
-        type = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER),
+        type = parsedType,
         isRequired = isRequired,
-        displayInDiamond =
-            runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER) == AttributeType.NUMBER &&
-                displayInDiamond,
+        displayInDiamond = parsedType == AttributeType.NUMBER && displayInDiamond,
         diamondOrder = diamondOrder,
+        scoringDirection = if (parsedType == AttributeType.DATE) parsedDirection else null,
     )
+}
