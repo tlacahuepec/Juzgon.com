@@ -8,8 +8,11 @@ import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoreProfile
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.repository.ScoreProfileRepository
+import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,19 +23,30 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@Suppress("LargeClass")
 class CategoryDetailViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var categoryRepository: FakeCategoryRepository
     private lateinit var ratedItemRepository: FakeRatedItemRepository
+    private lateinit var scoreProfileRepository: FakeScoreProfileRepository
+    private lateinit var calculateProfileRankedItems: CalculateProfileRankedItemsUseCase
     private lateinit var viewModel: CategoryDetailViewModel
 
     @Before
     fun setUp() {
         categoryRepository = FakeCategoryRepository()
         ratedItemRepository = FakeRatedItemRepository()
-        viewModel = CategoryDetailViewModel(categoryRepository, ratedItemRepository)
+        scoreProfileRepository = FakeScoreProfileRepository()
+        calculateProfileRankedItems = CalculateProfileRankedItemsUseCase()
+        viewModel =
+            CategoryDetailViewModel(
+                categoryRepository,
+                ratedItemRepository,
+                scoreProfileRepository,
+                calculateProfileRankedItems,
+            )
     }
 
     @Test
@@ -638,6 +652,213 @@ class CategoryDetailViewModelTest {
             }
         }
 
+    @Test
+    fun profileSelectionReranksItems() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores =
+                                    listOf(
+                                        ScoreEntry(attribute = speed, score = 9),
+                                        ScoreEntry(attribute = brakes, score = 3),
+                                    ),
+                            ),
+                        aggregateScore = 6.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores =
+                                    listOf(
+                                        ScoreEntry(attribute = speed, score = 5),
+                                        ScoreEntry(attribute = brakes, score = 10),
+                                    ),
+                            ),
+                        aggregateScore = 7.5,
+                    ),
+                )
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Brakes Only",
+                        includedAttributeIds = listOf("Brakes"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
+
+                viewModel.onProfileSelected("p1")
+                state = awaitItem()
+
+                assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
+                assertEquals("10.0", state.items[0].averageScoreText)
+                assertEquals("3.0", state.items[1].averageScoreText)
+            }
+        }
+
+    @Test
+    fun defaultProfileRestoresOriginalRanking() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores =
+                                    listOf(
+                                        ScoreEntry(attribute = speed, score = 9),
+                                        ScoreEntry(attribute = brakes, score = 3),
+                                    ),
+                            ),
+                        aggregateScore = 6.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores =
+                                    listOf(
+                                        ScoreEntry(attribute = speed, score = 5),
+                                        ScoreEntry(attribute = brakes, score = 10),
+                                    ),
+                            ),
+                        aggregateScore = 7.5,
+                    ),
+                )
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Brakes Only",
+                        includedAttributeIds = listOf("Brakes"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onProfileSelected("p1")
+                state = awaitItem()
+
+                viewModel.onProfileSelected(null)
+                state = awaitItem()
+
+                assertEquals(listOf("coupe", "sedan"), state.items.map { it.id })
+                assertEquals("7.5", state.items[0].averageScoreText)
+                assertEquals("6.0", state.items[1].averageScoreText)
+            }
+        }
+
+    @Test
+    fun profilesListExposedInState() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Speed Focus",
+                        includedAttributeIds = listOf("Speed"),
+                    ),
+                    ScoreProfile(
+                        id = "p2",
+                        categoryName = "Cars",
+                        name = "Brakes Only",
+                        includedAttributeIds = listOf("Brakes"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf(
+                        ProfileOption(id = null, name = "All Attributes"),
+                        ProfileOption(id = "p1", name = "Speed Focus"),
+                        ProfileOption(id = "p2", name = "Brakes Only"),
+                    ),
+                    state.profiles,
+                )
+            }
+        }
+
+    @Test
+    fun activeProfileLabelShownWhenSelected() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Brakes Only",
+                        includedAttributeIds = listOf("Brakes"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onProfileSelected("p1")
+                state = awaitItem()
+
+                assertEquals("Ranking: Brakes Only", state.activeProfileLabel)
+                assertEquals("p1", state.activeProfileId)
+            }
+        }
+
+    @Test
+    fun activeProfileLabelNullForDefault() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Brakes Only",
+                        includedAttributeIds = listOf("Brakes"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(null, state.activeProfileLabel)
+                assertEquals(null, state.activeProfileId)
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val category = MutableStateFlow<Category?>(null)
 
@@ -690,6 +911,24 @@ class CategoryDetailViewModelTest {
 
         override suspend fun deleteRatedItem(id: String) {
             error("CategoryDetailViewModel does not delete rated items")
+        }
+    }
+
+    private class FakeScoreProfileRepository : ScoreProfileRepository {
+        val profiles = MutableStateFlow(emptyList<ScoreProfile>())
+
+        override fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfile>> = profiles
+
+        override fun observeProfile(id: String): Flow<ScoreProfile?> {
+            error("CategoryDetailViewModel does not observe single profiles")
+        }
+
+        override suspend fun saveProfile(profile: ScoreProfile) {
+            error("CategoryDetailViewModel does not save profiles")
+        }
+
+        override suspend fun deleteProfile(id: String) {
+            error("CategoryDetailViewModel does not delete profiles")
         }
     }
 
