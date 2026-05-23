@@ -7,11 +7,13 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,11 +21,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,16 +37,21 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -352,8 +362,24 @@ private fun CategoryDetailItemList(
     }
 }
 
+private const val INLINE_SORT_OPTIONS_THRESHOLD = 6
+private const val SORT_SHEET_SEARCH_THRESHOLD = 10
+
 @Composable
 private fun CategoryDetailSortControls(
+    selectedOption: CategoryDetailSortOption,
+    sortOptions: List<CategoryDetailSortOptionUiModel>,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+) {
+    if (sortOptions.size <= INLINE_SORT_OPTIONS_THRESHOLD) {
+        InlineSortChips(selectedOption, sortOptions, onSortOptionSelected)
+    } else {
+        CompactSortTrigger(selectedOption, sortOptions, onSortOptionSelected)
+    }
+}
+
+@Composable
+private fun InlineSortChips(
     selectedOption: CategoryDetailSortOption,
     sortOptions: List<CategoryDetailSortOptionUiModel>,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
@@ -361,6 +387,7 @@ private fun CategoryDetailSortControls(
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
         sortOptions.forEach { sortOption ->
             FilterChip(
@@ -374,6 +401,168 @@ private fun CategoryDetailSortControls(
                             contentDescription = sortOption.contentDescription
                         },
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompactSortTrigger(
+    selectedOption: CategoryDetailSortOption,
+    sortOptions: List<CategoryDetailSortOptionUiModel>,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+) {
+    var showSheet by remember { mutableStateOf(false) }
+    val selectedLabel =
+        sortOptions.firstOrNull { it.option == selectedOption }?.label ?: "Score"
+
+    FilterChip(
+        selected = true,
+        onClick = { showSheet = true },
+        label = { Text("Sorted by: $selectedLabel") },
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+            )
+        },
+        modifier =
+            Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .semantics {
+                    contentDescription = "Sort options, currently sorted by $selectedLabel"
+                },
+    )
+
+    if (showSheet) {
+        SortOptionsBottomSheet(
+            selectedOption = selectedOption,
+            sortOptions = sortOptions,
+            onSortOptionSelected = { option ->
+                onSortOptionSelected(option)
+                showSheet = false
+            },
+            onDismiss = { showSheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SortOptionsBottomSheet(
+    selectedOption: CategoryDetailSortOption,
+    sortOptions: List<CategoryDetailSortOptionUiModel>,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var searchQuery by remember { mutableStateOf("") }
+    val showSearch = sortOptions.size >= SORT_SHEET_SEARCH_THRESHOLD
+
+    val filteredOptions =
+        remember(searchQuery, sortOptions) {
+            if (searchQuery.isBlank()) {
+                sortOptions
+            } else {
+                sortOptions.filter { option ->
+                    option.label.contains(searchQuery, ignoreCase = true)
+                }
+            }
+        }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Sort by",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier =
+                    Modifier
+                        .padding(bottom = 12.dp)
+                        .semantics { contentDescription = "Sort options sheet" },
+            )
+            if (showSearch) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Search attributes") },
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .semantics { contentDescription = "Search sort options" },
+                )
+            }
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+            ) {
+                items(
+                    items = filteredOptions,
+                    key = { option -> option.contentDescription },
+                ) { sortOption ->
+                    SortOptionRow(
+                        sortOption = sortOption,
+                        isSelected = selectedOption == sortOption.option,
+                        onClick = { onSortOptionSelected(sortOption.option) },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun SortOptionRow(
+    sortOption: CategoryDetailSortOptionUiModel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color =
+            if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        shape = MaterialTheme.shapes.small,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .sizeIn(minHeight = 48.dp)
+                .semantics {
+                    contentDescription = sortOption.contentDescription
+                    role = Role.Button
+                },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = sortOption.label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            )
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
