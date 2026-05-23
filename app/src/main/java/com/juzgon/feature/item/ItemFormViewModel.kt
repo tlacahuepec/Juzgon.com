@@ -105,10 +105,17 @@ class ItemFormViewModel
                         otherAttrs.map { attribute ->
                             val existingValue = valuesByAttributeId[attribute.id]?.value
                             val defaultValue = if (attribute.type == AttributeType.BOOLEAN) "false" else ""
-                            ItemValueInput(
-                                attribute = attribute,
-                                valueText = existingValue ?: defaultValue,
-                            )
+                            if (attribute.type == AttributeType.IMAGE) {
+                                ItemValueInput(
+                                    attribute = attribute,
+                                    imageReferences = decodeItemImageReferences(existingValue.orEmpty()),
+                                )
+                            } else {
+                                ItemValueInput(
+                                    attribute = attribute,
+                                    valueText = existingValue ?: defaultValue,
+                                )
+                            }
                         },
                     isLoading = false,
                 )
@@ -173,30 +180,50 @@ class ItemFormViewModel
             }
         }
 
-        fun onImageSelected(
+        fun onImagesSelected(
             attributeId: String,
-            imageUri: String,
-            mimeType: String?,
-            sizeBytes: Long?,
-            displayName: String?,
+            selectedImages: List<SelectedImageMetadata>,
         ) {
+            if (selectedImages.isEmpty()) return
             mutableState.update {
+                var duplicateCount = 0
                 it.copy(
                     values =
                         it.values.map { valueInput ->
                             if (valueInput.attribute.id == attributeId) {
-                                valueInput.copy(
-                                    valueText = imageUri,
-                                    imageMimeType = mimeType,
-                                    imageSizeBytes = sizeBytes,
-                                    imageDisplayName = displayName,
-                                )
+                                val existingReferences = valueInput.imageReferences.toMutableList()
+                                val existingUris =
+                                    existingReferences.mapTo(mutableSetOf()) { reference ->
+                                        reference.sourceUri
+                                    }
+                                selectedImages.forEach { selectedImage ->
+                                    if (!existingUris.add(selectedImage.sourceUri)) {
+                                        duplicateCount += 1
+                                        return@forEach
+                                    }
+                                    existingReferences +=
+                                        buildImageReference(
+                                            sourceUri = selectedImage.sourceUri,
+                                            mimeType = selectedImage.mimeType,
+                                            sizeBytes = selectedImage.sizeBytes,
+                                            width = selectedImage.width,
+                                            height = selectedImage.height,
+                                            displayName = selectedImage.displayName,
+                                            createdAt = System.currentTimeMillis(),
+                                        )
+                                }
+                                valueInput.copy(imageReferences = existingReferences)
                             } else {
                                 valueInput
                             }
                         },
                     saveCompleted = false,
-                    errorMessage = null,
+                    errorMessage =
+                        if (duplicateCount > 0) {
+                            "$duplicateCount duplicate image assignment skipped"
+                        } else {
+                            null
+                        },
                 )
             }
         }
@@ -205,22 +232,25 @@ class ItemFormViewModel
             mutableState.update {
                 it.copy(
                     saveCompleted = false,
-                    errorMessage = "Unable to keep access to selected image",
+                    errorMessage = "Unable to keep access to one or more selected images",
                 )
             }
         }
 
-        fun onImageRemoved(attributeId: String) {
+        fun onImageRemoved(
+            attributeId: String,
+            imageId: String,
+        ) {
             mutableState.update {
                 it.copy(
                     values =
                         it.values.map { valueInput ->
                             if (valueInput.attribute.id == attributeId) {
                                 valueInput.copy(
-                                    valueText = "",
-                                    imageMimeType = null,
-                                    imageSizeBytes = null,
-                                    imageDisplayName = null,
+                                    imageReferences =
+                                        valueInput.imageReferences.filterNot { imageReference ->
+                                            imageReference.id == imageId
+                                        },
                                 )
                             } else {
                                 valueInput

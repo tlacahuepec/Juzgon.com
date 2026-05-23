@@ -33,13 +33,20 @@ data class ItemScoreValidationError(
 data class ItemValueInput(
     val attribute: Attribute,
     val valueText: String = if (attribute.type == AttributeType.BOOLEAN) "false" else "",
-    val imageMimeType: String? = null,
-    val imageSizeBytes: Long? = null,
-    val imageDisplayName: String? = null,
+    val imageReferences: List<ItemImageReference> = emptyList(),
 )
 
 data class ItemValueValidationError(
     val value: String? = null,
+)
+
+data class SelectedImageMetadata(
+    val sourceUri: String,
+    val mimeType: String?,
+    val sizeBytes: Long?,
+    val width: Int?,
+    val height: Int?,
+    val displayName: String?,
 )
 
 data class ItemFormUiState(
@@ -102,12 +109,26 @@ data class ItemFormUiState(
                     },
             values =
                 values
-                    .filter { it.valueText.isNotBlank() }
-                    .map { valueInput ->
-                        ItemAttributeValue(
-                            attribute = valueInput.attribute,
-                            value = valueInput.valueText.trim(),
-                        )
+                    .mapNotNull { valueInput ->
+                        when {
+                            valueInput.attribute.type == AttributeType.IMAGE -> {
+                                val encodedImages = encodeItemImageReferences(valueInput.imageReferences)
+                                encodedImages
+                                    .takeIf { it.isNotBlank() }
+                                    ?.let { value ->
+                                        ItemAttributeValue(
+                                            attribute = valueInput.attribute,
+                                            value = value,
+                                        )
+                                    }
+                            }
+                            valueInput.valueText.isNotBlank() ->
+                                ItemAttributeValue(
+                                    attribute = valueInput.attribute,
+                                    value = valueInput.valueText.trim(),
+                                )
+                            else -> null
+                        }
                     },
         )
 }
@@ -124,28 +145,36 @@ private fun ItemScoreInput.scoreError(): String? {
 }
 
 private fun ItemValueInput.valueError(): String? {
-    val requiredError =
-        if (attribute.isRequired && valueText.isBlank()) {
-            "${attribute.id} is required"
-        } else {
-            null
-        }
-    return requiredError ?: takeIf { attribute.type == AttributeType.IMAGE && valueText.isNotBlank() }?.imageError()
+    if (attribute.type == AttributeType.IMAGE) {
+        return imageListError()
+    }
+    return if (attribute.isRequired && valueText.isBlank()) {
+        "${attribute.id} is required"
+    } else {
+        null
+    }
 }
 
-private fun ItemValueInput.imageError(): String? =
-    when {
-        !hasSupportedImageFormat() -> "Image must be JPG, JPEG, PNG, or WEBP"
-        imageSizeBytes != null && imageSizeBytes > IMAGE_MAX_SIZE_BYTES ->
-            "Image must be $IMAGE_MAX_SIZE_LABEL or smaller"
-        else -> null
+@Suppress("ReturnCount")
+private fun ItemValueInput.imageListError(): String? {
+    if (attribute.isRequired && imageReferences.isEmpty()) {
+        return "${attribute.id} is required"
     }
+    imageReferences.forEach { imageReference ->
+        when {
+            !imageReference.hasSupportedImageFormat() -> return "Image must be JPG, JPEG, PNG, or WEBP"
+            imageReference.sizeBytes != null && imageReference.sizeBytes > IMAGE_MAX_SIZE_BYTES ->
+                return "Image must be $IMAGE_MAX_SIZE_LABEL or smaller"
+        }
+    }
+    return null
+}
 
-private fun ItemValueInput.hasSupportedImageFormat(): Boolean {
-    val normalizedMimeType = imageMimeType?.lowercase(Locale.ROOT)
+private fun ItemImageReference.hasSupportedImageFormat(): Boolean {
+    val normalizedMimeType = mimeType?.lowercase(Locale.ROOT)
     if (normalizedMimeType != null) return normalizedMimeType in SUPPORTED_IMAGE_MIME_TYPES
 
-    val extension = imageExtension(imageDisplayName) ?: imageExtension(valueText)
+    val extension = imageExtension(displayName) ?: imageExtension(sourceUri)
     return extension == null || extension in SUPPORTED_IMAGE_EXTENSIONS
 }
 

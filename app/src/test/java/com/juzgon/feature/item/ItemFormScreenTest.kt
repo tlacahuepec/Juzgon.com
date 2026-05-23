@@ -292,8 +292,14 @@ class ItemFormScreenTest {
                     listOf(
                         ItemValueInput(
                             attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false),
-                            valueText = "content://images/roadster",
-                            imageDisplayName = "roadster.png",
+                            imageReferences =
+                                listOf(
+                                    ItemImageReference(
+                                        id = "1",
+                                        sourceUri = "content://images/roadster",
+                                        displayName = "roadster.png",
+                                    ),
+                                ),
                         ),
                     ),
             ),
@@ -323,39 +329,56 @@ class ItemFormScreenTest {
     @Test
     fun imageRemoveButtonInvokesCallbackForOptionalImage() {
         var removedAttribute: String? = null
+        var removedImageId: String? = null
         setContent(
             loadedState().copy(
                 values =
                     listOf(
                         ItemValueInput(
                             attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false),
-                            valueText = "content://images/roadster",
+                            imageReferences =
+                                listOf(
+                                    ItemImageReference(
+                                        id = "roadster-id",
+                                        sourceUri = "content://images/roadster",
+                                    ),
+                                ),
                         ),
                     ),
             ),
-            onImageRemoveClick = { removedAttribute = it },
+            onImageRemoveClick = { attributeId, imageId ->
+                removedAttribute = attributeId
+                removedImageId = imageId
+            },
         )
 
         composeRule.onNodeWithContentDescription("Remove Photo image").performScrollTo().performClick()
 
         assertEquals("Photo", removedAttribute)
+        assertEquals("roadster-id", removedImageId)
     }
 
     @Test
-    fun requiredImageDoesNotRenderRemoveButton() {
+    fun requiredImageStillRendersRemoveButtonForReplacement() {
         setContent(
             loadedState().copy(
                 values =
                     listOf(
                         ItemValueInput(
                             attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true),
-                            valueText = "content://images/roadster",
+                            imageReferences =
+                                listOf(
+                                    ItemImageReference(
+                                        id = "1",
+                                        sourceUri = "content://images/roadster",
+                                    ),
+                                ),
                         ),
                     ),
             ),
         )
 
-        composeRule.onNodeWithContentDescription("Remove Photo image").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Remove Photo image").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -386,7 +409,7 @@ class ItemFormScreenTest {
         onScoreDecrement: (String) -> Unit = {},
         onValueChange: (String, String) -> Unit = { _, _ -> },
         onImageSelectClick: (String) -> Unit = {},
-        onImageRemoveClick: (String) -> Unit = {},
+        onImageRemoveClick: (String, String) -> Unit = { _, _ -> },
     ) {
         composeRule.setContent {
             MaterialTheme {

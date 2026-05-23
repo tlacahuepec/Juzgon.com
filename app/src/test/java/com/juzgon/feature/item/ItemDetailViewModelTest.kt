@@ -280,6 +280,14 @@ class ItemDetailViewModelTest {
             assertEquals("Photo", state.attributeValues.single().label)
             assertEquals("content://images/roadster", state.attributeValues.single().value)
             assertEquals(AttributeType.IMAGE, state.attributeValues.single().type)
+            assertEquals(
+                "content://images/roadster",
+                state.attributeValues
+                    .single()
+                    .imageReferences
+                    .single()
+                    .sourceUri,
+            )
         }
 
     @Test
@@ -295,7 +303,11 @@ class ItemDetailViewModelTest {
 
             viewModel.loadItem("Roadster")
 
-            assertEquals("content://images/roadster", viewModel.state.value.primaryImageValue)
+            assertEquals(
+                "content://images/roadster",
+                viewModel.state.value.primaryImage
+                    ?.sourceUri,
+            )
         }
 
     @Test

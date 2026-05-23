@@ -79,11 +79,12 @@ data class ItemDetailAttributeValue(
     val value: String,
     val type: AttributeType,
     val displayValue: String = formatAttributeValue(type, value),
+    val imageReferences: List<ItemImageReference> = emptyList(),
 )
 
 data class ItemDetailUiState(
     val itemId: String = "",
-    val primaryImageValue: String? = null,
+    val primaryImage: ItemImageReference? = null,
     val overallScoreText: String = "",
     val attributeScores: List<ItemDetailAttributeScore> = emptyList(),
     val rankedAttributes: List<RankedAttributeCardUiModel> = emptyList(),

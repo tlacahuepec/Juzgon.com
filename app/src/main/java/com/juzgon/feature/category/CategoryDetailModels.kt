@@ -4,6 +4,7 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
+import com.juzgon.feature.item.decodeItemImageReferences
 import java.util.Locale
 
 sealed interface CategoryDetailSortOption {
@@ -224,15 +225,19 @@ private fun RatedItem.textValueForAttribute(attributeId: String): String? =
         ?.trim()
         ?.takeIf { valueText -> valueText.isNotEmpty() }
 
+@Suppress("ReturnCount")
 private fun RatedItem.primaryImageValue(category: Category): String? {
     val imageAttribute =
         category.attributes.firstOrNull { attribute ->
             attribute.type == AttributeType.IMAGE
         } ?: return null
-    return values
-        .firstOrNull { value -> value.attribute.id == imageAttribute.id }
-        ?.value
-        ?.takeIf { value -> value.isNotBlank() }
+    val rawValue =
+        values
+            .firstOrNull { value -> value.attribute.id == imageAttribute.id }
+            ?.value
+            ?.takeIf { value -> value.isNotBlank() }
+            ?: return null
+    return decodeItemImageReferences(rawValue).firstOrNull()?.sourceUri
 }
 
 private fun Int.toAttributeSummary(): String =

@@ -57,19 +57,34 @@ class ItemDetailScreenTest {
                             label = "Photo",
                             value = "content://images/roadster",
                             type = AttributeType.IMAGE,
+                            imageReferences =
+                                listOf(
+                                    ItemImageReference(
+                                        id = "1",
+                                        sourceUri = "content://images/roadster",
+                                    ),
+                                ),
                         ),
                     ),
             ),
         )
 
         composeRule.onNodeWithText("Attributes").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Photo image preview").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Photo").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("content://images/roadster").assertDoesNotExist()
     }
 
     @Test
     fun loadedScreenRendersProminentPrimaryImage() {
-        setContent(loadedState().copy(primaryImageValue = "content://images/roadster"))
+        setContent(
+            loadedState().copy(
+                primaryImage =
+                    ItemImageReference(
+                        id = "1",
+                        sourceUri = "content://images/roadster",
+                    ),
+            ),
+        )
 
         composeRule.onNodeWithContentDescription("Roadster image preview").assertIsDisplayed()
     }
