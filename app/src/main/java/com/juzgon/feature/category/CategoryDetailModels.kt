@@ -23,6 +23,7 @@ sealed interface CategoryDetailNavigationEvent {
 }
 
 data class CategoryDetailItemUiModel(
+    val rank: Int,
     val id: String,
     val averageScoreText: String,
     val imageValue: String? = null,
@@ -92,8 +93,9 @@ object CategoryDetailReducer {
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
-                sortedItems.map { rankedItem ->
+                sortedItems.mapIndexed { index, rankedItem ->
                     CategoryDetailItemUiModel(
+                        rank = index + 1,
                         id = rankedItem.item.id,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
                         imageValue = rankedItem.item.primaryImageValue(category),

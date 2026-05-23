@@ -408,7 +408,8 @@ private fun CategoryDetailItemRow(
                     role = Role.Button,
                     onClick = { onEditItemClick(item.id) },
                 ).semantics {
-                    contentDescription = "Rated item ${item.id}, average score ${item.averageScoreText}"
+                    contentDescription =
+                        "Rated item ${item.id}, rank ${item.rank}, average score ${item.averageScoreText}"
                     role = Role.Button
                 },
     ) {
@@ -500,6 +501,18 @@ private fun CategoryDetailItemOverlay(
                     .fillMaxWidth()
                     .padding(16.dp),
         ) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = "#${item.rank}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
             Text(
                 text = item.id,
                 style = MaterialTheme.typography.titleMedium,
