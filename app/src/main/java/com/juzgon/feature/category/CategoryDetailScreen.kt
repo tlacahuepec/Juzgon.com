@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +75,7 @@ fun CategoryDetailRoute(
     onEditItemClick: (String) -> Unit,
     onEditCategoryClick: () -> Unit,
     onDeleteCategoryComplete: () -> Unit,
+    onScoreProfilesClick: () -> Unit,
     viewModel: CategoryDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName) {
@@ -101,6 +103,7 @@ fun CategoryDetailRoute(
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDialogDismissed = viewModel::onDeleteDialogDismissed,
         onEditCategoryClick = viewModel::onEditCategoryClick,
+        onScoreProfilesClick = onScoreProfilesClick,
     )
 }
 
@@ -117,6 +120,7 @@ fun CategoryDetailScreen(
     onDeleteConfirmed: () -> Unit = {},
     onDeleteDialogDismissed: () -> Unit = {},
     onEditCategoryClick: () -> Unit = {},
+    onScoreProfilesClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
@@ -156,6 +160,21 @@ fun CategoryDetailScreen(
                 },
                 actions = {
                     if (!state.isLoading && state.errorMessage == null) {
+                        IconButton(
+                            onClick = onScoreProfilesClick,
+                            modifier =
+                                Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .semantics {
+                                        contentDescription = "Score profiles"
+                                        role = Role.Button
+                                    },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                            )
+                        }
                         IconButton(
                             onClick = onEditCategoryClick,
                             modifier =

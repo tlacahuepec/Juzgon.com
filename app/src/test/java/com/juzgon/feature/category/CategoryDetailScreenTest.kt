@@ -838,6 +838,7 @@ class CategoryDetailScreenTest {
         onDeleteConfirmed: () -> Unit = {},
         onDeleteDialogDismissed: () -> Unit = {},
         onEditCategoryClick: () -> Unit = {},
+        onScoreProfilesClick: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -852,6 +853,7 @@ class CategoryDetailScreenTest {
                     onDeleteConfirmed = onDeleteConfirmed,
                     onDeleteDialogDismissed = onDeleteDialogDismissed,
                     onEditCategoryClick = onEditCategoryClick,
+                    onScoreProfilesClick = onScoreProfilesClick,
                 )
             }
         }

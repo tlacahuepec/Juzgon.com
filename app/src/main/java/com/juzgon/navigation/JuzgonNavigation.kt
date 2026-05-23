@@ -16,9 +16,12 @@ import com.juzgon.feature.category.CategoryFormRoute
 import com.juzgon.feature.home.HomeRoute
 import com.juzgon.feature.item.ItemDetailRoute
 import com.juzgon.feature.item.ItemFormRoute
+import com.juzgon.feature.scoreprofile.ScoreProfileFormRoute
+import com.juzgon.feature.scoreprofile.ScoreProfileListRoute
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 private const val ITEM_ID_ARGUMENT = "itemId"
+private const val PROFILE_ID_ARGUMENT = "profileId"
 
 object JuzgonRoutes {
     const val HOME = "home"
@@ -28,6 +31,9 @@ object JuzgonRoutes {
     const val ITEM_DETAIL = "item/detail/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
     const val CREATE_ITEM = "item/create/{$CATEGORY_NAME_ARGUMENT}"
     const val EDIT_ITEM = "item/edit/{$CATEGORY_NAME_ARGUMENT}/{$ITEM_ID_ARGUMENT}"
+    const val SCORE_PROFILES = "score-profiles/{$CATEGORY_NAME_ARGUMENT}"
+    const val SCORE_PROFILE_FORM =
+        "score-profile/edit/{$CATEGORY_NAME_ARGUMENT}?$PROFILE_ID_ARGUMENT={$PROFILE_ID_ARGUMENT}"
 
     fun categoryDetail(categoryName: String): String = "category/${Uri.encode(categoryName)}"
 
@@ -44,6 +50,16 @@ object JuzgonRoutes {
         categoryName: String,
         itemId: String,
     ): String = "item/edit/${Uri.encode(categoryName)}/${Uri.encode(itemId)}"
+
+    fun scoreProfiles(categoryName: String): String = "score-profiles/${Uri.encode(categoryName)}"
+
+    fun scoreProfileForm(
+        categoryName: String,
+        profileId: String? = null,
+    ): String {
+        val base = "score-profile/edit/${Uri.encode(categoryName)}"
+        return if (profileId != null) "$base?$PROFILE_ID_ARGUMENT=${Uri.encode(profileId)}" else base
+    }
 }
 
 @Composable
@@ -94,7 +110,16 @@ internal fun JuzgonNavHost(
         onEditItem: (String) -> Unit,
         onEditCategory: () -> Unit,
         onDeleteComplete: () -> Unit,
-    ) -> Unit = { categoryName, onBack, onAddItem, onEditItem, onEditCategory, onDeleteComplete ->
+        onScoreProfiles: () -> Unit,
+    ) -> Unit = {
+        categoryName,
+        onBack,
+        onAddItem,
+        onEditItem,
+        onEditCategory,
+        onDeleteComplete,
+        onScoreProfiles,
+        ->
         CategoryDetailRoute(
             categoryName = categoryName,
             onBackClick = onBack,
@@ -102,6 +127,7 @@ internal fun JuzgonNavHost(
             onEditItemClick = onEditItem,
             onEditCategoryClick = onEditCategory,
             onDeleteCategoryComplete = onDeleteComplete,
+            onScoreProfilesClick = onScoreProfiles,
         )
     },
     itemFormContent: @Composable (
@@ -232,6 +258,11 @@ internal fun JuzgonNavHost(
                     }
                 }
             }
+            val openScoreProfiles = {
+                navController.navigate(JuzgonRoutes.scoreProfiles(categoryName)) {
+                    launchSingleTop = true
+                }
+            }
             categoryDetailContent(
                 categoryName,
                 returnBack,
@@ -239,6 +270,7 @@ internal fun JuzgonNavHost(
                 openItemDetail,
                 openEditCategory,
                 returnHome,
+                openScoreProfiles,
             )
         }
         composable(
@@ -324,6 +356,79 @@ internal fun JuzgonNavHost(
                 returnToCategory,
                 returnToCategory,
                 returnToCategory,
+            )
+        }
+        composable(
+            route = JuzgonRoutes.SCORE_PROFILES,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val returnBack = {
+                if (!navController.navigateUp()) {
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            val openCreate = {
+                navController.navigate(JuzgonRoutes.scoreProfileForm(categoryName)) {
+                    launchSingleTop = true
+                }
+            }
+            val openEdit = { profileId: String ->
+                navController.navigate(
+                    JuzgonRoutes.scoreProfileForm(categoryName, profileId),
+                ) {
+                    launchSingleTop = true
+                }
+            }
+            ScoreProfileListRoute(
+                categoryName = categoryName,
+                onBackClick = returnBack,
+                onCreateClick = openCreate,
+                onEditClick = openEdit,
+            )
+        }
+        composable(
+            route = JuzgonRoutes.SCORE_PROFILE_FORM,
+            arguments =
+                listOf(
+                    navArgument(CATEGORY_NAME_ARGUMENT) {
+                        type = NavType.StringType
+                    },
+                    navArgument(PROFILE_ID_ARGUMENT) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+        ) { backStackEntry ->
+            val categoryName =
+                Uri.decode(backStackEntry.arguments?.getString(CATEGORY_NAME_ARGUMENT).orEmpty())
+            val profileId =
+                backStackEntry.arguments?.getString(PROFILE_ID_ARGUMENT)?.let { Uri.decode(it) }
+            val returnToList = {
+                if (!navController.popBackStack(
+                        JuzgonRoutes.SCORE_PROFILES,
+                        inclusive = false,
+                    )
+                ) {
+                    navController.navigate(JuzgonRoutes.scoreProfiles(categoryName)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            ScoreProfileFormRoute(
+                categoryName = categoryName,
+                profileId = profileId,
+                onBackClick = returnToList,
+                onSaveCompleted = returnToList,
             )
         }
     }
