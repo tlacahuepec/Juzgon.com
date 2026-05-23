@@ -8,8 +8,15 @@ import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
 import com.juzgon.data.local.entity.ScoreProfileEntity
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("TooManyFunctions")
 @Dao
 interface ScoreProfileDao {
+    @Query("SELECT * FROM score_profiles ORDER BY category_name, name")
+    fun observeAllProfiles(): Flow<List<ScoreProfileEntity>>
+
+    @Query("SELECT * FROM score_profile_attributes ORDER BY profile_id, position")
+    fun observeAllProfileAttributes(): Flow<List<ScoreProfileAttributeEntity>>
+
     @Query("SELECT * FROM score_profiles WHERE category_name = :categoryName ORDER BY name")
     fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfileEntity>>
 

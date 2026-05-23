@@ -2,6 +2,8 @@
 
 package com.juzgon.feature.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -40,14 +43,38 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.feature.backup.ExportBackupViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeRoute(
     onNavigateToCreateCategory: () -> Unit,
     onNavigateToCategory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
+    exportViewModel: ExportBackupViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val exportState by exportViewModel.state.collectAsState()
+    val context = LocalContext.current
+
+    val safLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null) {
+                val json = exportState.exportedJson ?: return@rememberLauncherForActivityResult
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(json.toByteArray(Charsets.UTF_8))
+                }
+                exportViewModel.onExportConsumed()
+            }
+        }
+
+    LaunchedEffect(exportState.isExportComplete) {
+        if (exportState.isExportComplete && exportState.exportedJson != null) {
+            val fileName = "juzgon-backup-${LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)}.juzgon.json"
+            safLauncher.launch(fileName)
+        }
+    }
 
     LaunchedEffect(viewModel, onNavigateToCreateCategory) {
         viewModel.navigationEvents.collect { event ->
@@ -67,6 +94,7 @@ fun HomeRoute(
                 onCreateCategoryClick = viewModel::onCreateCategoryClick,
                 onCategoryClick = viewModel::onCategoryClick,
                 onRetry = viewModel::onRetry,
+                onExportClick = exportViewModel::export,
             ),
     )
 }
@@ -158,11 +186,26 @@ private fun HomeCategoriesState(
                 .fillMaxSize()
                 .padding(24.dp),
     ) {
-        Text(
-            text = "Categories",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = "Categories",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Button(
+                onClick = actions.onExportClick,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Export backup"
+                    },
+            ) {
+                Text("Export")
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = state.searchQuery,

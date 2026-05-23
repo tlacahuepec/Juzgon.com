@@ -233,6 +233,39 @@ class HomeScreenTest {
         assertTrue(retryClicked)
     }
 
+    @Test
+    fun exportButtonIsDisplayedAndInvokesCallback() {
+        var exportClicked = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                            onExportClick = { exportClicked = true },
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Export backup").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Export backup").performClick()
+
+        assertTrue(exportClicked)
+    }
+
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
         assertWidthIsAtLeast(48.dp)
         assertHeightIsAtLeast(48.dp)
