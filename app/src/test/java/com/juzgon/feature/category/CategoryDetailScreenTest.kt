@@ -3,11 +3,13 @@
 package com.juzgon.feature.category
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -88,6 +90,52 @@ class CategoryDetailScreenTest {
 
         composeRule.onNodeWithContentDescription("sedan image preview").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("coupe image placeholder").assertIsDisplayed()
+    }
+
+    @Test
+    fun multiWordTitleRendersPrimaryAndRemainingSegments() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "Grand Touring Sedan",
+                            averageScoreText = "8.7",
+                        ),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithText("Grand").assertIsDisplayed()
+        composeRule.onNodeWithText("Touring Sedan").assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Rated item Grand Touring Sedan, rank 1, Score 8.7")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun singleWordTitleRendersSingleEmphasizedSegment() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "Roadster",
+                            averageScoreText = "8.7",
+                        ),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onAllNodesWithText("Roadster").assertCountEquals(1)
     }
 
     @Test
