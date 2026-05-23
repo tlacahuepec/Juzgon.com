@@ -213,10 +213,25 @@ class CategoryFormViewModel
                 mutableState.update { it.copy(isSaving = true, errorMessage = null) }
                 runCatching {
                     val category = current.toCategory()
+                    val renamedAttributeIds =
+                        current.attributes
+                            .mapNotNull { attribute ->
+                                val originalId = attribute.sourceId ?: return@mapNotNull null
+                                val updatedId = attribute.name.trim()
+                                if (originalId == updatedId) {
+                                    null
+                                } else {
+                                    originalId to updatedId
+                                }
+                            }.toMap()
                     validateCategoryUseCase(category)
                     val originalName = current.originalName
                     if (originalName != null) {
-                        categoryRepository.renameCategory(originalName, category)
+                        categoryRepository.renameCategory(
+                            originalName = originalName,
+                            category = category,
+                            renamedAttributeIds = renamedAttributeIds,
+                        )
                     } else {
                         categoryRepository.saveCategory(category)
                     }

@@ -105,6 +105,24 @@ interface CategoryDao {
     @Query("DELETE FROM categories WHERE name = :name")
     suspend fun deleteCategoryByName(name: String)
 
+    @Query("UPDATE ratings SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInRatings(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
+    @Query("UPDATE item_values SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInItemValues(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
+    @Query("UPDATE attribute_rank_snapshots SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInRankSnapshots(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
     @Query(
         """
         SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count

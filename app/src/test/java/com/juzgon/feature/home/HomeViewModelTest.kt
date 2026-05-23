@@ -221,6 +221,7 @@ class HomeViewModelTest {
         override suspend fun renameCategory(
             originalName: String,
             category: Category,
+            renamedAttributeIds: Map<String, String>,
         ) {
             error("HomeViewModel does not rename categories")
         }
@@ -250,6 +251,7 @@ class HomeViewModelTest {
         override suspend fun renameCategory(
             originalName: String,
             category: Category,
+            renamedAttributeIds: Map<String, String>,
         ) {
             error("not used")
         }

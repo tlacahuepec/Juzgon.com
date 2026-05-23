@@ -540,6 +540,7 @@ class CategoryDetailViewModelTest {
         override suspend fun renameCategory(
             originalName: String,
             category: Category,
+            renamedAttributeIds: Map<String, String>,
         ) {
             error("CategoryDetailViewModel does not rename categories")
         }
