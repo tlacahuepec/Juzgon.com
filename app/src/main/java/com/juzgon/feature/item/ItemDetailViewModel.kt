@@ -47,15 +47,20 @@ class ItemDetailViewModel
                         snapshots = attributeRankSnapshotRepository.observeSnapshotsForItem(itemId).first(),
                         currentUpdatedAt = item.updatedAt,
                     )
+                val imageReferencesByAttributeId =
+                    item.values
+                        .associate { valueEntry ->
+                            valueEntry.attribute.id to
+                                if (valueEntry.attribute.type == AttributeType.IMAGE) {
+                                    decodeItemImageReferences(valueEntry.value)
+                                } else {
+                                    emptyList()
+                                }
+                        }
                 mutableState.value =
                     ItemDetailUiState(
                         itemId = item.id,
-                        primaryImageValue =
-                            item.values
-                                .firstOrNull { valueEntry ->
-                                    valueEntry.attribute.type == AttributeType.IMAGE &&
-                                        valueEntry.value.isNotBlank()
-                                }?.value,
+                        primaryImage = imageReferencesByAttributeId.values.firstNotNullOfOrNull { it.firstOrNull() },
                         overallScoreText =
                             computeWeightedAverageText(
                                 item.scores.map { it.attribute.weight to it.score },
@@ -78,6 +83,7 @@ class ItemDetailViewModel
                                             type = valueEntry.attribute.type,
                                             value = valueEntry.value,
                                         ),
+                                    imageReferences = imageReferencesByAttributeId[valueEntry.attribute.id].orEmpty(),
                                 )
                             },
                         notes = item.notes,

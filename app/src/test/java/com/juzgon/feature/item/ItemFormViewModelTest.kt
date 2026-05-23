@@ -14,6 +14,7 @@ import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -233,20 +234,25 @@ class ItemFormViewModelTest {
                         ),
                 )
             viewModel.loadCategory("Cars", itemId = "Jetta")
+            advanceUntilIdle()
 
             viewModel.onTitleChanged("GLI")
             viewModel.onSaveClick()
+            advanceUntilIdle()
 
             assertEquals("Jetta", ratedItemRepository.renamedOriginalId)
-            assertEquals(
-                RatedItem(
-                    id = "GLI",
-                    notes = "daily driver",
-                    scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)),
-                    values = listOf(ItemAttributeValue(photo, "content://images/jetta")),
-                ),
-                ratedItemRepository.renamedItem,
-            )
+            val renamedItem = ratedItemRepository.renamedItem
+            assertEquals("GLI", renamedItem?.id)
+            assertEquals("daily driver", renamedItem?.notes)
+            assertEquals(listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)), renamedItem?.scores)
+            val persistedImageValue =
+                renamedItem
+                    ?.values
+                    ?.single()
+                    ?.value
+                    .orEmpty()
+            val decodedImageReferences = decodeItemImageReferences(persistedImageValue)
+            assertEquals(listOf("content://images/jetta"), decodedImageReferences.map { it.sourceUri })
             assertEquals(null, ratedItemRepository.savedItem)
             assertTrue(currentState.saveCompleted)
         }
@@ -563,35 +569,50 @@ class ItemFormViewModelTest {
         }
 
     @Test
-    fun onImageSelectedStoresMetadataAndPersistsImageValue() =
+    fun onImagesSelectedStoresMetadataAndPersistsImageValue() =
         runTest {
             val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = true)
             categoryRepository.categories.value =
                 listOf(Category("Mixed", attributes = listOf(speed, imageAttr)))
             viewModel.loadCategory("Mixed")
+            advanceUntilIdle()
             viewModel.onTitleChanged("Roadster")
             viewModel.onScoreChanged("Speed", "7")
 
-            viewModel.onImageSelected(
+            viewModel.onImagesSelected(
                 attributeId = "Photo",
-                imageUri = "content://images/roadster",
-                mimeType = "image/png",
-                sizeBytes = IMAGE_MAX_SIZE_BYTES,
-                displayName = "roadster.png",
+                selectedImages =
+                    listOf(
+                        SelectedImageMetadata(
+                            sourceUri = "content://images/roadster",
+                            mimeType = "image/png",
+                            sizeBytes = IMAGE_MAX_SIZE_BYTES,
+                            width = 1200,
+                            height = 800,
+                            displayName = "roadster.png",
+                        ),
+                    ),
             )
 
             val imageInput = currentState.values.single()
-            assertEquals("content://images/roadster", imageInput.valueText)
-            assertEquals("image/png", imageInput.imageMimeType)
-            assertEquals(IMAGE_MAX_SIZE_BYTES, imageInput.imageSizeBytes)
-            assertEquals("roadster.png", imageInput.imageDisplayName)
+            assertEquals(1, imageInput.imageReferences.size)
+            assertEquals("content://images/roadster", imageInput.imageReferences.single().sourceUri)
+            assertEquals("image/png", imageInput.imageReferences.single().mimeType)
+            assertEquals(IMAGE_MAX_SIZE_BYTES, imageInput.imageReferences.single().sizeBytes)
+            assertEquals("roadster.png", imageInput.imageReferences.single().displayName)
 
             viewModel.onSaveClick()
+            advanceUntilIdle()
 
             val saved = ratedItemRepository.savedItem!!
             val savedImage = saved.values.single()
             assertEquals("Photo", savedImage.attribute.id)
-            assertEquals("content://images/roadster", savedImage.value)
+            assertTrue(savedImage.value.startsWith("imgref:v1|"))
+            assertFalse(savedImage.value.contains("byteArray", ignoreCase = true))
+            val decoded = decodeItemImageReferences(savedImage.value)
+            assertEquals(1, decoded.size)
+            assertEquals("content://images/roadster", decoded.single().sourceUri)
+            assertEquals("image/png", decoded.single().mimeType)
         }
 
     @Test
@@ -604,12 +625,19 @@ class ItemFormViewModelTest {
             viewModel.onTitleChanged("Roadster")
             viewModel.onScoreChanged("Speed", "7")
 
-            viewModel.onImageSelected(
+            viewModel.onImagesSelected(
                 attributeId = "Photo",
-                imageUri = "content://images/roadster",
-                mimeType = "image/png",
-                sizeBytes = IMAGE_MAX_SIZE_BYTES + 1,
-                displayName = "roadster.png",
+                selectedImages =
+                    listOf(
+                        SelectedImageMetadata(
+                            sourceUri = "content://images/roadster",
+                            mimeType = "image/png",
+                            sizeBytes = IMAGE_MAX_SIZE_BYTES + 1,
+                            width = null,
+                            height = null,
+                            displayName = "roadster.png",
+                        ),
+                    ),
             )
 
             assertFalse(currentState.saveEnabled)
@@ -626,9 +654,9 @@ class ItemFormViewModelTest {
 
             viewModel.onImageSelectionFailed()
 
-            assertEquals("Unable to keep access to selected image", currentState.errorMessage)
+            assertEquals("Unable to keep access to one or more selected images", currentState.errorMessage)
             assertFalse(currentState.saveCompleted)
-            assertEquals("", currentState.values.single().valueText)
+            assertEquals(emptyList<ItemImageReference>(), currentState.values.single().imageReferences)
         }
 
     @Test
@@ -640,22 +668,71 @@ class ItemFormViewModelTest {
             viewModel.loadCategory("Mixed")
             viewModel.onTitleChanged("Roadster")
             viewModel.onScoreChanged("Speed", "7")
-            viewModel.onImageSelected(
+            viewModel.onImagesSelected(
                 attributeId = "Photo",
-                imageUri = "content://images/roadster",
-                mimeType = "image/png",
-                sizeBytes = IMAGE_MAX_SIZE_BYTES,
-                displayName = "roadster.png",
+                selectedImages =
+                    listOf(
+                        SelectedImageMetadata(
+                            sourceUri = "content://images/roadster",
+                            mimeType = "image/png",
+                            sizeBytes = IMAGE_MAX_SIZE_BYTES,
+                            width = 1200,
+                            height = 800,
+                            displayName = "roadster.png",
+                        ),
+                    ),
             )
+            val selectedImageId =
+                currentState.values
+                    .single()
+                    .imageReferences
+                    .single()
+                    .id
 
-            viewModel.onImageRemoved("Photo")
+            viewModel.onImageRemoved("Photo", selectedImageId)
 
             val imageInput = currentState.values.single()
-            assertEquals("", imageInput.valueText)
-            assertEquals(null, imageInput.imageMimeType)
-            assertEquals(null, imageInput.imageSizeBytes)
-            assertEquals(null, imageInput.imageDisplayName)
+            assertEquals(emptyList<ItemImageReference>(), imageInput.imageReferences)
             assertTrue(currentState.saveEnabled)
+        }
+
+    @Test
+    fun duplicateImageAssignmentIsSkippedWithoutMutatingUnrelatedInputs() =
+        runTest {
+            val imageAttr = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            val notesAttr = Attribute("Details", type = AttributeType.NOTES, isRequired = false)
+            categoryRepository.categories.value =
+                listOf(Category("Mixed", attributes = listOf(speed, imageAttr, notesAttr)))
+            viewModel.loadCategory("Mixed")
+            viewModel.onTitleChanged("Roadster")
+            viewModel.onScoreChanged("Speed", "7")
+            viewModel.onValueChanged("Details", "Original note")
+
+            val selectedImage =
+                SelectedImageMetadata(
+                    sourceUri = "content://images/roadster",
+                    mimeType = "image/png",
+                    sizeBytes = 42L,
+                    width = 10,
+                    height = 10,
+                    displayName = "roadster.png",
+                )
+            viewModel.onImagesSelected(attributeId = "Photo", selectedImages = listOf(selectedImage))
+            val firstImageId =
+                currentState.values
+                    .first { it.attribute.id == "Photo" }
+                    .imageReferences
+                    .single()
+                    .id
+
+            viewModel.onImagesSelected(attributeId = "Photo", selectedImages = listOf(selectedImage))
+
+            val imageInput = currentState.values.first { it.attribute.id == "Photo" }
+            val notesInput = currentState.values.first { it.attribute.id == "Details" }
+            assertEquals(1, imageInput.imageReferences.size)
+            assertEquals(firstImageId, imageInput.imageReferences.single().id)
+            assertEquals("Original note", notesInput.valueText)
+            assertEquals("1 duplicate image assignment skipped", currentState.errorMessage)
         }
 
     @Test

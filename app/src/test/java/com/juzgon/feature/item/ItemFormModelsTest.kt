@@ -37,9 +37,15 @@ class ItemFormModelsTest {
                 valueInput =
                     ItemValueInput(
                         attribute = Attribute("Photo", type = AttributeType.IMAGE),
-                        valueText = "content://images/roadster",
-                        imageDisplayName = "roadster.gif",
-                        imageMimeType = "image/gif",
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "1",
+                                    sourceUri = "content://images/roadster",
+                                    mimeType = "image/gif",
+                                    displayName = "roadster.gif",
+                                ),
+                            ),
                     ),
             )
 
@@ -54,10 +60,16 @@ class ItemFormModelsTest {
                 valueInput =
                     ItemValueInput(
                         attribute = Attribute("Photo", type = AttributeType.IMAGE),
-                        valueText = "content://images/roadster",
-                        imageDisplayName = "roadster.png",
-                        imageMimeType = "image/png",
-                        imageSizeBytes = IMAGE_MAX_SIZE_BYTES + 1,
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "1",
+                                    sourceUri = "content://images/roadster",
+                                    mimeType = "image/png",
+                                    sizeBytes = IMAGE_MAX_SIZE_BYTES + 1,
+                                    displayName = "roadster.png",
+                                ),
+                            ),
                     ),
             )
 
@@ -72,10 +84,16 @@ class ItemFormModelsTest {
                 valueInput =
                     ItemValueInput(
                         attribute = Attribute("Photo", type = AttributeType.IMAGE),
-                        valueText = "content://images/roadster",
-                        imageDisplayName = "roadster.webp",
-                        imageMimeType = "image/webp",
-                        imageSizeBytes = IMAGE_MAX_SIZE_BYTES,
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "1",
+                                    sourceUri = "content://images/roadster",
+                                    mimeType = "image/webp",
+                                    sizeBytes = IMAGE_MAX_SIZE_BYTES,
+                                    displayName = "roadster.webp",
+                                ),
+                            ),
                     ),
             )
 

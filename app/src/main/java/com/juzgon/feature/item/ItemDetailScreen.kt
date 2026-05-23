@@ -2,13 +2,16 @@
 
 package com.juzgon.feature.item
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,6 +46,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
@@ -57,6 +67,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -241,10 +253,64 @@ private fun DeleteItemDialog(
 }
 
 @Composable
+private fun FullImagePreviewDialog(
+    imageReference: ItemImageReference,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val bitmap by
+        produceState<Bitmap?>(
+            initialValue = null,
+            key1 = imageReference.id,
+            key2 = imageReference.sourceUri,
+        ) {
+            value =
+                withContext(Dispatchers.IO) {
+                    imageBitmapFromValue(
+                        contentResolver = context.contentResolver,
+                        value = imageReference.sourceUri,
+                        maxDimensionPx = 2048,
+                    )
+                }
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(imageReference.displayName ?: "Image") },
+        text = {
+            val resolvedBitmap = bitmap
+            if (resolvedBitmap == null) {
+                Text("Image unavailable")
+            } else {
+                Image(
+                    bitmap = resolvedBitmap.asImageBitmap(),
+                    contentDescription = "Full size image preview",
+                    contentScale = ContentScale.Fit,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 160.dp, max = 360.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+    )
+}
+
+@Composable
 private fun ItemDetailContent(
     state: ItemDetailUiState,
     modifier: Modifier = Modifier,
 ) {
+    var selectedImageForPreview by remember { mutableStateOf<ItemImageReference?>(null) }
+    selectedImageForPreview?.let { imageReference ->
+        FullImagePreviewDialog(
+            imageReference = imageReference,
+            onDismiss = { selectedImageForPreview = null },
+        )
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier =
@@ -255,7 +321,8 @@ private fun ItemDetailContent(
     ) {
         PrimaryImageSection(
             itemId = state.itemId,
-            imageValue = state.primaryImageValue,
+            imageReference = state.primaryImage,
+            onImageClick = { imageReference -> selectedImageForPreview = imageReference },
         )
         OverallScoreSection(overallScoreText = state.overallScoreText)
         HorizontalDivider()
@@ -264,7 +331,10 @@ private fun ItemDetailContent(
         RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
         if (state.attributeValues.isNotEmpty()) {
             HorizontalDivider()
-            AttributeValuesSection(attributeValues = state.attributeValues)
+            AttributeValuesSection(
+                attributeValues = state.attributeValues,
+                onImageClick = { imageReference -> selectedImageForPreview = imageReference },
+            )
         }
         if (state.notes.isNotBlank()) {
             HorizontalDivider()
@@ -416,9 +486,10 @@ private fun chartOffset(
 @Composable
 private fun PrimaryImageSection(
     itemId: String,
-    imageValue: String?,
+    imageReference: ItemImageReference?,
+    onImageClick: (ItemImageReference) -> Unit,
 ) {
-    if (imageValue.isNullOrBlank()) {
+    if (imageReference == null) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -439,9 +510,10 @@ private fun PrimaryImageSection(
         }
     } else {
         ImageAttributePreview(
-            value = imageValue,
+            imageReference = imageReference,
             contentDescription = "$itemId image preview",
             height = 220.dp,
+            onClick = { onImageClick(imageReference) },
         )
     }
 }
@@ -552,17 +624,26 @@ private fun AttributeMovementIndicator(
 }
 
 @Composable
-private fun AttributeValuesSection(attributeValues: List<ItemDetailAttributeValue>) {
+private fun AttributeValuesSection(
+    attributeValues: List<ItemDetailAttributeValue>,
+    onImageClick: (ItemImageReference) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(text = "Attributes", style = MaterialTheme.typography.titleSmall)
         attributeValues.forEach { attributeValue ->
-            AttributeValueRow(attributeValue)
+            AttributeValueRow(
+                attributeValue = attributeValue,
+                onImageClick = onImageClick,
+            )
         }
     }
 }
 
 @Composable
-private fun AttributeValueRow(attributeValue: ItemDetailAttributeValue) {
+private fun AttributeValueRow(
+    attributeValue: ItemDetailAttributeValue,
+    onImageClick: (ItemImageReference) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = attributeValue.label,
@@ -570,9 +651,10 @@ private fun AttributeValueRow(attributeValue: ItemDetailAttributeValue) {
             fontWeight = FontWeight.SemiBold,
         )
         if (attributeValue.type == AttributeType.IMAGE) {
-            ImageAttributePreview(
-                value = attributeValue.value,
-                contentDescription = "${attributeValue.label} image preview",
+            ImageAttributeGallery(
+                label = attributeValue.label,
+                imageReferences = attributeValue.imageReferences,
+                onImageClick = onImageClick,
             )
         } else if (attributeValue.type == AttributeType.URL) {
             UrlAttributeValue(attributeValue)
@@ -602,27 +684,12 @@ private fun UrlAttributeValue(attributeValue: ItemDetailAttributeValue) {
 }
 
 @Composable
-private fun ImageAttributePreview(
-    value: String,
-    contentDescription: String,
-    height: Dp = 160.dp,
+private fun ImageAttributeGallery(
+    label: String,
+    imageReferences: List<ItemImageReference>,
+    onImageClick: (ItemImageReference) -> Unit,
 ) {
-    val context = LocalContext.current
-    val bitmap =
-        androidx.compose.runtime.remember(value) {
-            imageBitmapFromValue(context.contentResolver, value)
-        }
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(height),
-        )
-    } else {
+    if (imageReferences.isEmpty()) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -630,13 +697,99 @@ private fun ImageAttributePreview(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = height)
-                    .semantics { this.contentDescription = contentDescription },
+                    .heightIn(min = 96.dp)
+                    .semantics { contentDescription = "$label image preview" },
         ) {
             Text(
-                text = "Image selected",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Image unavailable",
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(16.dp),
+            )
+        }
+        return
+    }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "$label image preview" },
+    ) {
+        items(
+            items = imageReferences,
+            key = { imageReference -> imageReference.id },
+        ) { imageReference ->
+            ImageAttributePreview(
+                imageReference = imageReference,
+                contentDescription = "$label image preview",
+                width = 132.dp,
+                height = 96.dp,
+                onClick = { onImageClick(imageReference) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImageAttributePreview(
+    imageReference: ItemImageReference,
+    contentDescription: String,
+    width: Dp? = null,
+    height: Dp = 160.dp,
+    onClick: (() -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    val bitmap by
+        produceState<Bitmap?>(
+            initialValue = null,
+            key1 = imageReference.id,
+            key2 = imageReference.thumbnailUri,
+        ) {
+            value =
+                withContext(Dispatchers.IO) {
+                    imageBitmapFromValue(
+                        contentResolver = context.contentResolver,
+                        value = imageReference.thumbnailUri,
+                        maxDimensionPx = 512,
+                    )
+                }
+        }
+    val imageModifier =
+        (
+            if (width != null) {
+                Modifier.width(width)
+            } else {
+                Modifier.fillMaxWidth()
+            }
+        ).height(height)
+            .let { modifier ->
+                if (onClick == null) {
+                    modifier
+                } else {
+                    modifier.clickable(role = Role.Button, onClick = onClick)
+                }
+            }
+    val resolvedBitmap = bitmap
+    if (resolvedBitmap != null) {
+        Image(
+            bitmap = resolvedBitmap.asImageBitmap(),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = imageModifier,
+        )
+    } else {
+        Box(
+            modifier =
+                imageModifier
+                    .semantics { this.contentDescription = contentDescription },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Image",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -645,12 +798,31 @@ private fun ImageAttributePreview(
 private fun imageBitmapFromValue(
     contentResolver: android.content.ContentResolver,
     value: String,
+    maxDimensionPx: Int,
 ) = runCatching {
     val uri = Uri.parse(value)
+    val bounds =
+        BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
     contentResolver.openInputStream(uri)?.use { inputStream ->
-        BitmapFactory.decodeStream(inputStream)
+        BitmapFactory.decodeStream(inputStream, null, bounds)
+    }
+    val sampleSize = bounds.sampleSizeFor(maxDimensionPx)
+    val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    contentResolver.openInputStream(uri)?.use { inputStream ->
+        BitmapFactory.decodeStream(inputStream, null, decodeOptions)
     }
 }.getOrNull()
+
+private fun BitmapFactory.Options.sampleSizeFor(maxDimensionPx: Int): Int {
+    if (outWidth <= 0 || outHeight <= 0) return 1
+    var sampleSize = 1
+    while (outWidth / sampleSize > maxDimensionPx || outHeight / sampleSize > maxDimensionPx) {
+        sampleSize *= 2
+    }
+    return sampleSize
+}
 
 private data class RankedAttributeCardSizeStyle(
     val minHeight: Dp,
