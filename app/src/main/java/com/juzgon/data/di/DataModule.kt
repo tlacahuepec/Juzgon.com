@@ -13,12 +13,14 @@ import com.juzgon.data.local.RoomSampleDataStore
 import com.juzgon.data.repository.RoomAttributeRankSnapshotRepository
 import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
+import com.juzgon.data.repository.RoomScoreProfileRepository
 import com.juzgon.domain.AppClock
 import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.backup.BackupService
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.repository.ScoreProfileRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -55,6 +57,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_7_8,
                     DatabaseMigrations.MIGRATION_8_9,
                     DatabaseMigrations.MIGRATION_9_10,
+                    DatabaseMigrations.MIGRATION_10_11,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -102,4 +105,8 @@ object DataModule {
     @Singleton
     fun provideAttributeRankSnapshotRepository(database: JuzgonDatabase): AttributeRankSnapshotRepository =
         RoomAttributeRankSnapshotRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideScoreProfileRepository(db: JuzgonDatabase): ScoreProfileRepository = RoomScoreProfileRepository(db)
 }

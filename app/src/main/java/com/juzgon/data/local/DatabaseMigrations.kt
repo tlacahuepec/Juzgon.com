@@ -13,6 +13,7 @@ private const val DATABASE_VERSION_7 = 7
 private const val DATABASE_VERSION_8 = 8
 private const val DATABASE_VERSION_9 = 9
 private const val DATABASE_VERSION_10 = 10
+private const val DATABASE_VERSION_11 = 11
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -109,6 +110,45 @@ object DatabaseMigrations {
         object : Migration(DATABASE_VERSION_9, DATABASE_VERSION_10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE attributes ADD COLUMN scoring_direction TEXT")
+            }
+        }
+
+    val MIGRATION_10_11: Migration =
+        object : Migration(DATABASE_VERSION_10, DATABASE_VERSION_11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE score_profiles (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        category_name TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        created_at INTEGER NOT NULL DEFAULT 0,
+                        updated_at INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (category_name) REFERENCES categories(name) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX index_score_profiles_category_name ON score_profiles(category_name)")
+                db.execSQL(
+                    """
+                    CREATE TABLE score_profile_attributes (
+                        profile_id TEXT NOT NULL,
+                        attribute_id TEXT NOT NULL,
+                        position INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (profile_id, attribute_id),
+                        FOREIGN KEY (profile_id) REFERENCES score_profiles(id) ON DELETE CASCADE,
+                        FOREIGN KEY (attribute_id) REFERENCES attributes(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX index_score_profile_attributes_profile_id " +
+                        "ON score_profile_attributes(profile_id)",
+                )
+                db.execSQL(
+                    "CREATE INDEX index_score_profile_attributes_attribute_id " +
+                        "ON score_profile_attributes(attribute_id)",
+                )
             }
         }
 }
