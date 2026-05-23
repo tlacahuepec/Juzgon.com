@@ -496,6 +496,23 @@ private fun ItemAttributeValueField(
                 errorText = validationError.value,
             )
         }
+        AttributeType.DATE -> {
+            OutlinedTextField(
+                value = valueInput.valueText,
+                onValueChange = { onValueChange(attributeId, it) },
+                label = { Text(attributeId) },
+                placeholder = { Text("YYYY-MM-DD") },
+                isError = validationError.value != null,
+                supportingText = {
+                    validationError.value?.let { Text(it) }
+                },
+                singleLine = true,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = cd },
+            )
+        }
         else -> {
             OutlinedTextField(
                 value = valueInput.valueText,

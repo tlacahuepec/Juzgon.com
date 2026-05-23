@@ -3,6 +3,7 @@ package com.juzgon.feature.category
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateCategoryUseCase
@@ -131,6 +132,19 @@ class CategoryFormViewModel
             updateAttribute(key) { attribute ->
                 if (attribute.type == AttributeType.NUMBER) {
                     attribute.copy(diamondOrderText = diamondOrderText)
+                } else {
+                    attribute
+                }
+            }
+        }
+
+        fun onAttributeScoringDirectionChanged(
+            key: Long,
+            scoringDirection: ScoringDirection?,
+        ) {
+            updateAttribute(key) { attribute ->
+                if (attribute.type == AttributeType.DATE) {
+                    attribute.copy(scoringDirection = scoringDirection)
                 } else {
                     attribute
                 }
@@ -286,6 +300,7 @@ class CategoryFormViewModel
                 type = type,
                 displayInDiamond = type == AttributeType.NUMBER && displayInDiamond,
                 diamondOrderText = if (type == AttributeType.NUMBER) diamondOrderText else "",
+                scoringDirection = if (type == AttributeType.DATE) scoringDirection else null,
             )
 
         private fun moveAttribute(

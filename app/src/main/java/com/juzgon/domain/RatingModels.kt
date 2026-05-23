@@ -10,7 +10,11 @@ data class Attribute(
     val isRequired: Boolean = true,
     val displayInDiamond: Boolean = type == AttributeType.NUMBER,
     val diamondOrder: Int? = null,
+    val scoringDirection: ScoringDirection? = null,
 ) {
+    val isRankable: Boolean
+        get() = type == AttributeType.NUMBER || (type == AttributeType.DATE && scoringDirection != null)
+
     init {
         require(id.isNotBlank()) { "Attribute id cannot be blank" }
         require(weight > 0.0) { "Attribute weight must be greater than 0" }
@@ -19,6 +23,9 @@ data class Attribute(
         }
         require(diamondOrder == null || diamondOrder > 0) {
             "Diamond order must be greater than 0"
+        }
+        require(scoringDirection == null || type == AttributeType.DATE) {
+            "Scoring direction is only valid for DATE attributes"
         }
     }
 }

@@ -262,6 +262,7 @@ class CategoryFormScreenTest {
                     onAttributeRequiredChange = { _, _ -> },
                     onAttributeDisplayInDiamondChange = { _, _ -> },
                     onAttributeDiamondOrderChange = { _, _ -> },
+                    onAttributeScoringDirectionChange = { _, _ -> },
                     onAddAttribute = {},
                     onRemoveAttribute = {},
                     onMoveAttributeUp = {},

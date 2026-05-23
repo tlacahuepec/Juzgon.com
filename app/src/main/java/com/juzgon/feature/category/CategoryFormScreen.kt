@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ScoringDirection
 
 @Composable
 fun CategoryFormRoute(
@@ -78,6 +79,7 @@ fun CategoryFormRoute(
         onAttributeRequiredChange = viewModel::onAttributeRequiredChanged,
         onAttributeDisplayInDiamondChange = viewModel::onAttributeDisplayInDiamondChanged,
         onAttributeDiamondOrderChange = viewModel::onAttributeDiamondOrderChanged,
+        onAttributeScoringDirectionChange = viewModel::onAttributeScoringDirectionChanged,
         onAddAttribute = viewModel::addAttribute,
         onRemoveAttribute = viewModel::removeAttribute,
         onMoveAttributeUp = viewModel::moveAttributeUp,
@@ -102,6 +104,7 @@ fun CategoryFormScreen(
     onAttributeRequiredChange: (Long, Boolean) -> Unit,
     onAttributeDisplayInDiamondChange: (Long, Boolean) -> Unit,
     onAttributeDiamondOrderChange: (Long, String) -> Unit,
+    onAttributeScoringDirectionChange: (Long, ScoringDirection?) -> Unit,
     onAddAttribute: () -> Unit,
     onRemoveAttribute: (Long) -> Unit,
     onMoveAttributeUp: (Long) -> Unit,
@@ -262,6 +265,7 @@ fun CategoryFormScreen(
                     onRequiredChange = onAttributeRequiredChange,
                     onDisplayInDiamondChange = onAttributeDisplayInDiamondChange,
                     onDiamondOrderChange = onAttributeDiamondOrderChange,
+                    onScoringDirectionChange = onAttributeScoringDirectionChange,
                     onRemove = onRemoveAttribute,
                     onMoveUp = onMoveAttributeUp,
                     onMoveDown = onMoveAttributeDown,
@@ -320,6 +324,7 @@ private fun CategoryAttributeRow(
     onRequiredChange: (Long, Boolean) -> Unit,
     onDisplayInDiamondChange: (Long, Boolean) -> Unit,
     onDiamondOrderChange: (Long, String) -> Unit,
+    onScoringDirectionChange: (Long, ScoringDirection?) -> Unit,
     onRemove: (Long) -> Unit,
     onMoveUp: (Long) -> Unit,
     onMoveDown: (Long) -> Unit,
@@ -436,6 +441,14 @@ private fun CategoryAttributeRow(
             )
         }
 
+        if (attribute.type == AttributeType.DATE) {
+            ScoringDirectionDropdown(
+                position = position,
+                scoringDirection = attribute.scoringDirection,
+                onDirectionChange = { onScoringDirectionChange(attribute.key, it) },
+            )
+        }
+
         OutlinedTextField(
             value = attribute.weightText,
             onValueChange = { onWeightChange(attribute.key, it) },
@@ -499,3 +512,66 @@ private fun CategoryAttributeInput.accessibleActionName(position: Int): String =
     name
         .takeIf { it.isNotBlank() }
         ?: "attribute $position"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScoringDirectionDropdown(
+    position: Int,
+    scoringDirection: ScoringDirection?,
+    onDirectionChange: (ScoringDirection?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val displayText =
+        when (scoringDirection) {
+            ScoringDirection.NEWER_IS_BETTER -> "Newer is better"
+            ScoringDirection.OLDER_IS_BETTER -> "Older is better"
+            null -> "None (display only)"
+        }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier =
+            Modifier.semantics {
+                contentDescription = "Attribute $position scoring direction"
+            },
+    ) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Scoring direction") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("None (display only)") },
+                onClick = {
+                    onDirectionChange(null)
+                    expanded = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Newer is better") },
+                onClick = {
+                    onDirectionChange(ScoringDirection.NEWER_IS_BETTER)
+                    expanded = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Older is better") },
+                onClick = {
+                    onDirectionChange(ScoringDirection.OLDER_IS_BETTER)
+                    expanded = false
+                },
+            )
+        }
+    }
+}

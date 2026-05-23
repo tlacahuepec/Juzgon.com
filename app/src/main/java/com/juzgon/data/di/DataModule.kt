@@ -13,6 +13,8 @@ import com.juzgon.data.local.RoomSampleDataStore
 import com.juzgon.data.repository.RoomAttributeRankSnapshotRepository
 import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
+import com.juzgon.domain.AppClock
+import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.backup.BackupService
 import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
@@ -26,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Singleton
 
 @Module
@@ -51,6 +54,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_6_7,
                     DatabaseMigrations.MIGRATION_7_8,
                     DatabaseMigrations.MIGRATION_8_9,
+                    DatabaseMigrations.MIGRATION_9_10,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -77,11 +81,22 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideAppClock(): AppClock = AppClock { LocalDate.now() }
+
+    @Provides
+    @Singleton
+    fun provideDateScoreCalculator(clock: AppClock): DateScoreCalculator = DateScoreCalculator(clock)
+
+    @Provides
+    @Singleton
     fun provideCategoryRepository(database: JuzgonDatabase): CategoryRepository = RoomCategoryRepository(database)
 
     @Provides
     @Singleton
-    fun provideRatedItemRepository(database: JuzgonDatabase): RatedItemRepository = RoomRatedItemRepository(database)
+    fun provideRatedItemRepository(
+        database: JuzgonDatabase,
+        dateScoreCalculator: DateScoreCalculator,
+    ): RatedItemRepository = RoomRatedItemRepository(database, dateScoreCalculator)
 
     @Provides
     @Singleton

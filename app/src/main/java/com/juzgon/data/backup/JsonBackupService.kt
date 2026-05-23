@@ -54,6 +54,7 @@ class JsonBackupService(
                         put("id", attr.id)
                         put("weight", attr.weight)
                         put("position", attr.position)
+                        attr.scoringDirection?.let { put("scoringDirection", it) }
                     },
                 )
             }
@@ -136,6 +137,8 @@ class JsonBackupService(
                         categoryName = name,
                         weight = attr.getDouble("weight"),
                         position = attr.getInt("position"),
+                        scoringDirection =
+                            if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
                     )
                 }
             if (attrs.isNotEmpty()) categoryDao.upsertAttributes(attrs)
