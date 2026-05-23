@@ -269,6 +269,21 @@ class JsonBackupServiceTest {
             categoryName: String,
             attributeIds: List<String>,
         ) = error("not used")
+
+        override suspend fun renameAttributeIdInRatings(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
+        override suspend fun renameAttributeIdInItemValues(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
+        override suspend fun renameAttributeIdInRankSnapshots(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
     }
 
     private class FakeItemDao : ItemDao {

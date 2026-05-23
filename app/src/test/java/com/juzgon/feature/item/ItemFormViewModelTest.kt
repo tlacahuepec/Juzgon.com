@@ -424,6 +424,7 @@ class ItemFormViewModelTest {
         override suspend fun renameCategory(
             originalName: String,
             category: Category,
+            renamedAttributeIds: Map<String, String>,
         ) {
             error("ItemFormViewModel does not rename categories")
         }

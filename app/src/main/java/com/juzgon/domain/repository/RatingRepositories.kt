@@ -20,6 +20,7 @@ interface CategoryRepository {
     suspend fun renameCategory(
         originalName: String,
         category: Category,
+        renamedAttributeIds: Map<String, String> = emptyMap(),
     )
 
     suspend fun deleteCategory(name: String)

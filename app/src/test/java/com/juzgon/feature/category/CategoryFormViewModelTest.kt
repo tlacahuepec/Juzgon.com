@@ -175,6 +175,41 @@ class CategoryFormViewModelTest {
                 ),
                 repository.renamedCategory,
             )
+            assertEquals(emptyMap<String, String>(), repository.renamedAttributeIds)
+        }
+
+    @Test
+    fun editModeAttributeRenamePassesRenameMapping() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Food",
+                        attributes =
+                            listOf(
+                                Attribute(id = "Taste", weight = 1.5),
+                                Attribute(id = "Service", weight = 1.0),
+                            ),
+                    ),
+                )
+
+            viewModel.loadCategory("Food")
+            val tasteKey = attributes.first { it.name == "Taste" }.key
+            viewModel.onAttributeNameChanged(tasteKey, "Flavor")
+            viewModel.onSaveClick()
+
+            assertEquals(
+                Category(
+                    name = "Food",
+                    attributes =
+                        listOf(
+                            Attribute(id = "Flavor", weight = 1.5),
+                            Attribute(id = "Service", weight = 1.0),
+                        ),
+                ),
+                repository.renamedCategory,
+            )
+            assertEquals(mapOf("Taste" to "Flavor"), repository.renamedAttributeIds)
         }
 
     private class FakeCategoryRepository : CategoryRepository {
@@ -182,6 +217,7 @@ class CategoryFormViewModelTest {
         var savedCategory: Category? = null
         var renamedOriginalName: String? = null
         var renamedCategory: Category? = null
+        var renamedAttributeIds: Map<String, String> = emptyMap()
 
         override fun observeCategories(): Flow<List<Category>> = categories
 
@@ -197,9 +233,11 @@ class CategoryFormViewModelTest {
         override suspend fun renameCategory(
             originalName: String,
             category: Category,
+            renamedAttributeIds: Map<String, String>,
         ) {
             renamedOriginalName = originalName
             renamedCategory = category
+            this.renamedAttributeIds = renamedAttributeIds
         }
 
         override suspend fun deleteCategory(name: String) {

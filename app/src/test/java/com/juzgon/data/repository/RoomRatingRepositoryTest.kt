@@ -97,6 +97,47 @@ class RoomRatingRepositoryTest {
         }
 
     @Test
+    fun renameCategory_attributeRenamePreservesRatingsValuesAndSnapshots() =
+        runTest {
+            val speed = Attribute("Speed")
+            val notes = Attribute("Notes", type = AttributeType.NOTES, isRequired = false)
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, notes)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Jetta",
+                    scores = listOf(ScoreEntry(speed, 8)),
+                    values = listOf(ItemAttributeValue(notes, "Great handling")),
+                ),
+            )
+
+            categoryRepository.renameCategory(
+                originalName = "Cars",
+                category =
+                    Category(
+                        name = "Cars",
+                        attributes =
+                            listOf(
+                                Attribute("Pace"),
+                                Attribute("Review", type = AttributeType.NOTES, isRequired = false),
+                            ),
+                    ),
+                renamedAttributeIds =
+                    mapOf(
+                        "Speed" to "Pace",
+                        "Notes" to "Review",
+                    ),
+            )
+
+            val renamedItem = ratedItemRepository.observeRatedItem("Jetta").first()
+            assertEquals(listOf("Pace:8:1.0"), renamedItem?.toScorePairs())
+            assertEquals(listOf("Review:Great handling"), renamedItem?.toValuePairs())
+            assertEquals(listOf("Jetta"), ratedItemRepository.observeRankedItems("Cars").first().map { it.item.id })
+
+            val snapshots = RoomAttributeRankSnapshotRepository(database).observeSnapshotsForItem("Jetta").first()
+            assertEquals(listOf("Pace"), snapshots.map { it.attributeId })
+        }
+
+    @Test
     fun observeRatedItems_emitsAfterSaveAndUpdate() =
         runTest {
             categoryRepository.saveCategory(foodCategory())

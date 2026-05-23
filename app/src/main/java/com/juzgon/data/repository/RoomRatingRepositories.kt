@@ -48,16 +48,24 @@ class RoomCategoryRepository(
             }.distinctUntilChanged()
 
     override suspend fun saveCategory(category: Category) {
+        saveCategory(category = category, renamedAttributeIds = emptyMap())
+    }
+
+    private suspend fun saveCategory(
+        category: Category,
+        renamedAttributeIds: Map<String, String>,
+    ) {
         database.withTransaction {
             categoryDao.upsertCategory(category.toEntity())
             if (category.attributes.isEmpty()) {
                 categoryDao.deleteAttributesForCategory(category.name)
             } else {
+                categoryDao.upsertAttributes(category.toAttributeEntities())
+                applyAttributeRenames(renamedAttributeIds)
                 categoryDao.deleteAttributesNotIn(
                     categoryName = category.name,
                     attributeIds = category.attributes.map { it.id },
                 )
-                categoryDao.upsertAttributes(category.toAttributeEntities())
             }
         }
     }
@@ -65,9 +73,13 @@ class RoomCategoryRepository(
     override suspend fun renameCategory(
         originalName: String,
         category: Category,
+        renamedAttributeIds: Map<String, String>,
     ) {
         if (originalName == category.name) {
-            saveCategory(category)
+            saveCategory(
+                category = category,
+                renamedAttributeIds = renamedAttributeIds,
+            )
             return
         }
 
@@ -77,6 +89,7 @@ class RoomCategoryRepository(
             }
             categoryDao.upsertCategory(category.toEntity())
             categoryDao.upsertAttributes(category.toAttributeEntities())
+            applyAttributeRenames(renamedAttributeIds)
             categoryDao.deleteCategoryByName(originalName)
         }
     }
@@ -84,6 +97,26 @@ class RoomCategoryRepository(
     override suspend fun deleteCategory(name: String) {
         database.withTransaction {
             categoryDao.deleteCategoryByName(name)
+        }
+    }
+
+    private suspend fun applyAttributeRenames(renamedAttributeIds: Map<String, String>) {
+        renamedAttributeIds.forEach { (oldAttributeId, newAttributeId) ->
+            if (oldAttributeId == newAttributeId) {
+                return@forEach
+            }
+            categoryDao.renameAttributeIdInRatings(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
+            categoryDao.renameAttributeIdInItemValues(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
+            categoryDao.renameAttributeIdInRankSnapshots(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
         }
     }
 }

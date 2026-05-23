@@ -14,6 +14,7 @@ enum class CategoryFormMode {
 
 data class CategoryAttributeInput(
     val key: Long,
+    val sourceId: String? = null,
     val name: String = "",
     val weightText: String = "",
     val type: AttributeType = AttributeType.NUMBER,
@@ -88,6 +89,7 @@ object CategoryFormReducer {
                 category.attributes.mapIndexed { index, attribute ->
                     CategoryAttributeInput(
                         key = index.toLong(),
+                        sourceId = attribute.id,
                         name = attribute.id,
                         weightText = attribute.weight.toString(),
                         type = attribute.type,
