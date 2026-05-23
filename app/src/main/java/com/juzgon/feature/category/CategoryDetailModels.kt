@@ -5,6 +5,9 @@ import com.juzgon.domain.Category
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
+import com.juzgon.domain.RatingSystem
+import com.juzgon.domain.ScoreProfile
+import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.item.decodeItemImageReferences
 import java.util.Locale
 
@@ -34,6 +37,11 @@ data class CategoryDetailItemUiModel(
     val metricValueText: String = averageScoreText,
 )
 
+data class ProfileOption(
+    val id: String?,
+    val name: String,
+)
+
 data class CategoryDetailUiState(
     val categoryName: String = "",
     val attributeSummary: String = "",
@@ -45,6 +53,9 @@ data class CategoryDetailUiState(
     val showDeleteConfirmDialog: Boolean = false,
     val showDeleteWithItemsWarning: Boolean = false,
     val isDeleting: Boolean = false,
+    val profiles: List<ProfileOption> = emptyList(),
+    val activeProfileId: String? = null,
+    val activeProfileLabel: String? = null,
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -58,11 +69,15 @@ data class CategoryDetailSortOptionUiModel(
 object CategoryDetailReducer {
     fun loading(categoryName: String): CategoryDetailUiState = CategoryDetailUiState(categoryName = categoryName)
 
+    @Suppress("LongParameterList", "LongMethod")
     fun reduce(
         categoryName: String,
         category: Category?,
         rankedItems: List<RankedRatedItem>,
         sortOption: CategoryDetailSortOption,
+        profiles: List<ScoreProfile> = emptyList(),
+        activeProfileId: String? = null,
+        calculateProfileRankedItems: CalculateProfileRankedItemsUseCase? = null,
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -73,6 +88,15 @@ object CategoryDetailReducer {
             )
         }
 
+        val effectiveRankedItems =
+            resolveRankedItems(
+                category = category,
+                rankedItems = rankedItems,
+                activeProfileId = activeProfileId,
+                profiles = profiles,
+                calculateProfileRankedItems = calculateProfileRankedItems,
+            )
+
         val sortOptions = category.toSortOptions()
         val selectedSortOption =
             sortOption.takeIf { option ->
@@ -81,17 +105,22 @@ object CategoryDetailReducer {
         val sortedItems =
             when (selectedSortOption) {
                 CategoryDetailSortOption.Score ->
-                    rankedItems.sortedWith(
+                    effectiveRankedItems.sortedWith(
                         compareByDescending<RankedRatedItem> { it.aggregateScore }
                             .thenBy { it.item.id },
                     )
                 CategoryDetailSortOption.Name ->
-                    rankedItems.sortedBy { it.item.id }
+                    effectiveRankedItems.sortedBy { it.item.id }
                 is CategoryDetailSortOption.Attribute ->
-                    rankedItems.sortedByAttribute(
+                    effectiveRankedItems.sortedByAttribute(
                         category = category,
                         attributeId = selectedSortOption.attributeId,
                     )
+            }
+
+        val activeProfile =
+            activeProfileId?.let { id ->
+                profiles.firstOrNull { it.id == id }
             }
 
         return CategoryDetailUiState(
@@ -117,7 +146,32 @@ object CategoryDetailReducer {
             isLoading = false,
             sortOption = selectedSortOption,
             sortOptions = sortOptions,
+            profiles = buildProfileOptions(profiles),
+            activeProfileId = activeProfile?.id,
+            activeProfileLabel = activeProfile?.let { "Ranking: ${it.name}" },
         )
+    }
+
+    private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
+        listOf(ProfileOption(id = null, name = "All Attributes")) +
+            profiles.map { ProfileOption(id = it.id, name = it.name) }
+
+    @Suppress("ReturnCount")
+    private fun resolveRankedItems(
+        category: Category,
+        rankedItems: List<RankedRatedItem>,
+        activeProfileId: String?,
+        profiles: List<ScoreProfile>,
+        calculateProfileRankedItems: CalculateProfileRankedItemsUseCase?,
+    ): List<RankedRatedItem> {
+        if (activeProfileId == null || calculateProfileRankedItems == null) return rankedItems
+        val profile = profiles.firstOrNull { it.id == activeProfileId } ?: return rankedItems
+        val ratingSystem =
+            RatingSystem(
+                category.attributes.filter { it.isRankable },
+            )
+        val ratedItems = rankedItems.map { it.item }
+        return calculateProfileRankedItems(profile, ratingSystem, ratedItems)
     }
 }
 

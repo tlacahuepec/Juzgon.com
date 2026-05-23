@@ -104,6 +104,7 @@ fun CategoryDetailRoute(
         onDeleteDialogDismissed = viewModel::onDeleteDialogDismissed,
         onEditCategoryClick = viewModel::onEditCategoryClick,
         onScoreProfilesClick = onScoreProfilesClick,
+        onProfileSelected = viewModel::onProfileSelected,
     )
 }
 
@@ -121,6 +122,7 @@ fun CategoryDetailScreen(
     onDeleteDialogDismissed: () -> Unit = {},
     onEditCategoryClick: () -> Unit = {},
     onScoreProfilesClick: () -> Unit = {},
+    onProfileSelected: (String?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
@@ -232,6 +234,7 @@ fun CategoryDetailScreen(
             onSortOptionSelected = onSortOptionSelected,
             onAddItemClick = onAddItemClick,
             onEditItemClick = onEditItemClick,
+            onProfileSelected = onProfileSelected,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -283,13 +286,14 @@ private fun CategoryDetailContent(
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
+    onProfileSelected: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
         state.isLoading -> CenteredContent(modifier = modifier) { CircularProgressIndicator() }
         state.errorMessage != null -> CategoryDetailErrorState(state.errorMessage, onRetry, modifier)
         !state.hasItems -> CategoryDetailEmptyState(state.attributeSummary, onAddItemClick, modifier)
-        else -> CategoryDetailItemList(state, onSortOptionSelected, onEditItemClick, modifier)
+        else -> CategoryDetailItemList(state, onSortOptionSelected, onEditItemClick, onProfileSelected, modifier)
     }
 }
 
@@ -349,6 +353,7 @@ private fun CategoryDetailItemList(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onEditItemClick: (String) -> Unit,
+    onProfileSelected: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -361,6 +366,16 @@ private fun CategoryDetailItemList(
                 text = state.attributeSummary,
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+        if (state.profiles.isNotEmpty()) {
+            item {
+                ProfileSelector(
+                    profiles = state.profiles,
+                    activeProfileId = state.activeProfileId,
+                    activeProfileLabel = state.activeProfileLabel,
+                    onProfileSelected = onProfileSelected,
+                )
+            }
         }
         item {
             CategoryDetailSortControls(
@@ -383,6 +398,43 @@ private fun CategoryDetailItemList(
 
 private const val INLINE_SORT_OPTIONS_THRESHOLD = 6
 private const val SORT_SHEET_SEARCH_THRESHOLD = 10
+
+@Composable
+private fun ProfileSelector(
+    profiles: List<ProfileOption>,
+    activeProfileId: String?,
+    activeProfileLabel: String?,
+    onProfileSelected: (String?) -> Unit,
+) {
+    Column {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            profiles.forEach { profile ->
+                FilterChip(
+                    selected = profile.id == activeProfileId,
+                    onClick = { onProfileSelected(profile.id) },
+                    label = { Text(profile.name) },
+                    modifier =
+                        Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .semantics {
+                                contentDescription = "Profile: ${profile.name}"
+                            },
+                )
+            }
+        }
+        if (activeProfileLabel != null) {
+            Text(
+                text = activeProfileLabel,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
 
 @Composable
 private fun CategoryDetailSortControls(

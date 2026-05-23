@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.repository.ScoreProfileRepository
+import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,12 +23,15 @@ class CategoryDetailViewModel
     constructor(
         private val categoryRepository: CategoryRepository,
         private val ratedItemRepository: RatedItemRepository,
+        private val scoreProfileRepository: ScoreProfileRepository,
+        private val calculateProfileRankedItems: CalculateProfileRankedItemsUseCase,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(CategoryDetailUiState())
         private val mutableNavigationEvents = MutableSharedFlow<CategoryDetailNavigationEvent>()
         private var activeCategoryName: String? = null
         private var loadJob: Job? = null
         private val sortOption = MutableStateFlow<CategoryDetailSortOption>(CategoryDetailSortOption.Score)
+        private val activeProfileId = MutableStateFlow<String?>(null)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
@@ -44,13 +49,19 @@ class CategoryDetailViewModel
                     combine(
                         categoryRepository.observeCategory(categoryName),
                         ratedItemRepository.observeRankedItems(categoryName),
+                        scoreProfileRepository.observeProfilesForCategory(categoryName),
                         sortOption,
-                    ) { category, rankedItems, sort ->
+                        activeProfileId,
+                    ) { flows ->
+                        @Suppress("UNCHECKED_CAST")
                         CategoryDetailReducer.reduce(
                             categoryName = categoryName,
-                            category = category,
-                            rankedItems = rankedItems,
-                            sortOption = sort,
+                            category = flows[0] as com.juzgon.domain.Category?,
+                            rankedItems = flows[1] as List<com.juzgon.domain.RankedRatedItem>,
+                            sortOption = flows[3] as CategoryDetailSortOption,
+                            profiles = flows[2] as List<com.juzgon.domain.ScoreProfile>,
+                            activeProfileId = flows[4] as String?,
+                            calculateProfileRankedItems = calculateProfileRankedItems,
                         )
                     }.collect { detailState ->
                         mutableState.value =
@@ -65,6 +76,10 @@ class CategoryDetailViewModel
 
         fun onSortOptionSelected(option: CategoryDetailSortOption) {
             sortOption.value = option
+        }
+
+        fun onProfileSelected(profileId: String?) {
+            activeProfileId.value = profileId
         }
 
         fun onRetry() {

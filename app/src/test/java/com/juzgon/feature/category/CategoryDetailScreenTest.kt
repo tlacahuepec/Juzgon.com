@@ -806,6 +806,97 @@ class CategoryDetailScreenTest {
             .assertIsDisplayed()
     }
 
+    @Test
+    fun profileSelectorRendersOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+                profiles =
+                    listOf(
+                        ProfileOption(id = null, name = "All Attributes"),
+                        ProfileOption(id = "p1", name = "Speed Focus"),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Profile: All Attributes").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Profile: Speed Focus").assertIsDisplayed()
+    }
+
+    @Test
+    fun profileSelectorInvokesCallback() {
+        var selectedId: String? = "initial"
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                    profiles =
+                        listOf(
+                            ProfileOption(id = null, name = "All Attributes"),
+                            ProfileOption(id = "p1", name = "Speed Focus"),
+                        ),
+                ),
+            onProfileSelected = { selectedId = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Profile: Speed Focus").performClick()
+        assertEquals("p1", selectedId)
+    }
+
+    @Test
+    fun activeProfileLabelDisplayed() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+                profiles =
+                    listOf(
+                        ProfileOption(id = null, name = "All Attributes"),
+                        ProfileOption(id = "p1", name = "Speed Focus"),
+                    ),
+                activeProfileId = "p1",
+                activeProfileLabel = "Ranking: Speed Focus",
+            ),
+        )
+
+        composeRule.onNodeWithText("Ranking: Speed Focus").assertIsDisplayed()
+    }
+
+    @Test
+    fun noProfileSelectorWhenNoProfiles() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+                profiles = emptyList(),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Profile: All Attributes").assertDoesNotExist()
+    }
+
     private fun buildManySortOptions(count: Int): List<CategoryDetailSortOptionUiModel> =
         listOf(
             CategoryDetailSortOptionUiModel(
@@ -839,6 +930,7 @@ class CategoryDetailScreenTest {
         onDeleteDialogDismissed: () -> Unit = {},
         onEditCategoryClick: () -> Unit = {},
         onScoreProfilesClick: () -> Unit = {},
+        onProfileSelected: (String?) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -854,6 +946,7 @@ class CategoryDetailScreenTest {
                     onDeleteDialogDismissed = onDeleteDialogDismissed,
                     onEditCategoryClick = onEditCategoryClick,
                     onScoreProfilesClick = onScoreProfilesClick,
+                    onProfileSelected = onProfileSelected,
                 )
             }
         }
