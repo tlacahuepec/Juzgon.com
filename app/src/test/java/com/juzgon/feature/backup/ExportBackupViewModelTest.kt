@@ -2,9 +2,12 @@ package com.juzgon.feature.backup
 
 import com.juzgon.domain.backup.BackupException
 import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.backup.BackupValidationResult
+import com.juzgon.domain.backup.BackupValidator
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -16,12 +19,14 @@ class ExportBackupViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var backupService: FakeBackupService
+    private lateinit var backupValidator: FakeBackupValidator
     private lateinit var viewModel: ExportBackupViewModel
 
     @Before
     fun setUp() {
         backupService = FakeBackupService()
-        viewModel = ExportBackupViewModel(backupService)
+        backupValidator = FakeBackupValidator()
+        viewModel = ExportBackupViewModel(backupService, backupValidator)
     }
 
     @Test
@@ -67,6 +72,44 @@ class ExportBackupViewModelTest {
             assertEquals(false, viewModel.state.value.isExportComplete)
         }
 
+    @Test
+    fun exportCallsValidatorWithExportedJson() =
+        runTest {
+            backupService.exportResult = """{"version":2}"""
+
+            viewModel.export()
+
+            assertEquals("""{"version":2}""", backupValidator.lastValidatedJson)
+        }
+
+    @Test
+    fun exportSetsErrorWhenValidationFails() =
+        runTest {
+            backupService.exportResult = """{"version":2}"""
+            backupValidator.result = BackupValidationResult(listOf("Missing field: app"))
+
+            viewModel.export()
+
+            assertNull(viewModel.state.value.exportedJson)
+            assertFalse(viewModel.state.value.isExportComplete)
+            assertTrue(
+                viewModel.state.value.errorMessage!!
+                    .contains("Missing field: app"),
+            )
+        }
+
+    @Test
+    fun exportSetsCompleteOnlyWhenValid() =
+        runTest {
+            backupService.exportResult = """{"version":2}"""
+            backupValidator.result = BackupValidationResult()
+
+            viewModel.export()
+
+            assertTrue(viewModel.state.value.isExportComplete)
+            assertEquals("""{"version":2}""", viewModel.state.value.exportedJson)
+        }
+
     private class FakeBackupService : BackupService {
         var exportResult: String = ""
         var shouldThrow: Boolean = false
@@ -77,5 +120,15 @@ class ExportBackupViewModelTest {
         }
 
         override suspend fun import(json: String) = error("not used")
+    }
+
+    private class FakeBackupValidator : BackupValidator {
+        var result = BackupValidationResult()
+        var lastValidatedJson: String? = null
+
+        override fun validate(json: String): BackupValidationResult {
+            lastValidatedJson = json
+            return result
+        }
     }
 }
