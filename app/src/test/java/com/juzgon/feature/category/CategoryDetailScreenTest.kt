@@ -1,4 +1,4 @@
-@file:Suppress("LongParameterList")
+@file:Suppress("LongParameterList", "LargeClass")
 
 package com.juzgon.feature.category
 
@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -554,6 +555,277 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithContentDescription("Edit category").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Delete category").assertMinimumTouchTarget()
     }
+
+    @Test
+    fun compactSortTriggerAppearsWhenMoreThanSixSortOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by score").assertDoesNotExist()
+    }
+
+    @Test
+    fun compactSortTriggerMeetsMinimumTouchTargetSize() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun compactSortTriggerOpensBottomSheet() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+
+        composeRule.onNodeWithContentDescription("Sort options sheet").assertIsDisplayed()
+    }
+
+    @Test
+    fun bottomSheetListsAllSortOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+
+        composeRule.onNodeWithContentDescription("Sort items by score").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by name").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by Attr1").assertIsDisplayed()
+    }
+
+    @Test
+    fun bottomSheetSelectionInvokesCallback() {
+        var selectedSort: CategoryDetailSortOption? = null
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "7 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    sortOptions = buildManySortOptions(count = 7),
+                    isLoading = false,
+                ),
+            onSortOptionSelected = { selectedSort = it },
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+        composeRule.onNodeWithContentDescription("Sort items by Attr1").performClick()
+
+        assertEquals(CategoryDetailSortOption.Attribute("Attr1"), selectedSort)
+    }
+
+    @Test
+    fun searchFieldAppearsWhenTenOrMoreSortOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "10 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 10),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+
+        composeRule.onNodeWithContentDescription("Search sort options").assertIsDisplayed()
+    }
+
+    @Test
+    fun searchFieldNotShownForFewerThanTenOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+
+        composeRule.onNodeWithContentDescription("Search sort options").assertDoesNotExist()
+    }
+
+    @Test
+    fun searchFieldFiltersOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "10 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 10),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription("Search sort options")
+            .performTextInput("Attr3")
+
+        composeRule.onNodeWithContentDescription("Sort items by Attr3").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by Attr1").assertDoesNotExist()
+    }
+
+    @Test
+    fun fifteenAttributesRenderWithoutCrash() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "15 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 15),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Score")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun inlineChipsStillRenderForSixOrFewerOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "4 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                sortOptions = buildManySortOptions(count = 4),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Sort items by score").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by name").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sort items by Attr1").assertIsDisplayed()
+    }
+
+    @Test
+    fun compactTriggerShowsSelectedAttributeLabel() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "7 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            metricLabel = "Attr3",
+                            metricValueText = "fast",
+                        ),
+                    ),
+                sortOption = CategoryDetailSortOption.Attribute("Attr3"),
+                sortOptions = buildManySortOptions(count = 7),
+                isLoading = false,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Sort options, currently sorted by Attr3")
+            .assertIsDisplayed()
+    }
+
+    private fun buildManySortOptions(count: Int): List<CategoryDetailSortOptionUiModel> =
+        listOf(
+            CategoryDetailSortOptionUiModel(
+                option = CategoryDetailSortOption.Score,
+                label = "Score",
+                contentDescription = "Sort items by score",
+            ),
+            CategoryDetailSortOptionUiModel(
+                option = CategoryDetailSortOption.Name,
+                label = "Name",
+                contentDescription = "Sort items by name",
+            ),
+        ) +
+            (1..count).map { index ->
+                CategoryDetailSortOptionUiModel(
+                    option = CategoryDetailSortOption.Attribute("Attr$index"),
+                    label = "Attr$index",
+                    contentDescription = "Sort items by Attr$index",
+                )
+            }
 
     private fun setContent(
         state: CategoryDetailUiState,
