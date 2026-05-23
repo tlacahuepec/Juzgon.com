@@ -16,6 +16,8 @@ import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
 import com.juzgon.data.repository.RoomScoreProfileRepository
 import com.juzgon.domain.AppClock
+import com.juzgon.domain.BuildMetadata
+import com.juzgon.domain.BuildMetadataProvider
 import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.backup.BackupService
 import com.juzgon.domain.backup.BackupValidator
@@ -92,6 +94,19 @@ object DataModule {
     @Provides
     @Singleton
     fun provideAppClock(): AppClock = AppClock { LocalDate.now() }
+
+    @Provides
+    @Singleton
+    fun provideBuildMetadataProvider(): BuildMetadataProvider =
+        BuildMetadataProvider {
+            BuildMetadata(
+                versionName = BuildConfig.VERSION_NAME,
+                versionCode = BuildConfig.VERSION_CODE,
+                channel = BuildConfig.BUILD_CHANNEL,
+                gitSha = BuildConfig.GIT_SHA,
+                buildTimestamp = BuildConfig.BUILD_TIMESTAMP,
+            )
+        }
 
     @Provides
     @Singleton

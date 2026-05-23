@@ -29,6 +29,7 @@ data class HomeScreenActions(
     val onCategoryClick: (String) -> Unit,
     val onRetry: () -> Unit,
     val onExportClick: () -> Unit = {},
+    val onAboutClick: () -> Unit = {},
 )
 
 data class HomeUiState(

@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "TooManyFunctions")
 
 package com.juzgon.feature.home
 
@@ -19,11 +19,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -33,6 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +48,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.feature.about.AboutDialog
+import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -53,10 +60,12 @@ fun HomeRoute(
     onNavigateToCategory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     exportViewModel: ExportBackupViewModel = hiltViewModel(),
+    aboutViewModel: AboutViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val exportState by exportViewModel.state.collectAsState()
     val context = LocalContext.current
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     val safLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -95,8 +104,16 @@ fun HomeRoute(
                 onCategoryClick = viewModel::onCategoryClick,
                 onRetry = viewModel::onRetry,
                 onExportClick = exportViewModel::export,
+                onAboutClick = { showAboutDialog = true },
             ),
     )
+
+    if (showAboutDialog) {
+        AboutDialog(
+            metadata = aboutViewModel.metadata,
+            onDismiss = { showAboutDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -186,26 +203,7 @@ private fun HomeCategoriesState(
                 .fillMaxSize()
                 .padding(24.dp),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text = "Categories",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Button(
-                onClick = actions.onExportClick,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Export backup"
-                    },
-            ) {
-                Text("Export")
-            }
-        }
+        HomeHeader(actions = actions)
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = state.searchQuery,
@@ -230,6 +228,47 @@ private fun HomeCategoriesState(
             onCreateCategoryClick = actions.onCreateCategoryClick,
             onCategoryClick = actions.onCategoryClick,
         )
+    }
+}
+
+@Composable
+private fun HomeHeader(actions: HomeScreenActions) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = "Categories",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = actions.onAboutClick,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "About"
+                    },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                )
+            }
+            Button(
+                onClick = actions.onExportClick,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Export backup"
+                    },
+            ) {
+                Text("Export")
+            }
+        }
     }
 }
 
