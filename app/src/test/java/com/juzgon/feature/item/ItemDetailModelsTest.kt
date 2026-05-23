@@ -251,4 +251,25 @@ class ItemDetailModelsTest {
         assertEquals(listOf(200L), previousSnapshots.map { it.capturedAt }.distinct())
         assertEquals(7, previousSnapshots.single().value)
     }
+
+    @Test
+    fun formatAttributeValueForNationalityResolvesCodeToFlagPlusName() {
+        assertEquals(
+            "\uD83C\uDDF2\uD83C\uDDFD Mexican",
+            formatAttributeValue(AttributeType.NATIONALITY, "MX"),
+        )
+    }
+
+    @Test
+    fun formatAttributeValueForNationalityWithUnknownCodeReturnsRawValue() {
+        assertEquals("ZZZZZ", formatAttributeValue(AttributeType.NATIONALITY, "ZZZZZ"))
+    }
+
+    @Test
+    fun formatAttributeValueForNationalityIsCaseInsensitive() {
+        assertEquals(
+            "\uD83C\uDDFA\uD83C\uDDF8 American",
+            formatAttributeValue(AttributeType.NATIONALITY, "us"),
+        )
+    }
 }

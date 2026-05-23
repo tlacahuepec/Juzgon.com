@@ -598,7 +598,11 @@ private fun CategoryDetailItemCard(
                     onClick = { onEditItemClick(item.id) },
                 ).semantics {
                     contentDescription =
-                        "Rated item ${item.id}, rank ${item.rank}, ${item.metricLabel} ${item.metricValueText}"
+                        buildString {
+                            append("Rated item ${item.id}, rank ${item.rank}")
+                            item.nationalityBadge?.let { append(", $it") }
+                            append(", ${item.metricLabel} ${item.metricValueText}")
+                        }
                     role = Role.Button
                 },
     ) {
@@ -706,6 +710,13 @@ private fun CategoryDetailItemOverlay(
                 title = item.id,
                 modifier = Modifier.weight(1f),
             )
+            item.nationalityBadge?.let { badge ->
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
+            }
             Surface(
                 color = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,

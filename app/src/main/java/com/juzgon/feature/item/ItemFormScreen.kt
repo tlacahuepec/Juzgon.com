@@ -487,6 +487,15 @@ private fun ItemAttributeValueField(
                 onImageRemoveClick = onImageRemoveClick,
             )
         }
+        AttributeType.NATIONALITY -> {
+            NationalityAutocompleteField(
+                attributeId = attributeId,
+                valueText = valueInput.valueText,
+                onValueChange = onValueChange,
+                isError = validationError.value != null,
+                errorText = validationError.value,
+            )
+        }
         else -> {
             OutlinedTextField(
                 value = valueInput.valueText,

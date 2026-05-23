@@ -523,6 +523,109 @@ class CategoryDetailViewModelTest {
         }
 
     @Test
+    fun sortOptionsExcludeNationalityAttribute() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.category.value =
+                Category(
+                    name = "Cars",
+                    attributes = listOf(speed, nationality),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf(
+                        "Sort items by score",
+                        "Sort items by name",
+                        "Sort items by Speed",
+                    ),
+                    state.sortOptions.map { option -> option.contentDescription },
+                )
+            }
+        }
+
+    @Test
+    fun nationalityBadgeResolvedFromItemValue() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, nationality))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            ratedItem("sedan").copy(
+                                values = listOf(ItemAttributeValue(nationality, "MX")),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals("\uD83C\uDDF2\uD83C\uDDFD Mexican", state.items.single().nationalityBadge)
+            }
+        }
+
+    @Test
+    fun nationalityBadgeNullWhenValueMissing() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, nationality))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.0),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(null, state.items.single().nationalityBadge)
+            }
+        }
+
+    @Test
+    fun nationalityBadgeNullForUnknownCode() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, nationality))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            ratedItem("sedan").copy(
+                                values = listOf(ItemAttributeValue(nationality, "ZZZZZ")),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(null, state.items.single().nationalityBadge)
+            }
+        }
+
+    @Test
     fun editCategoryClickEmitsNavigateToEditCategoryEvent() =
         runTest {
             categoryRepository.category.value = carsCategory

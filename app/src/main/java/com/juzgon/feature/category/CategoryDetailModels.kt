@@ -2,6 +2,7 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.feature.item.decodeItemImageReferences
@@ -28,6 +29,7 @@ data class CategoryDetailItemUiModel(
     val id: String,
     val averageScoreText: String,
     val imageValue: String? = null,
+    val nationalityBadge: String? = null,
     val metricLabel: String = "Score",
     val metricValueText: String = averageScoreText,
 )
@@ -107,6 +109,7 @@ object CategoryDetailReducer {
                         id = rankedItem.item.id,
                         averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
                         imageValue = rankedItem.item.primaryImageValue(category),
+                        nationalityBadge = rankedItem.item.resolveNationalityBadge(category),
                         metricLabel = cardMetric.label,
                         metricValueText = cardMetric.valueText,
                     )
@@ -151,8 +154,9 @@ private fun RankedRatedItem.toCardMetric(
 private fun Category.toSortOptions(): List<CategoryDetailSortOptionUiModel> =
     defaultSortOptions() +
         attributes
-            .filterNot { attribute -> attribute.type == AttributeType.IMAGE }
-            .map { attribute ->
+            .filterNot { attribute ->
+                attribute.type == AttributeType.IMAGE || attribute.type == AttributeType.NATIONALITY
+            }.map { attribute ->
                 CategoryDetailSortOptionUiModel(
                     option = CategoryDetailSortOption.Attribute(attribute.id),
                     label = attribute.id,
@@ -248,3 +252,20 @@ private fun Int.toAttributeSummary(): String =
     }
 
 private fun Double.toAverageScoreText(): String = String.format(Locale.US, "%.1f", this)
+
+@Suppress("ReturnCount")
+private fun RatedItem.resolveNationalityBadge(category: Category): String? {
+    val nationalityAttribute =
+        category.attributes.firstOrNull { attribute ->
+            attribute.type == AttributeType.NATIONALITY
+        } ?: return null
+    val code =
+        values
+            .firstOrNull { value -> value.attribute.id == nationalityAttribute.id }
+            ?.value
+            ?.trim()
+            ?.takeIf { value -> value.isNotEmpty() }
+            ?: return null
+    val option = NationalityDataset.findByCode(code) ?: return null
+    return "${option.flagEmoji} ${option.nationality}"
+}
