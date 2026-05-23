@@ -80,6 +80,7 @@ object DataModule {
         JsonBackupService(
             categoryDao = database.categoryDao(),
             itemDao = database.itemDao(),
+            scoreProfileDao = database.scoreProfileDao(),
         )
 
     @Provides
