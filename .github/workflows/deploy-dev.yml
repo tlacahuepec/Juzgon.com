@@ -1,0 +1,60 @@
+name: Deploy Dev Build
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Prepare dev pages content
+        run: |
+          mkdir -p pages-dev/dev
+          cp app/build/outputs/apk/debug/*.apk pages-dev/dev/
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          cat > pages-dev/dev/index.html << EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Juzgon - Dev Build</title></head>
+          <body>
+          <h1>Juzgon Dev Build</h1>
+          <p>Channel: dev | Commit: ${COMMIT_SHA} | Built: ${BUILD_DATE}</p>
+          <ul>
+          <li><a href="app-debug.apk">Download Debug APK</a></li>
+          </ul>
+          <p><strong>Warning:</strong> This is an unstable development build.</p>
+          <p><a href="../latest/">Latest stable</a> | <a href="../">All versions</a></p>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to /dev/ on GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages-dev/dev
+          destination_dir: dev
+          keep_files: false
