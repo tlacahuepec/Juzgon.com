@@ -45,11 +45,11 @@ class JsonBackupServiceTest {
     }
 
     @Test
-    fun export_includesSchemaVersion2() =
+    fun export_includesSchemaVersion3() =
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(2, json.getInt("version"))
+            assertEquals(3, json.getInt("version"))
         }
 
     @Test
@@ -209,7 +209,7 @@ class JsonBackupServiceTest {
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(2, json.getInt("version"))
+            assertEquals(3, json.getInt("version"))
             assertEquals(0, json.getJSONArray("categories").length())
             assertEquals(0, json.getJSONArray("items").length())
             assertEquals(0, json.getJSONArray("scoreProfiles").length())
@@ -240,7 +240,7 @@ class JsonBackupServiceTest {
             assertEquals(1, categoryDao.upsertedCategories.size)
             assertEquals("Cars", categoryDao.upsertedCategories[0].name)
             assertEquals(1, categoryDao.upsertedAttributes.size)
-            assertEquals("Speed", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Cars/Speed", categoryDao.upsertedAttributes[0].id)
             assertEquals(1.5, categoryDao.upsertedAttributes[0].weight, 0.001)
             assertEquals(2, categoryDao.upsertedAttributes[0].position)
         }
@@ -288,8 +288,8 @@ class JsonBackupServiceTest {
                     CategoryWithAttributes(
                         CategoryEntity("Cars"),
                         listOf(
-                            AttributeEntity("Speed", "Cars", 1.0, 0),
-                            AttributeEntity("Brakes", "Cars", 2.0, 1),
+                            AttributeEntity("Cars/Speed", "Cars", 1.0, 0),
+                            AttributeEntity("Cars/Brakes", "Cars", 2.0, 1),
                         ),
                     ),
                 )
@@ -298,8 +298,8 @@ class JsonBackupServiceTest {
                     ItemWithRatings(
                         ItemEntity("Roadster", "weekend car", 100L, 200L),
                         listOf(
-                            RatingEntity("Roadster", "Speed", 9),
-                            RatingEntity("Roadster", "Brakes", 8),
+                            RatingEntity("Roadster", "Cars/Speed", 9),
+                            RatingEntity("Roadster", "Cars/Brakes", 8),
                         ),
                         emptyList(),
                     ),
@@ -317,8 +317,8 @@ class JsonBackupServiceTest {
             assertEquals(1, categoryDao.upsertedCategories.size)
             assertEquals("Cars", categoryDao.upsertedCategories[0].name)
             assertEquals(2, categoryDao.upsertedAttributes.size)
-            assertEquals("Speed", categoryDao.upsertedAttributes[0].id)
-            assertEquals("Brakes", categoryDao.upsertedAttributes[1].id)
+            assertEquals("Cars/Speed", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Cars/Brakes", categoryDao.upsertedAttributes[1].id)
             assertEquals(1, itemDao.upsertedItems.size)
             assertEquals("Roadster", itemDao.upsertedItems[0].id)
             assertEquals("weekend car", itemDao.upsertedItems[0].notes)
@@ -352,6 +352,21 @@ class JsonBackupServiceTest {
     fun import_unsupportedVersion_throwsBackupException() =
         runTest {
             service.import("""{"version":999,"categories":[],"items":[]}""")
+        }
+
+    @Test
+    fun import_v1BareAttributeIdsAreScopedWithCategoryName() =
+        runTest {
+            val json =
+                """{"version":1,"categories":[{"name":"Food",""" +
+                    """"attributes":[{"id":"Taste","weight":1.0,"position":0}]}],""" +
+                    """"items":[{"id":"Pizza","categoryName":"Food","notes":"","createdAt":1,"updatedAt":2,""" +
+                    """"ratings":[{"attributeId":"Taste","score":7}]}]}"""
+
+            service.import(json)
+
+            assertEquals("Food/Taste", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Food/Taste", itemDao.upsertedRatings[0].attributeId)
         }
 
     // --- Fakes ---
@@ -417,6 +432,11 @@ class JsonBackupServiceTest {
         ) = error("not used")
 
         override suspend fun renameAttributeIdInRankSnapshots(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
+        override suspend fun renameAttributeIdInScoreProfileAttributes(
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
@@ -508,6 +528,10 @@ class JsonBackupServiceTest {
         override fun observeAttributesForCategory(categoryName: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
 
         override suspend fun deleteProfile(id: String) {
+            writeMethodCalled = true
+        }
+
+        override suspend fun deleteOrphanedProfiles() {
             writeMethodCalled = true
         }
 

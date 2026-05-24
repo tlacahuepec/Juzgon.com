@@ -20,8 +20,8 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.time.Instant
 
-private const val SCHEMA_VERSION = 2
-private const val IMPORT_MAX_SUPPORTED_VERSION = 2
+private const val SCHEMA_VERSION = 3
+private const val IMPORT_MAX_SUPPORTED_VERSION = 3
 
 @Suppress("TooManyFunctions")
 class JsonBackupService(
@@ -194,8 +194,10 @@ class JsonBackupService(
             val attrs =
                 (0 until attrsArray.length()).map { j ->
                     val attr = attrsArray.getJSONObject(j)
+                    val rawId = attr.getString("id")
+                    val id = if ("/" in rawId) rawId else "$name/$rawId"
                     AttributeEntity(
-                        id = attr.getString("id"),
+                        id = id,
                         categoryName = name,
                         weight = attr.getDouble("weight"),
                         position = attr.getInt("position"),
@@ -211,6 +213,7 @@ class JsonBackupService(
         repeat(itemsArray.length()) { i ->
             val itemObj = itemsArray.getJSONObject(i)
             val itemId = itemObj.getString("id")
+            val categoryName = itemObj.optString("categoryName", "")
             itemDao.upsertItem(
                 ItemEntity(
                     id = itemId,
@@ -223,7 +226,10 @@ class JsonBackupService(
             val ratings =
                 (0 until ratingsArray.length()).map { j ->
                     val r = ratingsArray.getJSONObject(j)
-                    RatingEntity(itemId = itemId, attributeId = r.getString("attributeId"), score = r.getInt("score"))
+                    val rawAttrId = r.getString("attributeId")
+                    val attributeId =
+                        if ("/" in rawAttrId) rawAttrId else "$categoryName/$rawAttrId"
+                    RatingEntity(itemId = itemId, attributeId = attributeId, score = r.getInt("score"))
                 }
             if (ratings.isNotEmpty()) itemDao.upsertRatings(ratings)
         }

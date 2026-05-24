@@ -63,7 +63,7 @@ class CategoryFormViewModel
 
                     dirtyAttributeKeys =
                         editState.attributes
-                            .filter { it.name in dirtyAttributeIds }
+                            .filter { it.sourceId in dirtyAttributeIds }
                             .map { it.key }
                             .toSet()
                 }
@@ -231,7 +231,7 @@ class CategoryFormViewModel
                         current.attributes
                             .mapNotNull { attribute ->
                                 val originalId = attribute.sourceId ?: return@mapNotNull null
-                                val updatedId = attribute.name.trim()
+                                val updatedId = "${current.name.trim()}/${attribute.name.trim()}"
                                 if (originalId == updatedId) {
                                     null
                                 } else {

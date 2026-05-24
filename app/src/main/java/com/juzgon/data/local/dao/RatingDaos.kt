@@ -123,6 +123,12 @@ interface CategoryDao {
         newAttributeId: String,
     )
 
+    @Query("UPDATE score_profile_attributes SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInScoreProfileAttributes(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
     @Query(
         """
         SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count

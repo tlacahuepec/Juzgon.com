@@ -199,7 +199,7 @@ private fun RankedRatedItem.toCardMetric(
                 } else {
                     item.textValueForAttribute(attribute.id)
                 } ?: MISSING_ATTRIBUTE_VALUE_TEXT
-            CategoryDetailCardMetric(label = attribute.id, valueText = valueText)
+            CategoryDetailCardMetric(label = attribute.displayName, valueText = valueText)
         }
 
         else -> CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
@@ -213,8 +213,8 @@ private fun Category.toSortOptions(): List<CategoryDetailSortOptionUiModel> =
             }.map { attribute ->
                 CategoryDetailSortOptionUiModel(
                     option = CategoryDetailSortOption.Attribute(attribute.id),
-                    label = attribute.id,
-                    contentDescription = "Sort items by ${attribute.id}",
+                    label = attribute.displayName,
+                    contentDescription = "Sort items by ${attribute.displayName}",
                 )
             }
 

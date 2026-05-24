@@ -149,7 +149,7 @@ private fun ItemValueInput.valueError(): String? {
         return imageListError()
     }
     return if (attribute.isRequired && valueText.isBlank()) {
-        "${attribute.id} is required"
+        "${attribute.displayName} is required"
     } else {
         null
     }
@@ -158,7 +158,7 @@ private fun ItemValueInput.valueError(): String? {
 @Suppress("ReturnCount")
 private fun ItemValueInput.imageListError(): String? {
     if (attribute.isRequired && imageReferences.isEmpty()) {
-        return "${attribute.id} is required"
+        return "${attribute.displayName} is required"
     }
     imageReferences.forEach { imageReference ->
         when {

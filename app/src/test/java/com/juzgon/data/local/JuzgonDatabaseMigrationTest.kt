@@ -247,6 +247,121 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(9, listOf(DatabaseMigrations.MIGRATION_8_9)).close()
     }
 
+    @Test
+    fun migrate11To12_scopesAttributeIdsWithCategoryPrefix() {
+        val connection = helper.createDatabase(11)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, " +
+                    "'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).use { conn ->
+            conn.prepare("SELECT id, category_name FROM attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("$CATEGORY_NAME/$ATTRIBUTE_ID", stmt.getText(0))
+                assertEquals(CATEGORY_NAME, stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate11To12_preservesRatingsWithUpdatedReferences() {
+        val connection = helper.createDatabase(11)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, " +
+                    "'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO ratings (item_id, attribute_id, score) " +
+                    "VALUES ('$ITEM_ID', '$ATTRIBUTE_ID', 9)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).use { conn ->
+            conn.prepare("SELECT attribute_id, score FROM ratings").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("$CATEGORY_NAME/$ATTRIBUTE_ID", stmt.getText(0))
+                assertEquals(9L, stmt.getLong(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate11To12_preservesItemValuesWithUpdatedReferences() {
+        val connection = helper.createDatabase(11)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('notes_attr', '$CATEGORY_NAME', 1.0, 1, " +
+                    "'NOTES', 0, 0)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$ITEM_ID', 'notes_attr', 'some note')",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).use { conn ->
+            conn.prepare("SELECT attribute_id, value_text FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("$CATEGORY_NAME/notes_attr", stmt.getText(0))
+                assertEquals("some note", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate11To12_preservesScoreProfileAttributesWithUpdatedReferences() {
+        val connection = helper.createDatabase(11)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, " +
+                    "'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO score_profiles (id, category_name, name, created_at, updated_at) " +
+                    "VALUES ('p1', '$CATEGORY_NAME', 'Default', 0, 0)",
+            ).use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO score_profile_attributes (profile_id, attribute_id, position) " +
+                    "VALUES ('p1', '$ATTRIBUTE_ID', 0)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).use { conn ->
+            conn.prepare("SELECT attribute_id FROM score_profile_attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("$CATEGORY_NAME/$ATTRIBUTE_ID", stmt.getText(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate11To12_validatesLatestSchema() {
+        helper.createDatabase(11).close()
+        helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

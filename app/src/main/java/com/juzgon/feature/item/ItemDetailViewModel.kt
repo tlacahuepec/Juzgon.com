@@ -47,7 +47,7 @@ class ItemDetailViewModel
                 val attributeScores =
                     item.scores.map { scoreEntry ->
                         ItemDetailAttributeScore(
-                            label = scoreEntry.attribute.id,
+                            label = scoreEntry.attribute.displayName,
                             score = scoreEntry.score,
                             attributeId = scoreEntry.attribute.id,
                             displayInDiamond = scoreEntry.attribute.displayInDiamond,
@@ -88,7 +88,7 @@ class ItemDetailViewModel
                         attributeValues =
                             item.values.map { valueEntry ->
                                 ItemDetailAttributeValue(
-                                    label = valueEntry.attribute.id,
+                                    label = valueEntry.attribute.displayName,
                                     value = valueEntry.value,
                                     type = valueEntry.attribute.type,
                                     displayValue =

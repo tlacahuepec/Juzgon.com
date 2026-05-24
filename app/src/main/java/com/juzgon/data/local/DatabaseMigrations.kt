@@ -14,6 +14,7 @@ private const val DATABASE_VERSION_8 = 8
 private const val DATABASE_VERSION_9 = 9
 private const val DATABASE_VERSION_10 = 10
 private const val DATABASE_VERSION_11 = 11
+private const val DATABASE_VERSION_12 = 12
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -149,6 +150,26 @@ object DatabaseMigrations {
                     "CREATE INDEX index_score_profile_attributes_attribute_id " +
                         "ON score_profile_attributes(attribute_id)",
                 )
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    val MIGRATION_11_12: Migration =
+        object : Migration(DATABASE_VERSION_11, DATABASE_VERSION_12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE ratings SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = ratings.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = ratings.attribute_id)",
+                )
+                db.execSQL(
+                    "UPDATE item_values SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = item_values.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = item_values.attribute_id)",
+                )
+                db.execSQL(
+                    "UPDATE attribute_rank_snapshots SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = attribute_rank_snapshots.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = attribute_rank_snapshots.attribute_id)",
+                )
+                db.execSQL(
+                    "UPDATE score_profile_attributes SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = score_profile_attributes.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = score_profile_attributes.attribute_id)",
+                )
+                db.execSQL("UPDATE attributes SET id = category_name || '/' || id")
             }
         }
 }

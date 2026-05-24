@@ -12,6 +12,8 @@ data class Attribute(
     val diamondOrder: Int? = null,
     val scoringDirection: ScoringDirection? = null,
 ) {
+    val displayName: String get() = id.substringAfter("/")
+
     val isRankable: Boolean
         get() = type == AttributeType.NUMBER || (type == AttributeType.DATE && scoringDirection != null)
 
