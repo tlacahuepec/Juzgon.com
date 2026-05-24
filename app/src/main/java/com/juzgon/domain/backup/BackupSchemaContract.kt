@@ -1,7 +1,7 @@
 package com.juzgon.domain.backup
 
 /**
- * Backup Schema Contract v2
+ * Backup Schema Contract v3
  *
  * Defines the structure and guarantees of `.juzgon.json` backup files for
  * interoperability between export and future import features.
@@ -19,8 +19,8 @@ package com.juzgon.domain.backup
  * ## Schema Migration
  * - Each schema version bump documents what changed.
  * - Import must support all [SUPPORTED_VERSIONS] by applying incremental migrations.
- * - v1 → v2: added attribute metadata (type, isRequired, displayInDiamond,
- *   diamondOrder), item values, score profiles, app metadata.
+ * - v2 → v3: attribute IDs scoped as "categoryName/attributeName" for global
+ *   uniqueness. Import from v1/v2 auto-prefixes bare IDs with category name.
  *
  * ## Image Assignments
  * - Image assignments in JSON export are metadata/references only (URI strings).
@@ -31,9 +31,10 @@ package com.juzgon.domain.backup
  * - Missing optional fields must not break validation or future import.
  * - Import should apply sensible defaults for absent optional fields.
  */
+@Suppress("MagicNumber")
 object BackupSchemaContract {
-    const val CURRENT_VERSION = 2
-    val SUPPORTED_VERSIONS = setOf(1, 2)
+    const val CURRENT_VERSION = 3
+    val SUPPORTED_VERSIONS = setOf(1, 2, 3)
 
     val REQUIRED_METADATA_FIELDS = setOf("version", "app", "exportedAt")
     val REQUIRED_ARRAYS = setOf("categories", "items", "scoreProfiles")

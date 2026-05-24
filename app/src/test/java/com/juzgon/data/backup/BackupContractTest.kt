@@ -309,6 +309,11 @@ class BackupContractTest {
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
+
+        override suspend fun renameAttributeIdInScoreProfileAttributes(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
     }
 
     @Suppress("TooManyFunctions")
@@ -362,6 +367,8 @@ class BackupContractTest {
         override fun observeAttributesForCategory(categoryName: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
 
         override suspend fun deleteProfile(id: String) = error("not used")
+
+        override suspend fun deleteOrphanedProfiles() = error("not used")
 
         override suspend fun saveProfileWithAttributes(
             profile: ScoreProfileEntity,

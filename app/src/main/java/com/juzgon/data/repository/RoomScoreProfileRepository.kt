@@ -9,6 +9,7 @@ import com.juzgon.domain.repository.ScoreProfileRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import timber.log.Timber
 
 class RoomScoreProfileRepository(
     database: JuzgonDatabase,
@@ -21,9 +22,14 @@ class RoomScoreProfileRepository(
             scoreProfileDao.observeAttributesForCategory(categoryName),
         ) { profiles, allAttributes ->
             val attributesByProfile = allAttributes.groupBy { it.profileId }
-            profiles.map { profile ->
+            profiles.mapNotNull { profile ->
                 val attributeIds = attributesByProfile[profile.id]?.map { it.attributeId }.orEmpty()
-                profile.toDomain(attributeIds)
+                if (attributeIds.isEmpty()) {
+                    Timber.w("Excluded orphaned score profile '%s' (%s)", profile.name, profile.id)
+                    null
+                } else {
+                    profile.toDomain(attributeIds)
+                }
             }
         }.distinctUntilChanged()
 
@@ -32,7 +38,12 @@ class RoomScoreProfileRepository(
             scoreProfileDao.observeProfile(id),
             scoreProfileDao.observeAttributesForProfile(id),
         ) { profile, attributes ->
-            profile?.toDomain(attributes.map { it.attributeId })
+            val attributeIds = attributes.map { it.attributeId }
+            if (profile == null || attributeIds.isEmpty()) {
+                null
+            } else {
+                profile.toDomain(attributeIds)
+            }
         }.distinctUntilChanged()
 
     override suspend fun saveProfile(profile: ScoreProfile) {

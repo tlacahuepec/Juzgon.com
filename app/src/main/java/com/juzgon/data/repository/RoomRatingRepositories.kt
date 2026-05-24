@@ -28,12 +28,15 @@ import com.juzgon.domain.usecase.RankRatedItemsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 
 class RoomCategoryRepository(
     private val database: JuzgonDatabase,
 ) : CategoryRepository {
     private val categoryDao = database.categoryDao()
+    private val scoreProfileDao = database.scoreProfileDao()
 
     override fun observeCategories(): Flow<List<Category>> =
         combine(
@@ -59,6 +62,8 @@ class RoomCategoryRepository(
         category: Category,
         renamedAttributeIds: Map<String, String>,
     ) {
+        val categoriesBefore = categoryDao.observeCategoriesWithAttributes().first()
+        Timber.d("Saving category '%s' with %d attributes", category.name, category.attributes.size)
         database.withTransaction {
             categoryDao.upsertCategory(category.toEntity())
             if (category.attributes.isEmpty()) {
@@ -71,7 +76,23 @@ class RoomCategoryRepository(
                     attributeIds = category.attributes.map { it.id },
                 )
             }
+            scoreProfileDao.deleteOrphanedProfiles()
         }
+        val categoriesAfter = categoryDao.observeCategoriesWithAttributes().first()
+        categoriesBefore
+            .filter { it.category.name != category.name }
+            .forEach { before ->
+                val after = categoriesAfter.firstOrNull { it.category.name == before.category.name }
+                if (after == null || after.attributes.size < before.attributes.size) {
+                    Timber.w(
+                        "Data integrity: category '%s' lost attributes after saving '%s' (before=%d, after=%d)",
+                        before.category.name,
+                        category.name,
+                        before.attributes.size,
+                        after?.attributes?.size ?: 0,
+                    )
+                }
+            }
     }
 
     override suspend fun renameCategory(
@@ -118,6 +139,10 @@ class RoomCategoryRepository(
                 newAttributeId = newAttributeId,
             )
             categoryDao.renameAttributeIdInRankSnapshots(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
+            categoryDao.renameAttributeIdInScoreProfileAttributes(
                 oldAttributeId = oldAttributeId,
                 newAttributeId = newAttributeId,
             )
