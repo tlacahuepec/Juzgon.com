@@ -136,3 +136,18 @@ jobs:
           publish_dir: ./pages-latest/latest
           destination_dir: latest
           keep_files: false
+
+      - name: Generate versions index
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          chmod +x .github/scripts/generate-versions-index.sh
+          .github/scripts/generate-versions-index.sh "$VERSION" ./pages-index
+
+      - name: Deploy versions index to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages-index
+          destination_dir: .
+          keep_files: true
