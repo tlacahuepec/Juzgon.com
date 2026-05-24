@@ -362,6 +362,73 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(12, listOf(DatabaseMigrations.MIGRATION_11_12)).close()
     }
 
+    @Test
+    fun migrate12To13_preservesItemValuesAndAddsDeletedAtColumn() {
+        val connection = helper.createDatabase(12)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$CATEGORY_NAME/$ATTRIBUTE_ID', '$CATEGORY_NAME', " +
+                    "1.0, 0, 'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$ITEM_ID', '$CATEGORY_NAME/$ATTRIBUTE_ID', 'blue')",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(13, listOf(DatabaseMigrations.MIGRATION_12_13)).use { conn ->
+            conn.prepare("SELECT item_id, attribute_id, value_text, deleted_at FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ITEM_ID, stmt.getText(0))
+                assertEquals("$CATEGORY_NAME/$ATTRIBUTE_ID", stmt.getText(1))
+                assertEquals("blue", stmt.getText(2))
+                assertTrue(stmt.isNull(3))
+            }
+        }
+    }
+
+    @Test
+    fun migrate12To13_preservesRatingsWithoutAttributeFk() {
+        val connection = helper.createDatabase(12)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$CATEGORY_NAME/$ATTRIBUTE_ID', '$CATEGORY_NAME', " +
+                    "1.0, 0, 'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO ratings (item_id, attribute_id, score) " +
+                    "VALUES ('$ITEM_ID', '$CATEGORY_NAME/$ATTRIBUTE_ID', 9)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(13, listOf(DatabaseMigrations.MIGRATION_12_13)).use { conn ->
+            conn.prepare("SELECT item_id, attribute_id, score FROM ratings").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(ITEM_ID, stmt.getText(0))
+                assertEquals("$CATEGORY_NAME/$ATTRIBUTE_ID", stmt.getText(1))
+                assertEquals(9L, stmt.getLong(2))
+            }
+        }
+    }
+
+    @Test
+    fun migrate12To13_validatesLatestSchema() {
+        helper.createDatabase(12).close()
+        helper.runMigrationsAndValidate(13, listOf(DatabaseMigrations.MIGRATION_12_13)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"

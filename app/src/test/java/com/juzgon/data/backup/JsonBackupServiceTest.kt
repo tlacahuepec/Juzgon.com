@@ -446,6 +446,74 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun roundTrip_preservesScoreProfiles() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity("People/Charisma", "People", type = "NUMBER"),
+                        ),
+                    ),
+                )
+            itemDao.state.value = emptyList()
+            scoreProfileDao.profiles.value =
+                listOf(
+                    ScoreProfileEntity("sp1", "People", "Default", 100L, 200L),
+                )
+            scoreProfileDao.profileAttributes.value =
+                listOf(
+                    ScoreProfileAttributeEntity("sp1", "People/Score", 0),
+                    ScoreProfileAttributeEntity("sp1", "People/Charisma", 1),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            scoreProfileDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+            scoreProfileDao.profiles.value = emptyList()
+            scoreProfileDao.profileAttributes.value = emptyList()
+
+            service.import(json)
+
+            assertEquals(1, scoreProfileDao.upsertedProfiles.size)
+            val profile = scoreProfileDao.upsertedProfiles[0]
+            assertEquals("sp1", profile.id)
+            assertEquals("People", profile.categoryName)
+            assertEquals("Default", profile.name)
+            assertEquals(100L, profile.createdAt)
+            assertEquals(200L, profile.updatedAt)
+
+            assertEquals(2, scoreProfileDao.upsertedAttributes.size)
+            val attr0 = scoreProfileDao.upsertedAttributes.find { it.position == 0 }!!
+            val attr1 = scoreProfileDao.upsertedAttributes.find { it.position == 1 }!!
+            assertEquals("People/Score", attr0.attributeId)
+            assertEquals("People/Charisma", attr1.attributeId)
+        }
+
+    @Test
+    fun import_clearsExistingScoreProfiles() =
+        runTest {
+            scoreProfileDao.profiles.value =
+                listOf(
+                    ScoreProfileEntity("old-profile", "Cars", "Old", 0L, 0L),
+                )
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            val json =
+                """{"version":4,"categories":[],"items":[],"scoreProfiles":[]}"""
+            service.import(json)
+
+            assertTrue(scoreProfileDao.deletedProfileIds.contains("old-profile"))
+        }
+
+    @Test
     fun import_v4BackupSucceeds() =
         runTest {
             val json =
@@ -672,7 +740,17 @@ class JsonBackupServiceTest {
     private class FakeScoreProfileDao : ScoreProfileDao {
         val profiles = MutableStateFlow<List<ScoreProfileEntity>>(emptyList())
         val profileAttributes = MutableStateFlow<List<ScoreProfileAttributeEntity>>(emptyList())
+        val upsertedProfiles = mutableListOf<ScoreProfileEntity>()
+        val upsertedAttributes = mutableListOf<ScoreProfileAttributeEntity>()
+        val deletedProfileIds = mutableListOf<String>()
         var writeMethodCalled = false
+
+        fun reset() {
+            upsertedProfiles.clear()
+            upsertedAttributes.clear()
+            deletedProfileIds.clear()
+            writeMethodCalled = false
+        }
 
         override fun observeAllProfiles(): Flow<List<ScoreProfileEntity>> = profiles
 
@@ -684,6 +762,7 @@ class JsonBackupServiceTest {
 
         override suspend fun upsertProfile(profile: ScoreProfileEntity) {
             writeMethodCalled = true
+            upsertedProfiles += profile
         }
 
         override suspend fun deleteAttributesForProfile(profileId: String) {
@@ -692,6 +771,7 @@ class JsonBackupServiceTest {
 
         override suspend fun upsertProfileAttributes(attributes: List<ScoreProfileAttributeEntity>) {
             writeMethodCalled = true
+            upsertedAttributes += attributes
         }
 
         override fun observeAttributesForProfile(profileId: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
@@ -700,6 +780,7 @@ class JsonBackupServiceTest {
 
         override suspend fun deleteProfile(id: String) {
             writeMethodCalled = true
+            deletedProfileIds += id
         }
 
         override suspend fun deleteOrphanedProfiles() {
@@ -711,6 +792,8 @@ class JsonBackupServiceTest {
             attributes: List<ScoreProfileAttributeEntity>,
         ) {
             writeMethodCalled = true
+            upsertedProfiles += profile
+            upsertedAttributes += attributes
         }
     }
 }

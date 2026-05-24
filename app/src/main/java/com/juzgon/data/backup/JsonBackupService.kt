@@ -172,6 +172,9 @@ class JsonBackupService(
         clearExistingData()
         restoreCategories(root.getJSONArray("categories"))
         restoreItems(root.getJSONArray("items"))
+        if (root.has("scoreProfiles")) {
+            restoreScoreProfiles(root.getJSONArray("scoreProfiles"))
+        }
     }
 
     private suspend fun clearExistingData() {
@@ -183,6 +186,10 @@ class JsonBackupService(
             .observeItemsWithRatings()
             .first()
             .forEach { itemDao.deleteItemById(it.item.id) }
+        scoreProfileDao
+            .observeAllProfiles()
+            .first()
+            .forEach { scoreProfileDao.deleteProfile(it.id) }
     }
 
     private suspend fun restoreCategories(categoriesArray: JSONArray) {
@@ -252,6 +259,31 @@ class JsonBackupService(
                     }
                 itemDao.upsertItemValues(values)
             }
+        }
+    }
+
+    private suspend fun restoreScoreProfiles(profilesArray: JSONArray) {
+        repeat(profilesArray.length()) { i ->
+            val obj = profilesArray.getJSONObject(i)
+            val profileId = obj.getString("id")
+            val profile =
+                ScoreProfileEntity(
+                    id = profileId,
+                    categoryName = obj.getString("categoryName"),
+                    name = obj.getString("name"),
+                    createdAt = obj.getLong("createdAt"),
+                    updatedAt = obj.getLong("updatedAt"),
+                )
+            val attrIds = obj.getJSONArray("attributeIds")
+            val attributes =
+                (0 until attrIds.length()).map { j ->
+                    ScoreProfileAttributeEntity(
+                        profileId = profileId,
+                        attributeId = attrIds.getString(j),
+                        position = j,
+                    )
+                }
+            scoreProfileDao.saveProfileWithAttributes(profile, attributes)
         }
     }
 }
