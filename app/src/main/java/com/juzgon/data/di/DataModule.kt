@@ -63,6 +63,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_9_10,
                     DatabaseMigrations.MIGRATION_10_11,
                     DatabaseMigrations.MIGRATION_11_12,
+                    DatabaseMigrations.MIGRATION_12_13,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -72,6 +73,18 @@ object DataModule {
                                     isEnabled = BuildConfig.DEBUG,
                                     sampleDataStore = RoomSampleDataStore(database),
                                 ).seed()
+                            }
+                        }
+
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            seedScope.launch {
+                                @Suppress("MagicNumber")
+                                val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
+                                val cutoff = System.currentTimeMillis() - thirtyDaysMs
+                                database.itemDao().purgeOldSoftDeletedValues(cutoff)
+                                database.itemDao().purgeOrphanedRatings()
+                                database.itemDao().purgeOrphanedSoftDeletedValues()
                             }
                         }
                     },

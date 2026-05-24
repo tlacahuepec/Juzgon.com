@@ -211,7 +211,10 @@ class RoomRatedItemRepository(
                             rankedItem.item.toDomain(
                                 ratings = rankedItem.ratings.filter { it.attributeId in numberAttributeIds },
                                 attributesById = attributesById,
-                                valueEntities = rankedItem.values.filter { it.attributeId in attributesById },
+                                valueEntities =
+                                    rankedItem.values.filter {
+                                        it.attributeId in attributesById && it.deletedAt == null
+                                    },
                             )
                         val dateScores =
                             rankableAttributes
@@ -262,10 +265,13 @@ class RoomRatedItemRepository(
                     snapshotDao.upsertSnapshots(snapshots.map { it.toEntity() })
                 }
             }
-            itemDao.deleteItemValuesForItem(ratedItem.id)
             val valueEntities = ratedItem.toItemValueEntities()
             if (valueEntities.isNotEmpty()) {
                 itemDao.upsertItemValues(valueEntities)
+            }
+            val keepAttributeIds = valueEntities.map { it.attributeId }
+            if (keepAttributeIds.isNotEmpty()) {
+                itemDao.softDeleteItemValuesNotIn(ratedItem.id, keepAttributeIds, updatedAt)
             }
         }
     }

@@ -98,7 +98,8 @@ fun ItemEntity.toDomain(
 }
 
 @Suppress("MaxLineLength")
-fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem = item.toDomain(ratings, attributesById, values)
+fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem =
+    item.toDomain(ratings, attributesById, values.filter { it.deletedAt == null })
 
 fun AttributeEntity.toDomain(): Attribute {
     val parsedType = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER)

@@ -3,6 +3,7 @@ package com.juzgon.feature.category
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -512,6 +513,46 @@ class CategoryFormViewModelTest {
                 ),
                 repository.savedCategory,
             )
+        }
+
+    @Test
+    fun removingAttributeWithOnlyValuesShowsDeleteWarning() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "People",
+                        attributes =
+                            listOf(
+                                Attribute(id = "People/Score", type = AttributeType.NUMBER),
+                                Attribute(id = "People/Nationality", type = AttributeType.NATIONALITY),
+                            ),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "Alice",
+                                scores = listOf(ScoreEntry(Attribute("People/Score"), 8)),
+                                values =
+                                    listOf(
+                                        ItemAttributeValue(
+                                            Attribute("People/Nationality", type = AttributeType.NATIONALITY),
+                                            "US",
+                                        ),
+                                    ),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("People")
+            val nationalityKey = attributes.first { it.name == "Nationality" }.key
+            viewModel.removeAttribute(nationalityKey)
+
+            assertTrue(currentState.showAttributeDeleteWarning)
         }
 
     private class FakeRatedItemRepository : RatedItemRepository {

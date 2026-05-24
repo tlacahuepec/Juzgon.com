@@ -20,8 +20,8 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.time.Instant
 
-private const val SCHEMA_VERSION = 3
-private const val IMPORT_MAX_SUPPORTED_VERSION = 3
+private const val SCHEMA_VERSION = 4
+private const val IMPORT_MAX_SUPPORTED_VERSION = 4
 
 @Suppress("TooManyFunctions")
 class JsonBackupService(
@@ -100,7 +100,7 @@ class JsonBackupService(
                         put("createdAt", iwr.item.createdAt)
                         put("updatedAt", iwr.item.updatedAt)
                         put("ratings", serializeRatings(iwr))
-                        put("values", serializeItemValues(iwr.values))
+                        put("values", serializeItemValues(iwr.values.filter { it.deletedAt == null }))
                     },
                 )
             }
@@ -201,6 +201,10 @@ class JsonBackupService(
                         categoryName = name,
                         weight = attr.getDouble("weight"),
                         position = attr.getInt("position"),
+                        type = attr.optString("type", "NUMBER"),
+                        isRequired = attr.optBoolean("isRequired", true),
+                        displayInDiamond = attr.optBoolean("displayInDiamond", true),
+                        diamondOrder = if (attr.has("diamondOrder")) attr.getInt("diamondOrder") else null,
                         scoringDirection =
                             if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
                     )
@@ -232,6 +236,22 @@ class JsonBackupService(
                     RatingEntity(itemId = itemId, attributeId = attributeId, score = r.getInt("score"))
                 }
             if (ratings.isNotEmpty()) itemDao.upsertRatings(ratings)
+            val valuesArray = itemObj.optJSONArray("values")
+            if (valuesArray != null && valuesArray.length() > 0) {
+                val values =
+                    (0 until valuesArray.length()).map { j ->
+                        val v = valuesArray.getJSONObject(j)
+                        val rawAttrId = v.getString("attributeId")
+                        val attributeId =
+                            if ("/" in rawAttrId) rawAttrId else "$categoryName/$rawAttrId"
+                        ItemValueEntity(
+                            itemId = itemId,
+                            attributeId = attributeId,
+                            valueText = v.getString("value"),
+                        )
+                    }
+                itemDao.upsertItemValues(values)
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val MAX_SUPPORTED_VERSION = 3
+private const val MAX_SUPPORTED_VERSION = 4
 
 class JsonBackupValidator : BackupValidator {
     @Suppress("ReturnCount")

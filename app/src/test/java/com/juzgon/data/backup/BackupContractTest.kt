@@ -334,6 +334,18 @@ class BackupContractTest {
 
         override suspend fun deleteItemValuesForItem(itemId: String) = error("not used")
 
+        override suspend fun softDeleteItemValuesNotIn(
+            itemId: String,
+            keepAttributeIds: List<String>,
+            deletedAt: Long,
+        ) = error("not used")
+
+        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) = error("not used")
+
+        override suspend fun purgeOrphanedRatings() = error("not used")
+
+        override suspend fun purgeOrphanedSoftDeletedValues() = error("not used")
+
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
 
         override fun observeItemWithRatings(id: String): Flow<ItemWithRatings?> = error("not used")
