@@ -4,6 +4,12 @@
 ## Linked Issue
 - Closes #
 
+## Target Branch
+- [ ] This PR targets `develop` (feature/fix work)
+- [ ] This PR targets `main` (release promotion / hotfix)
+
+> Normal feature work should target `develop`. Only release promotions and hotfixes target `main`.
+
 ## TDD Evidence
 - [ ] RED tests added first
 - [ ] GREEN implementation added
@@ -25,6 +31,13 @@
 - [ ] Single concern PR
 - [ ] No out-of-scope features
 - [ ] No unrelated refactors
+
+## Release / Data Impact
+- [ ] No data schema changes
+- [ ] Increments DATA_SCHEMA_VERSION (document why)
+- [ ] Changes backup format (update BackupSchemaContract)
+- [ ] Affects app versioning or GitHub Pages deployment
+- [ ] Requires documentation update
 
 ## Verification Commands and Results
 - [ ] `./gradlew test` → 
