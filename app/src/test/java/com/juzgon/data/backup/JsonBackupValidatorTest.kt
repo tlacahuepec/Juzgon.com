@@ -328,6 +328,52 @@ class JsonBackupValidatorTest {
         """{"version":$version,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
             """"categories":$categories,"items":$items,"scoreProfiles":$scoreProfiles$extra}"""
 
+    @Test
+    fun validate_invalidAttributeType_returnsError() {
+        val json =
+            validPayload(
+                categories =
+                    """[{"name":"Cars","attributes":[{"id":"Speed","weight":1.0,"position":0,"type":"INVALID_TYPE"}]}]""",
+            )
+
+        val result = validator.validate(json)
+
+        assertFalse(result.isValid)
+        assertContainsError(result, "invalid type")
+    }
+
+    @Test
+    fun validate_invalidScoringDirection_returnsError() {
+        val json =
+            validPayload(
+                categories =
+                    """[{"name":"Cars","attributes":[{"id":"Due","weight":1.0,"position":0,"type":"DATE","scoringDirection":"WRONG"}]}]""",
+            )
+
+        val result = validator.validate(json)
+
+        assertFalse(result.isValid)
+        assertContainsError(result, "invalid scoringDirection")
+    }
+
+    @Test
+    fun validate_validSupportedTypes_returnsValid() {
+        val json =
+            validPayload(
+                categories =
+                    """[{"name":"Cars","attributes":[
+                        {"id":"Speed","weight":1.0,"position":0,"type":"NUMBER"},
+                        {"id":"Due","weight":1.0,"position":1,"type":"DATE","scoringDirection":"NEWER_IS_BETTER"},
+                        {"id":"Notes","weight":1.0,"position":2,"type":"NOTES"},
+                        {"id":"Photo","weight":1.0,"position":3,"type":"IMAGE"}
+                    ]}]""",
+            )
+
+        val result = validator.validate(json)
+
+        assertTrue(result.isValid)
+    }
+
     private fun assertContainsError(
         result: BackupValidationResult,
         substring: String,

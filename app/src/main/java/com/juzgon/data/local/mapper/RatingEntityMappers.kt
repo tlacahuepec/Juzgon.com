@@ -14,6 +14,7 @@ import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.ScoringDirection
+import timber.log.Timber
 
 fun Category.toEntity(): CategoryEntity = CategoryEntity(name = name)
 
@@ -102,8 +103,18 @@ fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem 
     item.toDomain(ratings, attributesById, values.filter { it.deletedAt == null })
 
 fun AttributeEntity.toDomain(): Attribute {
-    val parsedType = runCatching { AttributeType.valueOf(type) }.getOrDefault(AttributeType.NUMBER)
-    val parsedDirection = scoringDirection?.let { runCatching { ScoringDirection.valueOf(it) }.getOrNull() }
+    val parsedType =
+        runCatching { AttributeType.valueOf(type) }.getOrElse {
+            Timber.w("Unknown attribute type '%s' for attribute '%s', defaulting to NUMBER", type, id)
+            AttributeType.NUMBER
+        }
+    val parsedDirection =
+        scoringDirection?.let { direction ->
+            runCatching { ScoringDirection.valueOf(direction) }.getOrElse {
+                Timber.w("Unknown scoring direction '%s' for attribute '%s'", direction, id)
+                null
+            }
+        }
     return Attribute(
         id = id,
         weight = weight,
