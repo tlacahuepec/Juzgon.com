@@ -533,7 +533,7 @@ private fun ItemAttributeValueField(
                 OutlinedTextField(
                     value = valueInput.valueText,
                     onValueChange = { onValueChange(attributeId, it) },
-                    label = { Text(attributeId) },
+                    label = { Text(valueInput.attribute.displayName) },
                     placeholder = { Text("YYYY-MM-DD") },
                     isError = validationError.value != null,
                     supportingText = {
