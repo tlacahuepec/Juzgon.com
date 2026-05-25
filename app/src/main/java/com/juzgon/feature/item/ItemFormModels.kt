@@ -64,6 +64,7 @@ data class ItemFormUiState(
     val showDeleteDialog: Boolean = false,
     val deleteCompleted: Boolean = false,
     val errorMessage: String? = null,
+    val enrichmentSheet: EnrichmentSheetState = EnrichmentSheetState.Hidden,
 ) {
     val titleEditable: Boolean
         get() = true

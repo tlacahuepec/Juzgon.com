@@ -151,13 +151,15 @@ internal fun JuzgonNavHost(
         onBack: () -> Unit,
         onSaveCompleted: () -> Unit,
         onDeleteCompleted: () -> Unit,
-    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted, onDeleteCompleted ->
+        onNavigateToGeminiSettings: () -> Unit,
+    ) -> Unit = { categoryName, itemId, onBack, onSaveCompleted, onDeleteCompleted, onNavigateToGeminiSettings ->
         ItemFormRoute(
             categoryName = categoryName,
             itemId = itemId,
             onBackClick = onBack,
             onSaveCompleted = onSaveCompleted,
             onDeleteCompleted = onDeleteCompleted,
+            onNavigateToGeminiSettings = onNavigateToGeminiSettings,
         )
     },
     itemDetailContent: @Composable (
@@ -369,6 +371,7 @@ internal fun JuzgonNavHost(
                 returnToCategory,
                 returnToCategory,
                 returnToCategory,
+                { navController.navigate(JuzgonRoutes.GEMINI_KEY_SETTINGS) { launchSingleTop = true } },
             )
         }
         composable(
@@ -399,6 +402,7 @@ internal fun JuzgonNavHost(
                 returnToCategory,
                 returnToCategory,
                 returnToCategory,
+                { navController.navigate(JuzgonRoutes.GEMINI_KEY_SETTINGS) { launchSingleTop = true } },
             )
         }
         composable(

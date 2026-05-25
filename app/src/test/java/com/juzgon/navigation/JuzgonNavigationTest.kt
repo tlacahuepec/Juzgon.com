@@ -39,7 +39,7 @@ class JuzgonNavigationTest {
                     homeContent = { _, _, _ -> Text("Home route") },
                     createCategoryContent = { _, _ -> Text("Create category route") },
                     categoryDetailContent = { categoryName, _, _, _, _, _, _ -> Text("Detail route $categoryName") },
-                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                    itemFormContent = { categoryName, _, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -70,7 +70,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     categoryDetailContent = { categoryName, _, _, _, _, _, _ -> Text("Detail route $categoryName") },
-                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                    itemFormContent = { categoryName, _, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -106,7 +106,7 @@ class JuzgonNavigationTest {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                    itemFormContent = { categoryName, _, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -143,7 +143,7 @@ class JuzgonNavigationTest {
                             Text("Detail route $categoryName")
                         }
                     },
-                    itemFormContent = { categoryName, _, _, onSaveCompleted, _ ->
+                    itemFormContent = { categoryName, _, _, onSaveCompleted, _, _ ->
                         Button(onClick = onSaveCompleted) {
                             Text("Add item route $categoryName")
                         }
@@ -186,7 +186,7 @@ class JuzgonNavigationTest {
                         }
                     },
                     itemDetailContent = { itemId, _, _, _, _, _ -> Text("Item detail $itemId") },
-                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                    itemFormContent = { categoryName, _, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }
@@ -224,7 +224,7 @@ class JuzgonNavigationTest {
                             Text("Item detail route")
                         }
                     },
-                    itemFormContent = { categoryName, itemId, _, _, _ ->
+                    itemFormContent = { categoryName, itemId, _, _, _, _ ->
                         Text("Edit item route $categoryName $itemId")
                     },
                 )
@@ -265,7 +265,7 @@ class JuzgonNavigationTest {
                             Text("Item detail route")
                         }
                     },
-                    itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
+                    itemFormContent = { categoryName, _, _, _, _, _ -> Text("Add item route $categoryName") },
                 )
             }
         }

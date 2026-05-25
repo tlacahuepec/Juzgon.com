@@ -1,12 +1,24 @@
+@file:Suppress("LargeClass")
+
 package com.juzgon.feature.item
 
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentConfidence
+import com.juzgon.domain.enrichment.EnrichmentFailureCode
+import com.juzgon.domain.enrichment.EnrichmentSource
+import com.juzgon.domain.enrichment.EnrichmentStatus
+import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
+import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
+import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
+import com.juzgon.domain.enrichment.usecase.ValidateEnrichmentResultUseCase
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateRatingsUseCase
@@ -29,13 +41,23 @@ class ItemFormViewModelTest {
 
     private lateinit var categoryRepository: FakeCategoryRepository
     private lateinit var ratedItemRepository: FakeRatedItemRepository
+    private lateinit var fakeApiKeyStore: FakeSecureApiKeyStore
+    private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
     private lateinit var viewModel: ItemFormViewModel
 
     @Before
     fun setUp() {
         categoryRepository = FakeCategoryRepository()
         ratedItemRepository = FakeRatedItemRepository()
-        viewModel = ItemFormViewModel(categoryRepository, ratedItemRepository, ValidateRatingsUseCase())
+        fakeApiKeyStore = FakeSecureApiKeyStore()
+        fakeProvider = FakeAttributeEnrichmentProvider()
+        viewModel =
+            ItemFormViewModel(
+                categoryRepository,
+                ratedItemRepository,
+                ValidateRatingsUseCase(),
+                SuggestAttributeValueUseCase(fakeApiKeyStore, fakeProvider, ValidateEnrichmentResultUseCase()),
+            )
     }
 
     @Test
@@ -491,6 +513,8 @@ class ItemFormViewModelTest {
         val speed = Attribute("Speed")
         val brakes = Attribute("Brakes")
         val carsCategory = Category(name = "Cars", attributes = listOf(speed, brakes))
+        val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+        val birthDateCategory = Category(name = "People", attributes = listOf(birthDateAttr))
     }
 
     @Test
@@ -752,5 +776,172 @@ class ItemFormViewModelTest {
 
             assertEquals(listOf("8"), currentState.scores.map { it.scoreText })
             assertEquals(listOf("Very fast"), currentState.values.map { it.valueText })
+        }
+
+    @Test
+    fun suggestClick_missingApiKey_setsNoKeyState() =
+        runTest {
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            assertEquals(EnrichmentSheetState.NoKey, currentState.enrichmentSheet)
+        }
+
+    @Test
+    fun suggestClick_found_setsFoundState() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                    sources = listOf(EnrichmentSource("Wikipedia", "https://en.wikipedia.org", null)),
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            val sheet = currentState.enrichmentSheet
+            assertTrue(sheet is EnrichmentSheetState.Found)
+            sheet as EnrichmentSheetState.Found
+            assertEquals("1987-06-24", sheet.suggestedValue)
+            assertEquals("June 24, 1987", sheet.displayValue)
+            assertEquals(EnrichmentConfidence.HIGH, sheet.confidence)
+            assertEquals(1, sheet.sources.size)
+        }
+
+    @Test
+    fun acceptSuggestion_populatesFormFieldAndHidesSheet() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionAccepted()
+
+            val dateValue = currentState.values.first { it.attribute.id == birthDateAttr.id }.valueText
+            assertEquals("1987-06-24", dateValue)
+            assertEquals(EnrichmentSheetState.Hidden, currentState.enrichmentSheet)
+        }
+
+    @Test
+    fun dismissSuggestion_hidesSheetWithoutChangingValue() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionDismissed()
+
+            val dateValue = currentState.values.first { it.attribute.id == birthDateAttr.id }.valueText
+            assertEquals("", dateValue)
+            assertEquals(EnrichmentSheetState.Hidden, currentState.enrichmentSheet)
+        }
+
+    @Test
+    fun suggestClick_providerError_setsErrorState() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.ERROR,
+                    failureCode = EnrichmentFailureCode.NETWORK_ERROR,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            val sheet = currentState.enrichmentSheet
+            assertTrue(sheet is EnrichmentSheetState.Error)
+            assertEquals(EnrichmentFailureCode.NETWORK_ERROR, (sheet as EnrichmentSheetState.Error).failureCode)
+        }
+
+    @Test
+    fun suggestClick_notFound_setsNotFoundState() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.NOT_FOUND,
+                    reason = "No reliable sources",
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            val sheet = currentState.enrichmentSheet
+            assertTrue(sheet is EnrichmentSheetState.NotFound)
+            assertEquals("No reliable sources", (sheet as EnrichmentSheetState.NotFound).reason)
+        }
+
+    @Test
+    fun suggestClick_includesCatalogDescriptionAndType() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(status = EnrichmentStatus.NOT_FOUND)
+            val category =
+                Category(
+                    name = "Soccer Players",
+                    attributes = listOf(birthDateAttr),
+                    description = "Professional soccer players",
+                    type = CatalogType.PERSON,
+                )
+            categoryRepository.categories.value = listOf(category)
+            viewModel.loadCategory("Soccer Players")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onValueChanged(birthDateAttr.id, "")
+
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            val request = fakeProvider.lastRequest
+            assertEquals("Soccer Players", request?.catalogId)
+            assertEquals("Professional soccer players", request?.catalogDescription)
+            assertEquals(CatalogType.PERSON, request?.catalogType)
+            assertEquals("Lionel Messi", request?.itemName)
+            assertEquals(birthDateAttr.id, request?.targetAttributeKey)
+            assertEquals(AttributeType.DATE, request?.targetAttributeType)
         }
 }
