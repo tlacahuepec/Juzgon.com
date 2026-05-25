@@ -36,7 +36,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, _ -> Text("Home route") },
+                    homeContent = { _, _, _ -> Text("Home route") },
                     createCategoryContent = { _, _ -> Text("Create category route") },
                     categoryDetailContent = { categoryName, _, _, _, _, _, _ -> Text("Detail route $categoryName") },
                     itemFormContent = { categoryName, _, _, _, _ -> Text("Add item route $categoryName") },
@@ -59,7 +59,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { onCreateCategory, _ ->
+                    homeContent = { onCreateCategory, _, _ ->
                         Button(onClick = onCreateCategory) {
                             Text("Open create")
                         }
@@ -95,7 +95,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, onOpenCategory ->
+                    homeContent = { _, onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
                             Text("Open detail")
                         }
@@ -132,7 +132,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, onOpenCategory ->
+                    homeContent = { _, onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
                             Text("Open detail")
                         }
@@ -174,7 +174,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, onOpenCategory ->
+                    homeContent = { _, onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
                             Text("Open detail")
                         }
@@ -208,7 +208,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, onOpenCategory ->
+                    homeContent = { _, onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
                             Text("Open detail")
                         }
@@ -249,7 +249,7 @@ class JuzgonNavigationTest {
                 navController = rememberTestNavController()
                 JuzgonNavHost(
                     navController = navController,
-                    homeContent = { _, onOpenCategory ->
+                    homeContent = { _, onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Fast Cars / SUVs") }) {
                             Text("Open detail")
                         }

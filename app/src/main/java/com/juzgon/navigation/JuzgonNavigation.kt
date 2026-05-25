@@ -18,6 +18,7 @@ import com.juzgon.feature.item.ItemDetailRoute
 import com.juzgon.feature.item.ItemFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileListRoute
+import com.juzgon.feature.settings.GeminiKeySettingsRoute
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 private const val ITEM_ID_ARGUMENT = "itemId"
@@ -26,6 +27,7 @@ private const val ACTIVE_PROFILE_ID_ARGUMENT = "activeProfileId"
 
 object JuzgonRoutes {
     const val HOME = "home"
+    const val GEMINI_KEY_SETTINGS = "settings/gemini-key"
     const val CREATE_CATEGORY = "category/create"
     const val EDIT_CATEGORY = "category/edit/{$CATEGORY_NAME_ARGUMENT}"
     const val CATEGORY_DETAIL = "category/{$CATEGORY_NAME_ARGUMENT}"
@@ -88,10 +90,12 @@ internal fun JuzgonNavHost(
     homeContent: @Composable (
         onCreateCategory: () -> Unit,
         onOpenCategory: (String) -> Unit,
-    ) -> Unit = { onCreateCategory, onOpenCategory ->
+        onAiSettings: () -> Unit,
+    ) -> Unit = { onCreateCategory, onOpenCategory, onAiSettings ->
         HomeRoute(
             onNavigateToCreateCategory = onCreateCategory,
             onNavigateToCategory = onOpenCategory,
+            onNavigateToAiSettings = onAiSettings,
         )
     },
     createCategoryContent: @Composable (
@@ -191,6 +195,11 @@ internal fun JuzgonNavHost(
                         launchSingleTop = true
                     }
                 },
+                {
+                    navController.navigate(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
         composable(JuzgonRoutes.CREATE_CATEGORY) {
@@ -204,6 +213,17 @@ internal fun JuzgonNavHost(
             createCategoryContent(
                 returnToHome,
                 returnToHome,
+            )
+        }
+        composable(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
+            GeminiKeySettingsRoute(
+                onBackClick = {
+                    if (!navController.navigateUp()) {
+                        navController.navigate(JuzgonRoutes.HOME) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
             )
         }
         composable(
