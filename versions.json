@@ -1,11 +1,11 @@
 {
-  "latest": "v1.0.0",
+  "latest": "v1.1.0",
   "versions": [
     {
-  "version": "v1.0.0",
-  "url": "/Juzgon.com/v1.0.0/",
+  "version": "v1.1.0",
+  "url": "/Juzgon.com/v1.1.0/",
   "channel": "stable",
-  "releasedAt": "2026-05-24T01:00:02.000Z"
+  "releasedAt": "2026-05-25T16:48:50.000Z"
 }
   ]
 }
