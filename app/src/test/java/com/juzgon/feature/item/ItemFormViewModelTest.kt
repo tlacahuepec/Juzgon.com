@@ -16,6 +16,7 @@ import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
+import com.juzgon.domain.enrichment.FakeEnrichmentEventLogger
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.enrichment.usecase.ValidateEnrichmentResultUseCase
@@ -23,20 +24,17 @@ import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateRatingsUseCase
 import com.juzgon.feature.home.MainDispatcherRule
-import com.juzgon.testutil.CapturingTimberTree
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import timber.log.Timber
 
 class ItemFormViewModelTest {
     @get:Rule
@@ -46,6 +44,7 @@ class ItemFormViewModelTest {
     private lateinit var ratedItemRepository: FakeRatedItemRepository
     private lateinit var fakeApiKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
+    private lateinit var fakeEventLogger: FakeEnrichmentEventLogger
     private lateinit var viewModel: ItemFormViewModel
 
     @Before
@@ -54,18 +53,20 @@ class ItemFormViewModelTest {
         ratedItemRepository = FakeRatedItemRepository()
         fakeApiKeyStore = FakeSecureApiKeyStore()
         fakeProvider = FakeAttributeEnrichmentProvider()
+        fakeEventLogger = FakeEnrichmentEventLogger()
         viewModel =
             ItemFormViewModel(
                 categoryRepository,
                 ratedItemRepository,
                 ValidateRatingsUseCase(),
-                SuggestAttributeValueUseCase(fakeApiKeyStore, fakeProvider, ValidateEnrichmentResultUseCase()),
+                SuggestAttributeValueUseCase(
+                    fakeApiKeyStore,
+                    fakeProvider,
+                    ValidateEnrichmentResultUseCase(),
+                    fakeEventLogger,
+                ),
+                fakeEventLogger,
             )
-    }
-
-    @After
-    fun tearDown() {
-        Timber.uprootAll()
     }
 
     @Test
@@ -956,8 +957,6 @@ class ItemFormViewModelTest {
     @Test
     fun acceptSuggestion_logsAccepted() =
         runTest {
-            val tree = CapturingTimberTree()
-            Timber.plant(tree)
             fakeApiKeyStore.savedKey = "test-key"
             fakeProvider.nextResult =
                 AttributeEnrichmentResult(
@@ -974,18 +973,16 @@ class ItemFormViewModelTest {
 
             viewModel.onSuggestionAccepted()
 
-            val acceptedLogs = tree.logs.filter { it.message.contains("accepted") }
+            val acceptedLogs = fakeEventLogger.logs.filter { it.type == "accepted" }
             assertEquals(1, acceptedLogs.size)
-            assertTrue(acceptedLogs[0].message.contains("attribute=${birthDateAttr.id}"))
-            assertTrue(acceptedLogs[0].message.contains("itemId=Lionel Messi"))
-            assertTrue(acceptedLogs[0].message.contains("suggestedValue=1987-06-24"))
+            assertEquals(birthDateAttr.id, acceptedLogs[0].attributeKey)
+            assertEquals("Lionel Messi", acceptedLogs[0].extra["itemId"])
+            assertEquals("1987-06-24", acceptedLogs[0].extra["suggestedValue"])
         }
 
     @Test
     fun dismissSuggestion_logsDismissed() =
         runTest {
-            val tree = CapturingTimberTree()
-            Timber.plant(tree)
             fakeApiKeyStore.savedKey = "test-key"
             fakeProvider.nextResult =
                 AttributeEnrichmentResult(
@@ -1002,17 +999,15 @@ class ItemFormViewModelTest {
 
             viewModel.onSuggestionDismissed()
 
-            val dismissedLogs = tree.logs.filter { it.message.contains("dismissed") }
+            val dismissedLogs = fakeEventLogger.logs.filter { it.type == "dismissed" }
             assertEquals(1, dismissedLogs.size)
-            assertTrue(dismissedLogs[0].message.contains("attribute=${birthDateAttr.id}"))
-            assertTrue(dismissedLogs[0].message.contains("itemId=Lionel Messi"))
+            assertEquals(birthDateAttr.id, dismissedLogs[0].attributeKey)
+            assertEquals("Lionel Messi", dismissedLogs[0].extra["itemId"])
         }
 
     @Test
     fun dismissFromErrorState_doesNotLogDismissed() =
         runTest {
-            val tree = CapturingTimberTree()
-            Timber.plant(tree)
             fakeApiKeyStore.savedKey = "test-key"
             fakeProvider.nextResult =
                 AttributeEnrichmentResult(
@@ -1028,7 +1023,7 @@ class ItemFormViewModelTest {
 
             viewModel.onSuggestionDismissed()
 
-            val dismissedLogs = tree.logs.filter { it.message.contains("dismissed") }
+            val dismissedLogs = fakeEventLogger.logs.filter { it.type == "dismissed" }
             assertTrue(dismissedLogs.isEmpty())
         }
 }

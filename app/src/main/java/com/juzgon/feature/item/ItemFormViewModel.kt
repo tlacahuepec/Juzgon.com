@@ -2,11 +2,11 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.juzgon.data.enrichment.EnrichmentLogger
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
@@ -30,6 +30,7 @@ class ItemFormViewModel
         private val ratedItemRepository: RatedItemRepository,
         private val validateRatingsUseCase: ValidateRatingsUseCase,
         private val suggestAttributeValueUseCase: SuggestAttributeValueUseCase,
+        private val eventLogger: EnrichmentEventLogger,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemFormUiState())
         private var loadedCategory: Category? = null
@@ -422,7 +423,7 @@ class ItemFormViewModel
         fun onSuggestionAccepted() {
             val sheet = mutableState.value.enrichmentSheet
             if (sheet is EnrichmentSheetState.Found) {
-                EnrichmentLogger.accepted(
+                eventLogger.accepted(
                     attributeKey = sheet.attributeId,
                     itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
                     suggestedValue = sheet.suggestedValue,
@@ -435,7 +436,7 @@ class ItemFormViewModel
         fun onSuggestionDismissed() {
             val sheet = mutableState.value.enrichmentSheet
             if (sheet is EnrichmentSheetState.Found) {
-                EnrichmentLogger.dismissed(
+                eventLogger.dismissed(
                     attributeKey = sheet.attributeId,
                     itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
                 )
