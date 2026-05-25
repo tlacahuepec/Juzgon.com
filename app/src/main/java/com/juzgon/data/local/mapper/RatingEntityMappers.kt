@@ -9,6 +9,7 @@ import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
@@ -16,7 +17,12 @@ import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.ScoringDirection
 import timber.log.Timber
 
-fun Category.toEntity(): CategoryEntity = CategoryEntity(name = name)
+fun Category.toEntity(): CategoryEntity =
+    CategoryEntity(
+        name = name,
+        description = description,
+        type = type?.name,
+    )
 
 fun Category.toAttributeEntities(): List<AttributeEntity> =
     attributes.mapIndexed { index, attribute ->
@@ -44,6 +50,11 @@ fun CategoryEntity.toDomain(
                 .sortedWith(compareBy<AttributeEntity> { it.position }.thenBy { it.id })
                 .map { it.toDomain() },
         itemCount = itemCount,
+        description = description,
+        type =
+            type?.let { typeName ->
+                CatalogType.entries.find { it.name == typeName }
+            },
     )
 
 fun CategoryWithAttributes.toDomain(itemCount: Int = 0): Category = category.toDomain(attributes, itemCount)

@@ -2,6 +2,7 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ScoringDirection
 import java.util.Locale
@@ -35,6 +36,8 @@ data class CategoryFormUiState(
     val mode: CategoryFormMode = CategoryFormMode.Create,
     val originalName: String? = null,
     val name: String = "",
+    val description: String = "",
+    val catalogType: CatalogType? = null,
     val attributes: List<CategoryAttributeInput> = listOf(CategoryAttributeInput(key = 0L)),
     val showValidationErrors: Boolean = false,
     val isSaving: Boolean = false,
@@ -78,6 +81,8 @@ data class CategoryFormUiState(
                             if (attribute.type == AttributeType.DATE) attribute.scoringDirection else null,
                     )
                 },
+            description = description.trim().ifEmpty { null },
+            type = catalogType,
         )
 }
 
@@ -89,6 +94,8 @@ object CategoryFormReducer {
             mode = CategoryFormMode.Edit,
             originalName = category.name,
             name = category.name,
+            description = category.description.orEmpty(),
+            catalogType = category.type,
             attributes =
                 category.attributes.mapIndexed { index, attribute ->
                     CategoryAttributeInput(

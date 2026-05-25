@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.ScoringDirection
 
 @Composable
@@ -73,6 +74,8 @@ fun CategoryFormRoute(
     CategoryFormScreen(
         state = state,
         onNameChange = viewModel::onNameChanged,
+        onDescriptionChange = viewModel::onDescriptionChanged,
+        onCatalogTypeChange = viewModel::onCatalogTypeChanged,
         onAttributeNameChange = viewModel::onAttributeNameChanged,
         onAttributeWeightChange = viewModel::onAttributeWeightChanged,
         onAttributeTypeChange = viewModel::onAttributeTypeChanged,
@@ -98,6 +101,8 @@ fun CategoryFormRoute(
 fun CategoryFormScreen(
     state: CategoryFormUiState,
     onNameChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onCatalogTypeChange: (CatalogType?) -> Unit,
     onAttributeNameChange: (Long, String) -> Unit,
     onAttributeWeightChange: (Long, String) -> Unit,
     onAttributeTypeChange: (Long, AttributeType) -> Unit,
@@ -237,6 +242,25 @@ fun CategoryFormScreen(
                         .semantics {
                             contentDescription = "Category name"
                         },
+            )
+
+            OutlinedTextField(
+                value = state.description,
+                onValueChange = onDescriptionChange,
+                label = { Text("Description (optional)") },
+                minLines = 2,
+                maxLines = 4,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Category description"
+                        },
+            )
+
+            CatalogTypeDropdown(
+                selectedType = state.catalogType,
+                onTypeChange = onCatalogTypeChange,
             )
 
             Text(
@@ -572,6 +596,71 @@ private fun ScoringDirectionDropdown(
                     expanded = false
                 },
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CatalogTypeDropdown(
+    selectedType: CatalogType?,
+    onTypeChange: (CatalogType?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val displayText =
+        selectedType
+            ?.name
+            ?.lowercase()
+            ?.replace('_', ' ')
+            ?.replaceFirstChar { it.uppercase() }
+            ?: "None"
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier =
+            Modifier.semantics {
+                contentDescription = "Catalog type"
+            },
+    ) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Catalog type (optional)") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = {
+                    onTypeChange(null)
+                    expanded = false
+                },
+            )
+            CatalogType.entries.forEach { type ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            type.name
+                                .lowercase()
+                                .replace('_', ' ')
+                                .replaceFirstChar { it.uppercase() },
+                        )
+                    },
+                    onClick = {
+                        onTypeChange(type)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }

@@ -13,6 +13,10 @@ data class CategoryEntity(
     @PrimaryKey
     @ColumnInfo(name = "name")
     val name: String,
+    @ColumnInfo(name = "description")
+    val description: String? = null,
+    @ColumnInfo(name = "type")
+    val type: String? = null,
 )
 
 @Entity(

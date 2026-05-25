@@ -18,6 +18,7 @@ private const val DATABASE_VERSION_12 = 12
 private const val DATABASE_VERSION_13 = 13
 private const val DATABASE_VERSION_14 = 14
 private const val DATABASE_VERSION_15 = 15
+private const val DATABASE_VERSION_16 = 16
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -285,6 +286,14 @@ object DatabaseMigrations {
                       )
                     """.trimIndent(),
                 )
+            }
+        }
+
+    val MIGRATION_15_16: Migration =
+        object : Migration(DATABASE_VERSION_15, DATABASE_VERSION_16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN description TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE categories ADD COLUMN type TEXT DEFAULT NULL")
             }
         }
 }

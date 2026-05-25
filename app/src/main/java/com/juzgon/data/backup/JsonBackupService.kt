@@ -21,7 +21,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.time.Instant
 
-private const val SCHEMA_VERSION = 4
+private const val SCHEMA_VERSION = 5
 
 @Suppress("TooManyFunctions")
 class JsonBackupService(
@@ -57,6 +57,8 @@ class JsonBackupService(
                 put(
                     JSONObject().apply {
                         put("name", cwa.category.name)
+                        cwa.category.description?.let { put("description", it) }
+                        cwa.category.type?.let { put("type", it) }
                         put("attributes", serializeAttributes(cwa))
                     },
                 )
@@ -203,7 +205,9 @@ class JsonBackupService(
         repeat(categoriesArray.length()) { i ->
             val catObj = categoriesArray.getJSONObject(i)
             val name = catObj.getString("name")
-            categoryDao.upsertCategory(CategoryEntity(name))
+            val description = catObj.optString("description", null)
+            val type = catObj.optString("type", null)
+            categoryDao.upsertCategory(CategoryEntity(name, description, type))
             val attrsArray = catObj.getJSONArray("attributes")
             val attrs =
                 (0 until attrsArray.length()).map { j ->

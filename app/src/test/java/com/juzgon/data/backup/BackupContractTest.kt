@@ -271,6 +271,82 @@ class BackupContractTest {
             assertTrue("Validation failed: ${result.errors}", result.isValid)
         }
 
+    @Test
+    fun export_categoryWithDescriptionAndType_includesBothFields() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Movies", description = "Film catalog", type = "MOVIE"),
+                        listOf(AttributeEntity("Score", "Movies", 1.0, 0, "NUMBER")),
+                    ),
+                )
+
+            val json = JSONObject(service.export())
+            val category = json.getJSONArray("categories").getJSONObject(0)
+
+            assertEquals("Film catalog", category.getString("description"))
+            assertEquals("MOVIE", category.getString("type"))
+        }
+
+    @Test
+    fun export_categoryWithNullDescriptionAndType_omitsBothFields() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Cars", description = null, type = null),
+                        listOf(AttributeEntity("Speed", "Cars", 1.0, 0, "NUMBER")),
+                    ),
+                )
+
+            val json = JSONObject(service.export())
+            val category = json.getJSONArray("categories").getJSONObject(0)
+
+            assertTrue(!category.has("description"))
+            assertTrue(!category.has("type"))
+        }
+
+    @Test
+    fun export_categoryWithDescriptionAndType_passesValidation() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Movies", description = "Film catalog", type = "MOVIE"),
+                        listOf(AttributeEntity("Score", "Movies", 1.0, 0, "NUMBER")),
+                    ),
+                )
+
+            val exported = service.export()
+            val result = validator.validate(exported)
+
+            assertTrue("Validation failed: ${result.errors}", result.isValid)
+        }
+
+    @Test
+    fun validator_rejectsInvalidCatalogType() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Cars"),
+                        listOf(AttributeEntity("Speed", "Cars", 1.0, 0, "NUMBER")),
+                    ),
+                )
+
+            val exported = JSONObject(service.export())
+            exported.getJSONArray("categories").getJSONObject(0).put("type", "INVALID_TYPE")
+
+            val result = validator.validate(exported.toString())
+
+            assertTrue("Should have errors", result.errors.isNotEmpty())
+            assertTrue(
+                "Should mention invalid type",
+                result.errors.any { it.contains("invalid type") },
+            )
+        }
+
     // --- Minimal fakes for export path ---
 
     @Suppress("TooManyFunctions")

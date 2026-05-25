@@ -1,6 +1,7 @@
 package com.juzgon.data.backup
 
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.backup.BackupValidationResult
 import com.juzgon.domain.backup.BackupValidator
@@ -8,9 +9,10 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val MAX_SUPPORTED_VERSION = 4
+private const val MAX_SUPPORTED_VERSION = 5
 private val VALID_TYPES = AttributeType.entries.map { it.name }.toSet()
 private val VALID_SCORING_DIRECTIONS = ScoringDirection.entries.map { it.name }.toSet()
+private val VALID_CATALOG_TYPES = CatalogType.entries.map { it.name }.toSet()
 
 class JsonBackupValidator : BackupValidator {
     @Suppress("ReturnCount")
@@ -91,48 +93,70 @@ class JsonBackupValidator : BackupValidator {
             if (!categoryNames.add(name)) {
                 errors += "Duplicate category name: '$name'"
             }
+            validateCatalogType(cat, name, errors)
             if (cat.has("attributes")) {
-                val attrs = cat.getJSONArray("attributes")
-                val attrIds = mutableSetOf<String>()
-                repeat(attrs.length()) { j ->
-                    val attr = attrs.getJSONObject(j)
-                    if (!attr.has("id")) {
-                        errors += "Attribute at index $j in category '$name' missing required field: id"
+                validateCategoryAttributes(cat.getJSONArray("attributes"), name, attributeIndex, errors)
+            }
+        }
+    }
+
+    private fun validateCatalogType(
+        cat: JSONObject,
+        name: String,
+        errors: MutableList<String>,
+    ) {
+        if (cat.has("type")) {
+            val type = cat.getString("type")
+            if (type !in VALID_CATALOG_TYPES) {
+                errors += "Category '$name' has invalid type: '$type'"
+            }
+        }
+    }
+
+    private fun validateCategoryAttributes(
+        attrs: JSONArray,
+        categoryName: String,
+        attributeIndex: MutableMap<String, AttributeInfo>,
+        errors: MutableList<String>,
+    ) {
+        val attrIds = mutableSetOf<String>()
+        repeat(attrs.length()) { j ->
+            val attr = attrs.getJSONObject(j)
+            if (!attr.has("id")) {
+                errors += "Attribute at index $j in category '$categoryName' missing required field: id"
+                return@repeat
+            }
+            val attrId = attr.getString("id")
+            val normalized = BackupAttributeIdNormalizer.normalize(attrId, categoryName)
+            val resolvedId =
+                when (normalized) {
+                    is NormalizedAttributeId.Resolved -> normalized.id
+                    is NormalizedAttributeId.Invalid -> {
+                        errors += normalized.reason
                         return@repeat
                     }
-                    val attrId = attr.getString("id")
-                    val normalized = BackupAttributeIdNormalizer.normalize(attrId, name)
-                    val resolvedId =
-                        when (normalized) {
-                            is NormalizedAttributeId.Resolved -> normalized.id
-                            is NormalizedAttributeId.Invalid -> {
-                                errors += normalized.reason
-                                return@repeat
-                            }
-                        }
-                    if (!attrIds.add(resolvedId)) {
-                        errors += "Duplicate attribute id '$resolvedId' in category '$name'"
-                    }
-                    val type = attr.optString("type", "NUMBER")
-                    if (type !in VALID_TYPES) {
-                        errors += "Attribute '$resolvedId' in category '$name' has invalid type: '$type'"
-                    }
-                    if (attr.has("scoringDirection")) {
-                        val direction = attr.getString("scoringDirection")
-                        if (direction !in VALID_SCORING_DIRECTIONS) {
-                            errors +=
-                                "Attribute '$resolvedId' in category '$name' " +
-                                "has invalid scoringDirection: '$direction'"
-                        }
-                    }
-                    attributeIndex[resolvedId] =
-                        AttributeInfo(
-                            type = type,
-                            scoringDirection =
-                                if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
-                        )
+                }
+            if (!attrIds.add(resolvedId)) {
+                errors += "Duplicate attribute id '$resolvedId' in category '$categoryName'"
+            }
+            val type = attr.optString("type", "NUMBER")
+            if (type !in VALID_TYPES) {
+                errors += "Attribute '$resolvedId' in category '$categoryName' has invalid type: '$type'"
+            }
+            if (attr.has("scoringDirection")) {
+                val direction = attr.getString("scoringDirection")
+                if (direction !in VALID_SCORING_DIRECTIONS) {
+                    errors +=
+                        "Attribute '$resolvedId' in category '$categoryName' " +
+                        "has invalid scoringDirection: '$direction'"
                 }
             }
+            attributeIndex[resolvedId] =
+                AttributeInfo(
+                    type = type,
+                    scoringDirection =
+                        if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
+                )
         }
     }
 

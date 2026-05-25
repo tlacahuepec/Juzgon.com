@@ -545,6 +545,28 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(15, listOf(DatabaseMigrations.MIGRATION_14_15)).close()
     }
 
+    @Test
+    fun migrate15To16_addsCategoryDescriptionAndTypeColumns() {
+        val connection = helper.createDatabase(15)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(16, listOf(DatabaseMigrations.MIGRATION_15_16)).use { conn ->
+            conn.prepare("SELECT name, description, type FROM categories").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(CATEGORY_NAME, stmt.getText(0))
+                assertTrue(stmt.isNull(1))
+                assertTrue(stmt.isNull(2))
+            }
+        }
+    }
+
+    @Test
+    fun migrate15To16_validatesLatestSchema() {
+        helper.createDatabase(15).close()
+        helper.runMigrationsAndValidate(16, listOf(DatabaseMigrations.MIGRATION_15_16)).close()
+    }
+
     private fun insertV14Category(
         connection: androidx.sqlite.SQLiteConnection,
         name: String,
