@@ -16,6 +16,7 @@ private const val DATABASE_VERSION_10 = 10
 private const val DATABASE_VERSION_11 = 11
 private const val DATABASE_VERSION_12 = 12
 private const val DATABASE_VERSION_13 = 13
+private const val DATABASE_VERSION_14 = 14
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -217,6 +218,27 @@ object DatabaseMigrations {
                 db.execSQL("ALTER TABLE ratings_new RENAME TO ratings")
                 db.execSQL("CREATE INDEX index_ratings_item_id ON ratings(item_id)")
                 db.execSQL("CREATE INDEX index_ratings_attribute_id ON ratings(attribute_id)")
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    val MIGRATION_13_14: Migration =
+        object : Migration(DATABASE_VERSION_13, DATABASE_VERSION_14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE item_values
+                    SET attribute_id = (
+                        SELECT a.category_name || '/' || SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                        FROM ratings r
+                        INNER JOIN attributes a ON a.id = r.attribute_id
+                        WHERE r.item_id = item_values.item_id
+                        LIMIT 1
+                    )
+                    WHERE attribute_id NOT IN (SELECT id FROM attributes)
+                      AND INSTR(attribute_id, '/') > 0
+                    """.trimIndent(),
+                )
             }
         }
 }

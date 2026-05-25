@@ -537,7 +537,7 @@ class CategoryDetailViewModelTest {
         }
 
     @Test
-    fun sortOptionsExcludeNationalityAttribute() =
+    fun sortOptionsIncludeNationalityAttribute() =
         runTest {
             val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
             categoryRepository.category.value =
@@ -558,6 +558,7 @@ class CategoryDetailViewModelTest {
                         "Sort items by score",
                         "Sort items by name",
                         "Sort items by Speed",
+                        "Sort items by Nationality",
                     ),
                     state.sortOptions.map { option -> option.contentDescription },
                 )
@@ -587,7 +588,7 @@ class CategoryDetailViewModelTest {
                 var state = awaitItem()
                 if (state.isLoading) state = awaitItem()
 
-                assertEquals("\uD83C\uDDF2\uD83C\uDDFD Mexican", state.items.single().nationalityBadge)
+                assertEquals("\uD83C\uDDF2\uD83C\uDDFD", state.items.single().nationalityBadge)
             }
         }
 

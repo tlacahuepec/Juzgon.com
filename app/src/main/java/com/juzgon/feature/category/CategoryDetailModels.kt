@@ -209,7 +209,7 @@ private fun Category.toSortOptions(): List<CategoryDetailSortOptionUiModel> =
     defaultSortOptions() +
         attributes
             .filterNot { attribute ->
-                attribute.type == AttributeType.IMAGE || attribute.type == AttributeType.NATIONALITY
+                attribute.type == AttributeType.IMAGE
             }.map { attribute ->
                 CategoryDetailSortOptionUiModel(
                     option = CategoryDetailSortOption.Attribute(attribute.id),
@@ -321,5 +321,5 @@ private fun RatedItem.resolveNationalityBadge(category: Category): String? {
             ?.takeIf { value -> value.isNotEmpty() }
             ?: return null
     val option = NationalityDataset.findByCode(code) ?: return null
-    return "${option.flagEmoji} ${option.nationality}"
+    return option.flagEmoji
 }
