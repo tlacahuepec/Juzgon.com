@@ -23,6 +23,8 @@ package com.juzgon.domain.backup
  *   uniqueness. Import from v1/v2 auto-prefixes bare IDs with category name.
  * - v3 → v4: export only active values (excludes soft-deleted). Import creates
  *   all values as active (deletedAt = null).
+ * - v4 → v5: adds optional `description` and `type` fields to categories.
+ *   Import from v1-v4 defaults both to null.
  *
  * ## Image Assignments
  * - Image assignments in JSON export are metadata/references only (URI strings).
@@ -35,8 +37,8 @@ package com.juzgon.domain.backup
  */
 @Suppress("MagicNumber")
 object BackupSchemaContract {
-    const val CURRENT_VERSION = 4
-    val SUPPORTED_VERSIONS = setOf(1, 2, 3, 4)
+    const val CURRENT_VERSION = 5
+    val SUPPORTED_VERSIONS = setOf(1, 2, 3, 4, 5)
 
     val REQUIRED_METADATA_FIELDS = setOf("version", "app", "exportedAt")
     val REQUIRED_ARRAYS = setOf("categories", "items", "scoreProfiles")

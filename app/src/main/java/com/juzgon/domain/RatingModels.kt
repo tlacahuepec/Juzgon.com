@@ -93,6 +93,8 @@ data class Category(
     val name: String,
     val attributes: List<Attribute>,
     val itemCount: Int = 0,
+    val description: String? = null,
+    val type: CatalogType? = null,
 )
 
 fun buildAttributeRankSnapshots(

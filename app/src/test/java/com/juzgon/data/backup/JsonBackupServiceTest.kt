@@ -55,11 +55,11 @@ class JsonBackupServiceTest {
     }
 
     @Test
-    fun export_includesSchemaVersion4() =
+    fun export_includesSchemaVersion5() =
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(4, json.getInt("version"))
+            assertEquals(5, json.getInt("version"))
         }
 
     @Test
@@ -219,7 +219,7 @@ class JsonBackupServiceTest {
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(4, json.getInt("version"))
+            assertEquals(5, json.getInt("version"))
             assertEquals(0, json.getJSONArray("categories").length())
             assertEquals(0, json.getJSONArray("items").length())
             assertEquals(0, json.getJSONArray("scoreProfiles").length())
@@ -404,7 +404,7 @@ class JsonBackupServiceTest {
     fun import_runsPostImportMaintenanceAfterSuccess() =
         runTest {
             val json =
-                """{"version":4,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
+                """{"version":5,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
                     """"categories":[],"items":[],"scoreProfiles":[]}"""
 
             service.import(json)
@@ -660,7 +660,7 @@ class JsonBackupServiceTest {
     // --- Helpers ---
 
     private fun validImportJson(
-        version: Int = 4,
+        version: Int = 5,
         categories: String = "[]",
         items: String = "[]",
         scoreProfiles: String = "[]",
