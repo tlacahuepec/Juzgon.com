@@ -237,6 +237,11 @@ class RoomRatedItemRepository(
             }
         }.distinctUntilChanged()
 
+    /**
+     * Persists item data using value-preservation semantics (not full history).
+     * A later save for the same (item_id, attribute_id) overwrites the row.
+     * Values omitted from the save are soft-deleted, not hard-deleted.
+     */
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
             val existingItemWithRatings = itemDao.getItemWithRatings(ratedItem.id)
