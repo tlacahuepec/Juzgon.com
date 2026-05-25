@@ -42,8 +42,15 @@ class BackupContractTest {
         categoryDao = ContractCategoryDao()
         itemDao = ContractItemDao()
         scoreProfileDao = ContractScoreProfileDao()
-        service = JsonBackupService(categoryDao, itemDao, scoreProfileDao)
         validator = JsonBackupValidator()
+        service =
+            JsonBackupService(
+                validator = validator,
+                categoryDao = categoryDao,
+                itemDao = itemDao,
+                scoreProfileDao = scoreProfileDao,
+                runInTransaction = { block -> block() },
+            )
     }
 
     @Test
