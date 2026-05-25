@@ -712,16 +712,19 @@ class JsonBackupServiceTest {
             writeMethodCalled = true
         }
 
-        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) {
+        override suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int {
             writeMethodCalled = true
+            return 0
         }
 
-        override suspend fun purgeOrphanedRatings() {
+        override suspend fun purgeOrphanedRatings(): Int {
             writeMethodCalled = true
+            return 0
         }
 
-        override suspend fun purgeOrphanedSoftDeletedValues() {
+        override suspend fun purgeOrphanedSoftDeletedValues(): Int {
             writeMethodCalled = true
+            return 0
         }
 
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
@@ -783,8 +786,9 @@ class JsonBackupServiceTest {
             deletedProfileIds += id
         }
 
-        override suspend fun deleteOrphanedProfiles() {
+        override suspend fun deleteOrphanedProfiles(): Int {
             writeMethodCalled = true
+            return 0
         }
 
         override suspend fun saveProfileWithAttributes(

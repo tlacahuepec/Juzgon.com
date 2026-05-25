@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.juzgon.BuildConfig
 import com.juzgon.data.backup.JsonBackupService
 import com.juzgon.data.backup.JsonBackupValidator
+import com.juzgon.data.local.DatabaseMaintenanceRunner
 import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
@@ -81,12 +82,7 @@ object DataModule {
                         override fun onOpen(db: SupportSQLiteDatabase) {
                             super.onOpen(db)
                             seedScope.launch {
-                                @Suppress("MagicNumber")
-                                val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
-                                val cutoff = System.currentTimeMillis() - thirtyDaysMs
-                                database.itemDao().purgeOldSoftDeletedValues(cutoff)
-                                database.itemDao().purgeOrphanedRatings()
-                                database.itemDao().purgeOrphanedSoftDeletedValues()
+                                DatabaseMaintenanceRunner(database).runCleanup()
                             }
                         }
                     },

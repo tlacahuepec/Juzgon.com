@@ -57,7 +57,7 @@ interface ScoreProfileDao {
         )
         """,
     )
-    suspend fun deleteOrphanedProfiles()
+    suspend fun deleteOrphanedProfiles(): Int
 
     @Transaction
     suspend fun saveProfileWithAttributes(
