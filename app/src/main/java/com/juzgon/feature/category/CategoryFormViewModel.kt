@@ -57,9 +57,10 @@ class CategoryFormViewModel
                         ratedItemRepository
                             .observeRankedItems(name)
                             .first()
-                            .flatMap { it.item.scores }
-                            .map { it.attribute.id }
-                            .toSet()
+                            .flatMap { ranked ->
+                                ranked.item.scores.map { s -> s.attribute.id } +
+                                    ranked.item.values.map { v -> v.attribute.id }
+                            }.toSet()
 
                     dirtyAttributeKeys =
                         editState.attributes

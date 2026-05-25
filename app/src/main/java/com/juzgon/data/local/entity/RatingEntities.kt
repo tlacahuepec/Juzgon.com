@@ -74,12 +74,6 @@ data class ItemEntity(
             childColumns = ["item_id"],
             onDelete = ForeignKey.CASCADE,
         ),
-        ForeignKey(
-            entity = AttributeEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["attribute_id"],
-            onDelete = ForeignKey.CASCADE,
-        ),
     ],
     indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"])],
 )
@@ -102,14 +96,8 @@ data class RatingEntity(
             childColumns = ["item_id"],
             onDelete = ForeignKey.CASCADE,
         ),
-        ForeignKey(
-            entity = AttributeEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["attribute_id"],
-            onDelete = ForeignKey.CASCADE,
-        ),
     ],
-    indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"])],
+    indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"]), Index(value = ["deleted_at"])],
 )
 data class ItemValueEntity(
     @ColumnInfo(name = "item_id")
@@ -118,6 +106,8 @@ data class ItemValueEntity(
     val attributeId: String,
     @ColumnInfo(name = "value_text")
     val valueText: String,
+    @ColumnInfo(name = "deleted_at")
+    val deletedAt: Long? = null,
 )
 
 @Entity(

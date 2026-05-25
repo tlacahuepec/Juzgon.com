@@ -192,8 +192,31 @@ interface ItemDao {
     @Query("DELETE FROM item_values WHERE item_id = :itemId")
     suspend fun deleteItemValuesForItem(itemId: String)
 
+    @Query(
+        """
+        UPDATE item_values SET deleted_at = :deletedAt
+        WHERE item_id = :itemId
+        AND attribute_id NOT IN (:keepAttributeIds)
+        AND deleted_at IS NULL
+        """,
+    )
+    suspend fun softDeleteItemValuesNotIn(
+        itemId: String,
+        keepAttributeIds: List<String>,
+        deletedAt: Long,
+    )
+
     @Query("DELETE FROM items WHERE id = :id")
     suspend fun deleteItemById(id: String)
+
+    @Query("DELETE FROM item_values WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff")
+    suspend fun purgeOldSoftDeletedValues(cutoff: Long)
+
+    @Query("DELETE FROM ratings WHERE attribute_id NOT IN (SELECT id FROM attributes)")
+    suspend fun purgeOrphanedRatings()
+
+    @Query("DELETE FROM item_values WHERE attribute_id NOT IN (SELECT id FROM attributes) AND deleted_at IS NOT NULL")
+    suspend fun purgeOrphanedSoftDeletedValues()
 }
 
 @Dao

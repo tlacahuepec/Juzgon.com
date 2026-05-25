@@ -15,6 +15,7 @@ private const val DATABASE_VERSION_9 = 9
 private const val DATABASE_VERSION_10 = 10
 private const val DATABASE_VERSION_11 = 11
 private const val DATABASE_VERSION_12 = 12
+private const val DATABASE_VERSION_13 = 13
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -170,6 +171,52 @@ object DatabaseMigrations {
                     "UPDATE score_profile_attributes SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = score_profile_attributes.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = score_profile_attributes.attribute_id)",
                 )
                 db.execSQL("UPDATE attributes SET id = category_name || '/' || id")
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    val MIGRATION_12_13: Migration =
+        object : Migration(DATABASE_VERSION_12, DATABASE_VERSION_13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE item_values_new (
+                        item_id TEXT NOT NULL,
+                        attribute_id TEXT NOT NULL,
+                        value_text TEXT NOT NULL,
+                        deleted_at INTEGER DEFAULT NULL,
+                        PRIMARY KEY (item_id, attribute_id),
+                        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "INSERT INTO item_values_new (item_id, attribute_id, value_text) SELECT item_id, attribute_id, value_text FROM item_values",
+                )
+                db.execSQL("DROP TABLE item_values")
+                db.execSQL("ALTER TABLE item_values_new RENAME TO item_values")
+                db.execSQL("CREATE INDEX index_item_values_item_id ON item_values(item_id)")
+                db.execSQL("CREATE INDEX index_item_values_attribute_id ON item_values(attribute_id)")
+                db.execSQL("CREATE INDEX index_item_values_deleted_at ON item_values(deleted_at)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE ratings_new (
+                        item_id TEXT NOT NULL,
+                        attribute_id TEXT NOT NULL,
+                        score INTEGER NOT NULL,
+                        PRIMARY KEY (item_id, attribute_id),
+                        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "INSERT INTO ratings_new (item_id, attribute_id, score) SELECT item_id, attribute_id, score FROM ratings",
+                )
+                db.execSQL("DROP TABLE ratings")
+                db.execSQL("ALTER TABLE ratings_new RENAME TO ratings")
+                db.execSQL("CREATE INDEX index_ratings_item_id ON ratings(item_id)")
+                db.execSQL("CREATE INDEX index_ratings_attribute_id ON ratings(attribute_id)")
             }
         }
 }

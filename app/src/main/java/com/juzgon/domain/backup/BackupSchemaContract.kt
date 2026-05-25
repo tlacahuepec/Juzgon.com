@@ -1,7 +1,7 @@
 package com.juzgon.domain.backup
 
 /**
- * Backup Schema Contract v3
+ * Backup Schema Contract v4
  *
  * Defines the structure and guarantees of `.juzgon.json` backup files for
  * interoperability between export and future import features.
@@ -21,6 +21,8 @@ package com.juzgon.domain.backup
  * - Import must support all [SUPPORTED_VERSIONS] by applying incremental migrations.
  * - v2 → v3: attribute IDs scoped as "categoryName/attributeName" for global
  *   uniqueness. Import from v1/v2 auto-prefixes bare IDs with category name.
+ * - v3 → v4: export only active values (excludes soft-deleted). Import creates
+ *   all values as active (deletedAt = null).
  *
  * ## Image Assignments
  * - Image assignments in JSON export are metadata/references only (URI strings).
@@ -33,8 +35,8 @@ package com.juzgon.domain.backup
  */
 @Suppress("MagicNumber")
 object BackupSchemaContract {
-    const val CURRENT_VERSION = 3
-    val SUPPORTED_VERSIONS = setOf(1, 2, 3)
+    const val CURRENT_VERSION = 4
+    val SUPPORTED_VERSIONS = setOf(1, 2, 3, 4)
 
     val REQUIRED_METADATA_FIELDS = setOf("version", "app", "exportedAt")
     val REQUIRED_ARRAYS = setOf("categories", "items", "scoreProfiles")

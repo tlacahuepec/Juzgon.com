@@ -388,6 +388,64 @@ class RoomRatingRepositoryTest {
                 ),
         )
 
+    @Test
+    fun saveRatedItemWithoutValuePreservesExistingValueViaSoftDelete() =
+        runTest {
+            val score = Attribute("Score")
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.saveCategory(Category("People", attributes = listOf(score, nationality)))
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Alice",
+                    scores = listOf(ScoreEntry(score, 9)),
+                    values = listOf(ItemAttributeValue(nationality, "US")),
+                ),
+            )
+
+            val savedItem = ratedItemRepository.observeRatedItem("Alice").first()
+            assertEquals("US", savedItem?.values?.first()?.value)
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Alice",
+                    scores = listOf(ScoreEntry(score, 10)),
+                    values = emptyList(),
+                ),
+            )
+
+            val updatedItem = ratedItemRepository.observeRatedItem("Alice").first()
+            assertEquals(10, updatedItem?.scores?.first()?.score)
+            assertEquals("US", updatedItem?.values?.first()?.value)
+        }
+
+    @Test
+    fun observeRatedItemsReturnsItemsWithOnlyValues() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.saveCategory(Category("People", attributes = listOf(nationality)))
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Bob",
+                    scores = emptyList(),
+                    values = listOf(ItemAttributeValue(nationality, "UK")),
+                ),
+            )
+
+            val items = ratedItemRepository.observeRatedItems().first()
+            assertEquals(1, items.size)
+            assertEquals("Bob", items.first().id)
+            assertEquals(
+                "UK",
+                items
+                    .first()
+                    .values
+                    .first()
+                    .value,
+            )
+        }
+
     private companion object {
         const val CATEGORY_NAME = "Food"
         const val RENAMED_CATEGORY_NAME = "Dining"
