@@ -119,6 +119,7 @@ class EnrichmentSuggestionSheetTest {
         val state =
             EnrichmentSheetState.Found(
                 attributeId = "birthDate",
+                attributeLabel = "Birth Date",
                 suggestedValue = "1987-06-24",
                 displayValue = "June 24, 1987",
                 confidence = EnrichmentConfidence.HIGH,

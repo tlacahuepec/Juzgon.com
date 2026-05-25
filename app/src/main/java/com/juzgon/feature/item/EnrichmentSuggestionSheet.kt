@@ -124,7 +124,7 @@ private fun FoundContent(
     var sourcesExpanded by remember { mutableStateOf(false) }
 
     Text(
-        text = "Suggested Birth Date",
+        text = "Suggested ${state.attributeLabel}",
         style = MaterialTheme.typography.titleMedium,
     )
     Spacer(modifier = Modifier.height(12.dp))

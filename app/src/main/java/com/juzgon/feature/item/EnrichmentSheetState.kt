@@ -13,6 +13,7 @@ sealed interface EnrichmentSheetState {
 
     data class Found(
         val attributeId: String,
+        val attributeLabel: String,
         val suggestedValue: String,
         val displayValue: String?,
         val confidence: EnrichmentConfidence?,
