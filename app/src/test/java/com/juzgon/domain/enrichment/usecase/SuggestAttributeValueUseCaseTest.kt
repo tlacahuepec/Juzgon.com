@@ -9,26 +9,31 @@ import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
+import com.juzgon.domain.enrichment.FakeEnrichmentEventLogger
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class SuggestAttributeValueUseCaseTest {
     private lateinit var fakeKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
+    private lateinit var fakeEventLogger: FakeEnrichmentEventLogger
     private lateinit var useCase: SuggestAttributeValueUseCase
 
     @Before
     fun setUp() {
         fakeKeyStore = FakeSecureApiKeyStore()
         fakeProvider = FakeAttributeEnrichmentProvider()
+        fakeEventLogger = FakeEnrichmentEventLogger()
         useCase =
             SuggestAttributeValueUseCase(
                 apiKeyStore = fakeKeyStore,
                 provider = fakeProvider,
                 validator = ValidateEnrichmentResultUseCase(),
+                eventLogger = fakeEventLogger,
             )
     }
 
@@ -128,6 +133,45 @@ class SuggestAttributeValueUseCaseTest {
 
             assertEquals(EnrichmentStatus.ERROR, result.status)
             assertEquals(EnrichmentFailureCode.VALIDATION_FAILED, result.failureCode)
+        }
+
+    @Test
+    fun providerReturnsLowConfidence_logsRejected() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.LOW,
+                )
+
+            useCase(testRequest())
+
+            val rejectedLogs = fakeEventLogger.logs.filter { it.type == "rejected" }
+            assertEquals(1, rejectedLogs.size)
+            assertEquals("birthDate", rejectedLogs[0].attributeKey)
+            assertEquals("VALIDATION_FAILED", rejectedLogs[0].extra["reason"])
+            assertEquals("LOW", rejectedLogs[0].extra["confidence"])
+        }
+
+    @Test
+    fun providerReturnsValidResult_doesNotLogRejected() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                    sources = listOf(EnrichmentSource(title = "Wikipedia")),
+                )
+
+            useCase(testRequest())
+
+            val rejectedLogs = fakeEventLogger.logs.filter { it.type == "rejected" }
+            assertTrue(rejectedLogs.isEmpty())
         }
 
     private fun testRequest() =

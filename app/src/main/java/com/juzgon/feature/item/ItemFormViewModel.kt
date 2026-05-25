@@ -6,6 +6,7 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
@@ -29,6 +30,7 @@ class ItemFormViewModel
         private val ratedItemRepository: RatedItemRepository,
         private val validateRatingsUseCase: ValidateRatingsUseCase,
         private val suggestAttributeValueUseCase: SuggestAttributeValueUseCase,
+        private val eventLogger: EnrichmentEventLogger,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemFormUiState())
         private var loadedCategory: Category? = null
@@ -421,12 +423,24 @@ class ItemFormViewModel
         fun onSuggestionAccepted() {
             val sheet = mutableState.value.enrichmentSheet
             if (sheet is EnrichmentSheetState.Found) {
+                eventLogger.accepted(
+                    attributeKey = sheet.attributeId,
+                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
+                    suggestedValue = sheet.suggestedValue,
+                )
                 onValueChanged(sheet.attributeId, sheet.suggestedValue)
                 mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
             }
         }
 
         fun onSuggestionDismissed() {
+            val sheet = mutableState.value.enrichmentSheet
+            if (sheet is EnrichmentSheetState.Found) {
+                eventLogger.dismissed(
+                    attributeKey = sheet.attributeId,
+                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
+                )
+            }
             mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
         }
 

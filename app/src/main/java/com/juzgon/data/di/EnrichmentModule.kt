@@ -4,8 +4,10 @@ package com.juzgon.data.di
 
 import android.content.Context
 import com.juzgon.data.enrichment.GeminiAttributeEnrichmentProvider
+import com.juzgon.data.enrichment.TimberEnrichmentEventLogger
 import com.juzgon.data.security.EncryptedApiKeyStore
 import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
+import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.SecureApiKeyStore
 import dagger.Module
 import dagger.Provides
@@ -26,4 +28,8 @@ object EnrichmentModule {
     @Provides
     @Singleton
     fun provideAttributeEnrichmentProvider(provider: GeminiAttributeEnrichmentProvider): AttributeEnrichmentProvider = provider
+
+    @Provides
+    @Singleton
+    fun provideEnrichmentEventLogger(impl: TimberEnrichmentEventLogger): EnrichmentEventLogger = impl
 }

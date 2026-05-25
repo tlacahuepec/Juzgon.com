@@ -16,6 +16,7 @@ import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
+import com.juzgon.domain.enrichment.FakeEnrichmentEventLogger
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.enrichment.usecase.ValidateEnrichmentResultUseCase
@@ -43,6 +44,7 @@ class ItemFormViewModelTest {
     private lateinit var ratedItemRepository: FakeRatedItemRepository
     private lateinit var fakeApiKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
+    private lateinit var fakeEventLogger: FakeEnrichmentEventLogger
     private lateinit var viewModel: ItemFormViewModel
 
     @Before
@@ -51,12 +53,19 @@ class ItemFormViewModelTest {
         ratedItemRepository = FakeRatedItemRepository()
         fakeApiKeyStore = FakeSecureApiKeyStore()
         fakeProvider = FakeAttributeEnrichmentProvider()
+        fakeEventLogger = FakeEnrichmentEventLogger()
         viewModel =
             ItemFormViewModel(
                 categoryRepository,
                 ratedItemRepository,
                 ValidateRatingsUseCase(),
-                SuggestAttributeValueUseCase(fakeApiKeyStore, fakeProvider, ValidateEnrichmentResultUseCase()),
+                SuggestAttributeValueUseCase(
+                    fakeApiKeyStore,
+                    fakeProvider,
+                    ValidateEnrichmentResultUseCase(),
+                    fakeEventLogger,
+                ),
+                fakeEventLogger,
             )
     }
 
@@ -943,5 +952,78 @@ class ItemFormViewModelTest {
             assertEquals("Lionel Messi", request?.itemName)
             assertEquals(birthDateAttr.id, request?.targetAttributeKey)
             assertEquals(AttributeType.DATE, request?.targetAttributeType)
+        }
+
+    @Test
+    fun acceptSuggestion_logsAccepted() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionAccepted()
+
+            val acceptedLogs = fakeEventLogger.logs.filter { it.type == "accepted" }
+            assertEquals(1, acceptedLogs.size)
+            assertEquals(birthDateAttr.id, acceptedLogs[0].attributeKey)
+            assertEquals("Lionel Messi", acceptedLogs[0].extra["itemId"])
+            assertEquals("1987-06-24", acceptedLogs[0].extra["suggestedValue"])
+        }
+
+    @Test
+    fun dismissSuggestion_logsDismissed() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionDismissed()
+
+            val dismissedLogs = fakeEventLogger.logs.filter { it.type == "dismissed" }
+            assertEquals(1, dismissedLogs.size)
+            assertEquals(birthDateAttr.id, dismissedLogs[0].attributeKey)
+            assertEquals("Lionel Messi", dismissedLogs[0].extra["itemId"])
+        }
+
+    @Test
+    fun dismissFromErrorState_doesNotLogDismissed() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.ERROR,
+                    failureCode = EnrichmentFailureCode.NETWORK_ERROR,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionDismissed()
+
+            val dismissedLogs = fakeEventLogger.logs.filter { it.type == "dismissed" }
+            assertTrue(dismissedLogs.isEmpty())
         }
 }
