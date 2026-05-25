@@ -416,7 +416,12 @@ class ItemFormViewModel
                         targetAttributeType = targetAttribute.type,
                     )
                 val result = suggestAttributeValueUseCase(request)
-                mutableState.update { it.copy(enrichmentSheet = result.toSheetState(attributeId)) }
+                mutableState.update {
+                    it.copy(
+                        enrichmentSheet =
+                            result.toSheetState(attributeId, targetAttribute.displayName),
+                    )
+                }
             }
         }
 
@@ -444,7 +449,10 @@ class ItemFormViewModel
             mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
         }
 
-        private fun AttributeEnrichmentResult.toSheetState(attributeId: String): EnrichmentSheetState =
+        private fun AttributeEnrichmentResult.toSheetState(
+            attributeId: String,
+            attributeLabel: String,
+        ): EnrichmentSheetState =
             when {
                 status == EnrichmentStatus.ERROR &&
                     failureCode == EnrichmentFailureCode.MISSING_API_KEY ->
@@ -452,6 +460,7 @@ class ItemFormViewModel
                 status == EnrichmentStatus.FOUND ->
                     EnrichmentSheetState.Found(
                         attributeId = attributeId,
+                        attributeLabel = attributeLabel,
                         suggestedValue = suggestedValue.orEmpty(),
                         displayValue = displayValue,
                         confidence = confidence,

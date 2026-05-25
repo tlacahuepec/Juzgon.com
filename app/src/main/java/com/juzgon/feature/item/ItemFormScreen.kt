@@ -66,6 +66,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.enrichment.EnrichmentSupportRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -524,8 +525,7 @@ private fun ItemAttributeValueField(
             )
         }
         AttributeType.DATE -> {
-            val showSuggest =
-                valueInput.attribute.displayName.contains("Birth Date", ignoreCase = true)
+            val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth(),
