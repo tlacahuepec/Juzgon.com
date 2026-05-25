@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
+import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentFailureCode
+import com.juzgon.domain.enrichment.EnrichmentStatus
+import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateRatingsUseCase
@@ -23,8 +28,10 @@ class ItemFormViewModel
         private val categoryRepository: CategoryRepository,
         private val ratedItemRepository: RatedItemRepository,
         private val validateRatingsUseCase: ValidateRatingsUseCase,
+        private val suggestAttributeValueUseCase: SuggestAttributeValueUseCase,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemFormUiState())
+        private var loadedCategory: Category? = null
 
         val state: StateFlow<ItemFormUiState> = mutableState
 
@@ -53,6 +60,7 @@ class ItemFormViewModel
             itemId: String?,
         ) {
             val category = categoryRepository.observeCategory(categoryName).first()
+            loadedCategory = category
             when {
                 category == null -> showLoadError("Category not found")
                 itemId == null ->
@@ -381,4 +389,65 @@ class ItemFormViewModel
                 }
             }
         }
+
+        fun onSuggestClick(attributeId: String) {
+            val category = loadedCategory ?: return
+            val current = mutableState.value
+            val targetAttribute =
+                current.values.firstOrNull { it.attribute.id == attributeId }?.attribute ?: return
+
+            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading) }
+            viewModelScope.launch {
+                val request =
+                    AttributeEnrichmentRequest(
+                        catalogId = category.name,
+                        catalogDescription = category.description,
+                        catalogType = category.type,
+                        itemId = current.originalItemId ?: current.title.trim(),
+                        itemName = current.title.trim(),
+                        existingAttributes =
+                            current.values
+                                .filter { it.valueText.isNotBlank() && it.attribute.id != attributeId }
+                                .associate { it.attribute.displayName to it.valueText },
+                        targetAttributeKey = attributeId,
+                        targetAttributeLabel = targetAttribute.displayName,
+                        targetAttributeType = targetAttribute.type,
+                    )
+                val result = suggestAttributeValueUseCase(request)
+                mutableState.update { it.copy(enrichmentSheet = result.toSheetState(attributeId)) }
+            }
+        }
+
+        fun onSuggestionAccepted() {
+            val sheet = mutableState.value.enrichmentSheet
+            if (sheet is EnrichmentSheetState.Found) {
+                onValueChanged(sheet.attributeId, sheet.suggestedValue)
+                mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
+            }
+        }
+
+        fun onSuggestionDismissed() {
+            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
+        }
+
+        private fun AttributeEnrichmentResult.toSheetState(attributeId: String): EnrichmentSheetState =
+            when {
+                status == EnrichmentStatus.ERROR &&
+                    failureCode == EnrichmentFailureCode.MISSING_API_KEY ->
+                    EnrichmentSheetState.NoKey
+                status == EnrichmentStatus.FOUND ->
+                    EnrichmentSheetState.Found(
+                        attributeId = attributeId,
+                        suggestedValue = suggestedValue.orEmpty(),
+                        displayValue = displayValue,
+                        confidence = confidence,
+                        sources = sources,
+                    )
+                status == EnrichmentStatus.NOT_FOUND ->
+                    EnrichmentSheetState.NotFound(reason)
+                status == EnrichmentStatus.CONFLICT ->
+                    EnrichmentSheetState.Conflict(reason, sources)
+                else ->
+                    EnrichmentSheetState.Error(failureCode, reason)
+            }
     }

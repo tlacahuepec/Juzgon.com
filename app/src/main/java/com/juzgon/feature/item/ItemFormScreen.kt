@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,6 +76,7 @@ fun ItemFormRoute(
     onBackClick: () -> Unit,
     onSaveCompleted: () -> Unit,
     onDeleteCompleted: () -> Unit = {},
+    onNavigateToGeminiSettings: () -> Unit = {},
     viewModel: ItemFormViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(categoryName, itemId) {
@@ -146,6 +148,10 @@ fun ItemFormRoute(
         onDeleteClick = viewModel::onDeleteClick,
         onDeleteCancel = viewModel::onDeleteCancel,
         onDeleteConfirm = viewModel::onDeleteConfirm,
+        onSuggestClick = viewModel::onSuggestClick,
+        onSuggestionAccepted = viewModel::onSuggestionAccepted,
+        onSuggestionDismissed = viewModel::onSuggestionDismissed,
+        onNavigateToGeminiSettings = onNavigateToGeminiSettings,
     )
 }
 
@@ -166,6 +172,10 @@ fun ItemFormScreen(
     onDeleteClick: () -> Unit = {},
     onDeleteCancel: () -> Unit = {},
     onDeleteConfirm: () -> Unit = {},
+    onSuggestClick: (String) -> Unit = {},
+    onSuggestionAccepted: () -> Unit = {},
+    onSuggestionDismissed: () -> Unit = {},
+    onNavigateToGeminiSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val titleError = if (state.showValidationErrors) state.titleError else null
@@ -193,6 +203,15 @@ fun ItemFormScreen(
             dismissButton = {
                 TextButton(onClick = onDeleteCancel) { Text("Cancel") }
             },
+        )
+    }
+
+    if (state.enrichmentSheet != EnrichmentSheetState.Hidden) {
+        EnrichmentSuggestionSheet(
+            state = state.enrichmentSheet,
+            onAccept = onSuggestionAccepted,
+            onDismiss = onSuggestionDismissed,
+            onNavigateToSettings = onNavigateToGeminiSettings,
         )
     }
 
@@ -266,6 +285,8 @@ fun ItemFormScreen(
                     onValueChange = onValueChange,
                     onImageSelectClick = onImageSelectClick,
                     onImageRemoveClick = onImageRemoveClick,
+                    onSuggestClick = onSuggestClick,
+                    enrichmentLoading = state.enrichmentSheet is EnrichmentSheetState.Loading,
                     onSaveClick = onSaveClick,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -287,6 +308,8 @@ private fun ItemFormContent(
     onValueChange: (String, String) -> Unit,
     onImageSelectClick: (String) -> Unit,
     onImageRemoveClick: (String, String) -> Unit,
+    onSuggestClick: (String) -> Unit,
+    enrichmentLoading: Boolean,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -350,6 +373,8 @@ private fun ItemFormContent(
                 onValueChange = onValueChange,
                 onImageSelectClick = onImageSelectClick,
                 onImageRemoveClick = onImageRemoveClick,
+                onSuggestClick = onSuggestClick,
+                enrichmentLoading = enrichmentLoading,
             )
         }
 
@@ -459,6 +484,8 @@ private fun ItemAttributeValueField(
     onValueChange: (String, String) -> Unit,
     onImageSelectClick: (String) -> Unit,
     onImageRemoveClick: (String, String) -> Unit,
+    onSuggestClick: (String) -> Unit,
+    enrichmentLoading: Boolean,
 ) {
     val attributeId = valueInput.attribute.id
     val cd = "$attributeId value"
@@ -497,21 +524,45 @@ private fun ItemAttributeValueField(
             )
         }
         AttributeType.DATE -> {
-            OutlinedTextField(
-                value = valueInput.valueText,
-                onValueChange = { onValueChange(attributeId, it) },
-                label = { Text(attributeId) },
-                placeholder = { Text("YYYY-MM-DD") },
-                isError = validationError.value != null,
-                supportingText = {
-                    validationError.value?.let { Text(it) }
-                },
-                singleLine = true,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = cd },
-            )
+            val showSuggest =
+                valueInput.attribute.displayName.contains("Birth Date", ignoreCase = true)
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value = valueInput.valueText,
+                    onValueChange = { onValueChange(attributeId, it) },
+                    label = { Text(attributeId) },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    isError = validationError.value != null,
+                    supportingText = {
+                        validationError.value?.let { Text(it) }
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = cd },
+                )
+                if (showSuggest) {
+                    IconButton(
+                        onClick = { onSuggestClick(attributeId) },
+                        enabled = !enrichmentLoading,
+                        modifier =
+                            Modifier
+                                .padding(top = 8.dp)
+                                .semantics {
+                                    contentDescription = "Suggest ${valueInput.attribute.displayName}"
+                                },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                        )
+                    }
+                }
+            }
         }
         else -> {
             OutlinedTextField(
