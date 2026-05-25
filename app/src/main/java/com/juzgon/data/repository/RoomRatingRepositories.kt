@@ -71,6 +71,15 @@ class RoomCategoryRepository(
             } else {
                 categoryDao.upsertAttributes(category.toAttributeEntities())
                 applyAttributeRenames(renamedAttributeIds)
+                val newAttributeIds = category.attributes.map { it.id }.toSet()
+                val oldAttributeIds =
+                    categoryDao
+                        .getAttributesForCategory(category.name)
+                        .map { it.id }
+                        .toSet()
+                val attributeIdsBeingRemoved =
+                    (oldAttributeIds - newAttributeIds - renamedAttributeIds.keys).toList()
+                requireNoOrphanedDependents(attributeIdsBeingRemoved)
                 categoryDao.deleteAttributesNotIn(
                     categoryName = category.name,
                     attributeIds = category.attributes.map { it.id },
@@ -115,6 +124,13 @@ class RoomCategoryRepository(
             categoryDao.upsertCategory(category.toEntity())
             categoryDao.upsertAttributes(category.toAttributeEntities())
             applyAttributeRenames(renamedAttributeIds)
+            val oldAttributeIds =
+                categoryDao
+                    .getAttributesForCategory(originalName)
+                    .map { it.id }
+                    .toSet()
+            val attributeIdsBeingRemoved = (oldAttributeIds - renamedAttributeIds.keys).toList()
+            requireNoOrphanedDependents(attributeIdsBeingRemoved)
             categoryDao.deleteCategoryByName(originalName)
         }
     }
@@ -146,6 +162,16 @@ class RoomCategoryRepository(
                 oldAttributeId = oldAttributeId,
                 newAttributeId = newAttributeId,
             )
+        }
+    }
+
+    private suspend fun requireNoOrphanedDependents(attributeIdsBeingRemoved: List<String>) {
+        if (attributeIdsBeingRemoved.isEmpty()) return
+        val dependentCount = categoryDao.countDependentsForAttributes(attributeIdsBeingRemoved)
+        require(dependentCount == 0) {
+            "Cannot remove attributes $attributeIdsBeingRemoved: " +
+                "$dependentCount dependent record(s) still reference them. " +
+                "Provide a complete renamedAttributeIds map."
         }
     }
 }

@@ -321,6 +321,8 @@ class BackupContractTest {
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
+
+        override suspend fun countDependentsForAttributes(attributeIds: List<String>): Int = error("not used")
     }
 
     @Suppress("TooManyFunctions")

@@ -739,6 +739,8 @@ class JsonBackupServiceTest {
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
+
+        override suspend fun countDependentsForAttributes(attributeIds: List<String>): Int = error("not used")
     }
 
     private class FakeItemDao : ItemDao {

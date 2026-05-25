@@ -131,6 +131,18 @@ interface CategoryDao {
 
     @Query(
         """
+        SELECT COUNT(*) FROM (
+            SELECT attribute_id FROM ratings WHERE attribute_id IN (:attributeIds)
+            UNION ALL
+            SELECT attribute_id FROM item_values
+                WHERE attribute_id IN (:attributeIds) AND deleted_at IS NULL
+        )
+        """,
+    )
+    suspend fun countDependentsForAttributes(attributeIds: List<String>): Int
+
+    @Query(
+        """
         SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count
         FROM attributes a
         LEFT JOIN ratings r ON r.attribute_id = a.id
