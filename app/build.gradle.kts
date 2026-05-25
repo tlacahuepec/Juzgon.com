@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.detekt)
     alias(libs.plugins.spotless)
     alias(libs.plugins.androidx.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val roomSchemaDir = "$projectDir/schemas"
@@ -161,6 +162,8 @@ dependencies {
 
     implementation(libs.timber)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.google.ai.generativeai)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.compose.ui.test.junit4)
