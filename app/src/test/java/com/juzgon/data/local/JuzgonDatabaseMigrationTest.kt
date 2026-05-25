@@ -429,6 +429,54 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(13, listOf(DatabaseMigrations.MIGRATION_12_13)).close()
     }
 
+    @Test
+    fun migrate13To14_fixesMislinkedItemValues() {
+        val connection = helper.createDatabase(13)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection.prepare("INSERT INTO categories (name) VALUES ('Tea')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$CATEGORY_NAME/$ATTRIBUTE_ID', '$CATEGORY_NAME', " +
+                    "1.0, 0, 'NUMBER', 1, 1)",
+            ).use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$CATEGORY_NAME/Nationality', '$CATEGORY_NAME', " +
+                    "1.0, 1, 'NATIONALITY', 0, 0)",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO ratings (item_id, attribute_id, score) " +
+                    "VALUES ('$ITEM_ID', '$CATEGORY_NAME/$ATTRIBUTE_ID', 8)",
+            ).use { it.step() }
+        // Simulate mislinked item_value: wrong category prefix
+        connection
+            .prepare(
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$ITEM_ID', 'Tea/Nationality', 'MX')",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(14, listOf(DatabaseMigrations.MIGRATION_13_14)).use { conn ->
+            conn.prepare("SELECT attribute_id, value_text FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("$CATEGORY_NAME/Nationality", stmt.getText(0))
+                assertEquals("MX", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate13To14_validatesLatestSchema() {
+        helper.createDatabase(13).close()
+        helper.runMigrationsAndValidate(14, listOf(DatabaseMigrations.MIGRATION_13_14)).close()
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"
