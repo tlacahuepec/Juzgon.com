@@ -113,6 +113,18 @@ class JsonBackupValidator : BackupValidator {
                     if (!attrIds.add(resolvedId)) {
                         errors += "Duplicate attribute id '$resolvedId' in category '$name'"
                     }
+                    val type = attr.optString("type", "NUMBER")
+                    if (type !in VALID_TYPES) {
+                        errors += "Attribute '$resolvedId' in category '$name' has invalid type: '$type'"
+                    }
+                    if (attr.has("scoringDirection")) {
+                        val direction = attr.getString("scoringDirection")
+                        if (direction !in VALID_SCORING_DIRECTIONS) {
+                            errors +=
+                                "Attribute '$resolvedId' in category '$name' " +
+                                "has invalid scoringDirection: '$direction'"
+                        }
+                    }
                     attributeIndex[resolvedId] =
                         AttributeInfo(
                             type = type,
