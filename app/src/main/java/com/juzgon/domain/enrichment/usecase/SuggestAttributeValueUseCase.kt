@@ -1,5 +1,6 @@
 package com.juzgon.domain.enrichment.usecase
 
+import com.juzgon.data.enrichment.EnrichmentLogger
 import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
@@ -23,6 +24,17 @@ class SuggestAttributeValueUseCase
                 )
             }
             val result = provider.enrichAttribute(request)
-            return validator(result, request.targetAttributeType)
+            val validated = validator(result, request.targetAttributeType)
+            if (result.status == EnrichmentStatus.FOUND &&
+                validated.failureCode == EnrichmentFailureCode.VALIDATION_FAILED
+            ) {
+                EnrichmentLogger.rejected(
+                    attributeKey = request.targetAttributeKey,
+                    reason = "VALIDATION_FAILED",
+                    originalStatus = result.status.name,
+                    confidence = result.confidence?.name,
+                )
+            }
+            return validated
         }
     }

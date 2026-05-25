@@ -2,6 +2,7 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.data.enrichment.EnrichmentLogger
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
@@ -421,12 +422,24 @@ class ItemFormViewModel
         fun onSuggestionAccepted() {
             val sheet = mutableState.value.enrichmentSheet
             if (sheet is EnrichmentSheetState.Found) {
+                EnrichmentLogger.accepted(
+                    attributeKey = sheet.attributeId,
+                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
+                    suggestedValue = sheet.suggestedValue,
+                )
                 onValueChanged(sheet.attributeId, sheet.suggestedValue)
                 mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
             }
         }
 
         fun onSuggestionDismissed() {
+            val sheet = mutableState.value.enrichmentSheet
+            if (sheet is EnrichmentSheetState.Found) {
+                EnrichmentLogger.dismissed(
+                    attributeKey = sheet.attributeId,
+                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
+                )
+            }
             mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
         }
 

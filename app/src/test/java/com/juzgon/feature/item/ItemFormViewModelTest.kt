@@ -23,17 +23,20 @@ import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateRatingsUseCase
 import com.juzgon.feature.home.MainDispatcherRule
+import com.juzgon.testutil.CapturingTimberTree
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import timber.log.Timber
 
 class ItemFormViewModelTest {
     @get:Rule
@@ -58,6 +61,11 @@ class ItemFormViewModelTest {
                 ValidateRatingsUseCase(),
                 SuggestAttributeValueUseCase(fakeApiKeyStore, fakeProvider, ValidateEnrichmentResultUseCase()),
             )
+    }
+
+    @After
+    fun tearDown() {
+        Timber.uprootAll()
     }
 
     @Test
@@ -943,5 +951,84 @@ class ItemFormViewModelTest {
             assertEquals("Lionel Messi", request?.itemName)
             assertEquals(birthDateAttr.id, request?.targetAttributeKey)
             assertEquals(AttributeType.DATE, request?.targetAttributeType)
+        }
+
+    @Test
+    fun acceptSuggestion_logsAccepted() =
+        runTest {
+            val tree = CapturingTimberTree()
+            Timber.plant(tree)
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionAccepted()
+
+            val acceptedLogs = tree.logs.filter { it.message.contains("accepted") }
+            assertEquals(1, acceptedLogs.size)
+            assertTrue(acceptedLogs[0].message.contains("attribute=${birthDateAttr.id}"))
+            assertTrue(acceptedLogs[0].message.contains("itemId=Lionel Messi"))
+            assertTrue(acceptedLogs[0].message.contains("suggestedValue=1987-06-24"))
+        }
+
+    @Test
+    fun dismissSuggestion_logsDismissed() =
+        runTest {
+            val tree = CapturingTimberTree()
+            Timber.plant(tree)
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionDismissed()
+
+            val dismissedLogs = tree.logs.filter { it.message.contains("dismissed") }
+            assertEquals(1, dismissedLogs.size)
+            assertTrue(dismissedLogs[0].message.contains("attribute=${birthDateAttr.id}"))
+            assertTrue(dismissedLogs[0].message.contains("itemId=Lionel Messi"))
+        }
+
+    @Test
+    fun dismissFromErrorState_doesNotLogDismissed() =
+        runTest {
+            val tree = CapturingTimberTree()
+            Timber.plant(tree)
+            fakeApiKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.ERROR,
+                    failureCode = EnrichmentFailureCode.NETWORK_ERROR,
+                )
+            categoryRepository.categories.value = listOf(birthDateCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Lionel Messi")
+            viewModel.onSuggestClick(birthDateAttr.id)
+            advanceUntilIdle()
+
+            viewModel.onSuggestionDismissed()
+
+            val dismissedLogs = tree.logs.filter { it.message.contains("dismissed") }
+            assertTrue(dismissedLogs.isEmpty())
         }
 }

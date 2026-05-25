@@ -49,4 +49,43 @@ object EnrichmentLogger {
             durationMs,
         )
     }
+
+    fun rejected(
+        attributeKey: String,
+        reason: String,
+        originalStatus: String,
+        confidence: String?,
+    ) {
+        Timber.tag(TAG).w(
+            "Enrichment rejected attribute=%s reason=%s status=%s confidence=%s",
+            attributeKey,
+            reason,
+            originalStatus,
+            confidence ?: "UNKNOWN",
+        )
+    }
+
+    fun accepted(
+        attributeKey: String,
+        itemId: String,
+        suggestedValue: String,
+    ) {
+        Timber.tag(TAG).d(
+            "Enrichment accepted attribute=%s itemId=%s suggestedValue=%s",
+            attributeKey,
+            itemId,
+            suggestedValue,
+        )
+    }
+
+    fun dismissed(
+        attributeKey: String,
+        itemId: String,
+    ) {
+        Timber.tag(TAG).d(
+            "Enrichment dismissed attribute=%s itemId=%s",
+            attributeKey,
+            itemId,
+        )
+    }
 }

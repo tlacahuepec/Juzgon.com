@@ -10,11 +10,20 @@ import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
+import com.juzgon.testutil.CapturingTimberTree
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import timber.log.Timber
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class SuggestAttributeValueUseCaseTest {
     private lateinit var fakeKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
@@ -30,6 +39,11 @@ class SuggestAttributeValueUseCaseTest {
                 provider = fakeProvider,
                 validator = ValidateEnrichmentResultUseCase(),
             )
+    }
+
+    @After
+    fun tearDown() {
+        Timber.uprootAll()
     }
 
     @Test
@@ -128,6 +142,49 @@ class SuggestAttributeValueUseCaseTest {
 
             assertEquals(EnrichmentStatus.ERROR, result.status)
             assertEquals(EnrichmentFailureCode.VALIDATION_FAILED, result.failureCode)
+        }
+
+    @Test
+    fun providerReturnsLowConfidence_logsRejected() =
+        runTest {
+            val tree = CapturingTimberTree()
+            Timber.plant(tree)
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    confidence = EnrichmentConfidence.LOW,
+                )
+
+            useCase(testRequest())
+
+            val rejectedLogs = tree.logs.filter { it.message.contains("rejected") }
+            assertEquals(1, rejectedLogs.size)
+            assertTrue(rejectedLogs[0].message.contains("attribute=birthDate"))
+            assertTrue(rejectedLogs[0].message.contains("reason=VALIDATION_FAILED"))
+            assertTrue(rejectedLogs[0].message.contains("confidence=LOW"))
+        }
+
+    @Test
+    fun providerReturnsValidResult_doesNotLogRejected() =
+        runTest {
+            val tree = CapturingTimberTree()
+            Timber.plant(tree)
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                    sources = listOf(EnrichmentSource(title = "Wikipedia")),
+                )
+
+            useCase(testRequest())
+
+            val rejectedLogs = tree.logs.filter { it.message.contains("rejected") }
+            assertTrue(rejectedLogs.isEmpty())
         }
 
     private fun testRequest() =
