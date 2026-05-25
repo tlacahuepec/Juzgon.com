@@ -213,13 +213,13 @@ interface ItemDao {
     suspend fun deleteItemById(id: String)
 
     @Query("DELETE FROM item_values WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff")
-    suspend fun purgeOldSoftDeletedValues(cutoff: Long)
+    suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int
 
     @Query("DELETE FROM ratings WHERE attribute_id NOT IN (SELECT id FROM attributes)")
-    suspend fun purgeOrphanedRatings()
+    suspend fun purgeOrphanedRatings(): Int
 
     @Query("DELETE FROM item_values WHERE attribute_id NOT IN (SELECT id FROM attributes) AND deleted_at IS NOT NULL")
-    suspend fun purgeOrphanedSoftDeletedValues()
+    suspend fun purgeOrphanedSoftDeletedValues(): Int
 }
 
 @Dao
