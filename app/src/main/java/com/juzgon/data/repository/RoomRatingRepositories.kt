@@ -36,6 +36,7 @@ class RoomCategoryRepository(
     private val database: JuzgonDatabase,
 ) : CategoryRepository {
     private val categoryDao = database.categoryDao()
+    private val itemDao = database.itemDao()
     private val scoreProfileDao = database.scoreProfileDao()
 
     override fun observeCategories(): Flow<List<Category>> =
@@ -86,6 +87,8 @@ class RoomCategoryRepository(
                 )
             }
             scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
         val categoriesAfter = categoryDao.observeCategoriesWithAttributes().first()
         categoriesBefore
@@ -132,12 +135,18 @@ class RoomCategoryRepository(
             val attributeIdsBeingRemoved = (oldAttributeIds - renamedAttributeIds.keys).toList()
             requireNoOrphanedDependents(attributeIdsBeingRemoved)
             categoryDao.deleteCategoryByName(originalName)
+            scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
     override suspend fun deleteCategory(name: String) {
         database.withTransaction {
             categoryDao.deleteCategoryByName(name)
+            scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
