@@ -14,6 +14,7 @@ import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
 import com.juzgon.data.local.entity.ScoreProfileEntity
 import com.juzgon.domain.backup.BackupException
 import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.backup.BackupValidator
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONException
@@ -21,13 +22,15 @@ import org.json.JSONObject
 import java.time.Instant
 
 private const val SCHEMA_VERSION = 4
-private const val IMPORT_MAX_SUPPORTED_VERSION = 4
 
 @Suppress("TooManyFunctions")
 class JsonBackupService(
+    private val validator: BackupValidator,
     private val categoryDao: CategoryDao,
     private val itemDao: ItemDao,
     private val scoreProfileDao: ScoreProfileDao,
+    private val runInTransaction: suspend (suspend () -> Unit) -> Unit,
+    private val runPostImportMaintenance: suspend () -> Unit = {},
 ) : BackupService {
     override suspend fun export(): String {
         val categories = categoryDao.observeCategoriesWithAttributes().first()
@@ -157,24 +160,28 @@ class JsonBackupService(
         }
 
     override suspend fun import(json: String) {
+        val validationResult = validator.validate(json)
+        if (!validationResult.isValid) {
+            throw BackupException("Backup validation failed: ${validationResult.errors.first()}")
+        }
+
         val root =
             try {
                 JSONObject(json)
             } catch (e: JSONException) {
                 throw BackupException("Invalid JSON: ${e.message}", e)
             }
-        if (!root.has("version")) throw BackupException("Missing version field")
-        val version = root.getInt("version")
-        if (version > IMPORT_MAX_SUPPORTED_VERSION) {
-            throw BackupException("Unsupported backup version: $version")
+
+        runInTransaction {
+            clearExistingData()
+            restoreCategories(root.getJSONArray("categories"))
+            restoreItems(root.getJSONArray("items"))
+            if (root.has("scoreProfiles")) {
+                restoreScoreProfiles(root.getJSONArray("scoreProfiles"))
+            }
         }
 
-        clearExistingData()
-        restoreCategories(root.getJSONArray("categories"))
-        restoreItems(root.getJSONArray("items"))
-        if (root.has("scoreProfiles")) {
-            restoreScoreProfiles(root.getJSONArray("scoreProfiles"))
-        }
+        runPostImportMaintenance()
     }
 
     private suspend fun clearExistingData() {

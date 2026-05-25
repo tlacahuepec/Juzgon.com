@@ -35,13 +35,23 @@ class JsonBackupServiceTest {
     private lateinit var itemDao: FakeItemDao
     private lateinit var scoreProfileDao: FakeScoreProfileDao
     private lateinit var service: JsonBackupService
+    private var maintenanceRanCount = 0
 
     @Before
     fun setUp() {
         categoryDao = FakeCategoryDao()
         itemDao = FakeItemDao()
         scoreProfileDao = FakeScoreProfileDao()
-        service = JsonBackupService(categoryDao, itemDao, scoreProfileDao)
+        maintenanceRanCount = 0
+        service =
+            JsonBackupService(
+                validator = JsonBackupValidator(),
+                categoryDao = categoryDao,
+                itemDao = itemDao,
+                scoreProfileDao = scoreProfileDao,
+                runInTransaction = { block -> block() },
+                runPostImportMaintenance = { maintenanceRanCount++ },
+            )
     }
 
     @Test
@@ -232,8 +242,10 @@ class JsonBackupServiceTest {
     fun import_restoresCategoryAndAttributes() =
         runTest {
             val json =
-                """{"version":1,"categories":[{"name":"Cars",""" +
-                    """"attributes":[{"id":"Speed","weight":1.5,"position":2}]}],"items":[]}"""
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[{"id":"Speed","weight":1.5,"position":2,"type":"NUMBER"}]}]""",
+                )
 
             service.import(json)
 
@@ -248,12 +260,14 @@ class JsonBackupServiceTest {
     @Test
     fun import_restoresItemsAndRatings() =
         runTest {
-            val catJson =
-                """{"name":"Cars","attributes":[{"id":"Speed","weight":1.0,"position":0}]}"""
-            val itemJson =
-                """{"id":"Roadster","categoryName":"Cars","notes":"cool",""" +
-                    """"createdAt":100,"updatedAt":200,"ratings":[{"attributeId":"Speed","score":9}]}"""
-            val json = """{"version":1,"categories":[$catJson],"items":[$itemJson]}"""
+            val json =
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[{"id":"Speed","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Roadster","categoryName":"Cars","notes":"cool",""" +
+                            """"createdAt":100,"updatedAt":200,"ratings":[{"attributeId":"Speed","score":9}]}]""",
+                )
 
             service.import(json)
 
@@ -272,7 +286,7 @@ class JsonBackupServiceTest {
                 listOf(CategoryWithAttributes(CategoryEntity("OldCategory"), emptyList()))
             itemDao.state.value =
                 listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
-            val json = """{"version":1,"categories":[],"items":[]}"""
+            val json = validImportJson()
 
             service.import(json)
 
@@ -328,7 +342,7 @@ class JsonBackupServiceTest {
     @Test
     fun import_emptyBackup_succeeds() =
         runTest {
-            val json = """{"version":1,"categories":[],"items":[]}"""
+            val json = validImportJson()
 
             service.import(json)
 
@@ -355,13 +369,68 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun import_invalidJsonLeavesExistingDataIntact() =
+        runTest {
+            categoryDao.state.value =
+                listOf(CategoryWithAttributes(CategoryEntity("Cars"), emptyList()))
+            itemDao.state.value =
+                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
+
+            runCatching { service.import("not json at all {{{") }
+
+            assertTrue(categoryDao.deletedCategoryNames.isEmpty())
+            assertTrue(itemDao.deletedItemIds.isEmpty())
+            assertFalse(categoryDao.writeMethodCalled)
+            assertFalse(itemDao.writeMethodCalled)
+        }
+
+    @Test
+    fun import_unsupportedVersionLeavesExistingDataIntact() =
+        runTest {
+            categoryDao.state.value =
+                listOf(CategoryWithAttributes(CategoryEntity("Cars"), emptyList()))
+            itemDao.state.value =
+                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
+
+            runCatching { service.import("""{"version":999,"categories":[],"items":[]}""") }
+
+            assertTrue(categoryDao.deletedCategoryNames.isEmpty())
+            assertTrue(itemDao.deletedItemIds.isEmpty())
+            assertFalse(categoryDao.writeMethodCalled)
+            assertFalse(itemDao.writeMethodCalled)
+        }
+
+    @Test
+    fun import_runsPostImportMaintenanceAfterSuccess() =
+        runTest {
+            val json =
+                """{"version":4,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
+                    """"categories":[],"items":[],"scoreProfiles":[]}"""
+
+            service.import(json)
+
+            assertEquals(1, maintenanceRanCount)
+        }
+
+    @Test
+    fun import_doesNotRunMaintenanceOnFailure() =
+        runTest {
+            runCatching { service.import("not json at all {{{") }
+
+            assertEquals(0, maintenanceRanCount)
+        }
+
+    @Test
     fun import_v1BareAttributeIdsAreScopedWithCategoryName() =
         runTest {
             val json =
-                """{"version":1,"categories":[{"name":"Food",""" +
-                    """"attributes":[{"id":"Taste","weight":1.0,"position":0}]}],""" +
-                    """"items":[{"id":"Pizza","categoryName":"Food","notes":"","createdAt":1,"updatedAt":2,""" +
-                    """"ratings":[{"attributeId":"Taste","score":7}]}]}"""
+                validImportJson(
+                    categories =
+                        """[{"name":"Food","attributes":[{"id":"Taste","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Pizza","categoryName":"Food","notes":"","createdAt":1,"updatedAt":2,""" +
+                            """"ratings":[{"attributeId":"Taste","score":7}]}]""",
+                )
 
             service.import(json)
 
@@ -506,8 +575,7 @@ class JsonBackupServiceTest {
             categoryDao.state.value = emptyList()
             itemDao.state.value = emptyList()
 
-            val json =
-                """{"version":4,"categories":[],"items":[],"scoreProfiles":[]}"""
+            val json = validImportJson()
             service.import(json)
 
             assertTrue(scoreProfileDao.deletedProfileIds.contains("old-profile"))
@@ -517,10 +585,14 @@ class JsonBackupServiceTest {
     fun import_v4BackupSucceeds() =
         runTest {
             val json =
-                """{"version":4,"categories":[{"name":"Cars",""" +
-                    """"attributes":[{"id":"Cars/Speed","weight":1.0,"position":0,"type":"NUMBER"}]}],""" +
-                    """"items":[{"id":"Jetta","categoryName":"Cars","notes":"","createdAt":1,"updatedAt":2,""" +
-                    """"ratings":[{"attributeId":"Cars/Speed","score":7}],"values":[]}],"scoreProfiles":[]}"""
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[""" +
+                            """{"id":"Cars/Speed","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Jetta","categoryName":"Cars","notes":"","createdAt":1,"updatedAt":2,""" +
+                            """"ratings":[{"attributeId":"Cars/Speed","score":7}],"values":[]}]""",
+                )
 
             service.import(json)
 
@@ -556,7 +628,7 @@ class JsonBackupServiceTest {
                                 isRequired = true,
                                 displayInDiamond = true,
                                 diamondOrder = null,
-                                scoringDirection = "LOWER_IS_BETTER",
+                                scoringDirection = "OLDER_IS_BETTER",
                             ),
                         ),
                     ),
@@ -582,8 +654,19 @@ class JsonBackupServiceTest {
             assertEquals("DATE", birthday.type)
             assertEquals(true, birthday.isRequired)
             assertEquals(true, birthday.displayInDiamond)
-            assertEquals("LOWER_IS_BETTER", birthday.scoringDirection)
+            assertEquals("OLDER_IS_BETTER", birthday.scoringDirection)
         }
+
+    // --- Helpers ---
+
+    private fun validImportJson(
+        version: Int = 4,
+        categories: String = "[]",
+        items: String = "[]",
+        scoreProfiles: String = "[]",
+    ): String =
+        """{"version":$version,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
+            """"categories":$categories,"items":$items,"scoreProfiles":$scoreProfiles}"""
 
     // --- Fakes ---
 
