@@ -28,12 +28,16 @@ import com.juzgon.domain.usecase.RankRatedItemsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 
 class RoomCategoryRepository(
     private val database: JuzgonDatabase,
 ) : CategoryRepository {
     private val categoryDao = database.categoryDao()
+    private val itemDao = database.itemDao()
+    private val scoreProfileDao = database.scoreProfileDao()
 
     override fun observeCategories(): Flow<List<Category>> =
         combine(
@@ -59,6 +63,8 @@ class RoomCategoryRepository(
         category: Category,
         renamedAttributeIds: Map<String, String>,
     ) {
+        val categoriesBefore = categoryDao.observeCategoriesWithAttributes().first()
+        Timber.d("Saving category '%s' with %d attributes", category.name, category.attributes.size)
         database.withTransaction {
             categoryDao.upsertCategory(category.toEntity())
             if (category.attributes.isEmpty()) {
@@ -66,12 +72,39 @@ class RoomCategoryRepository(
             } else {
                 categoryDao.upsertAttributes(category.toAttributeEntities())
                 applyAttributeRenames(renamedAttributeIds)
+                val newAttributeIds = category.attributes.map { it.id }.toSet()
+                val oldAttributeIds =
+                    categoryDao
+                        .getAttributesForCategory(category.name)
+                        .map { it.id }
+                        .toSet()
+                val attributeIdsBeingRemoved =
+                    (oldAttributeIds - newAttributeIds - renamedAttributeIds.keys).toList()
+                requireNoOrphanedDependents(attributeIdsBeingRemoved)
                 categoryDao.deleteAttributesNotIn(
                     categoryName = category.name,
                     attributeIds = category.attributes.map { it.id },
                 )
             }
+            scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
+        val categoriesAfter = categoryDao.observeCategoriesWithAttributes().first()
+        categoriesBefore
+            .filter { it.category.name != category.name }
+            .forEach { before ->
+                val after = categoriesAfter.firstOrNull { it.category.name == before.category.name }
+                if (after == null || after.attributes.size < before.attributes.size) {
+                    Timber.w(
+                        "Data integrity: category '%s' lost attributes after saving '%s' (before=%d, after=%d)",
+                        before.category.name,
+                        category.name,
+                        before.attributes.size,
+                        after?.attributes?.size ?: 0,
+                    )
+                }
+            }
     }
 
     override suspend fun renameCategory(
@@ -94,13 +127,26 @@ class RoomCategoryRepository(
             categoryDao.upsertCategory(category.toEntity())
             categoryDao.upsertAttributes(category.toAttributeEntities())
             applyAttributeRenames(renamedAttributeIds)
+            val oldAttributeIds =
+                categoryDao
+                    .getAttributesForCategory(originalName)
+                    .map { it.id }
+                    .toSet()
+            val attributeIdsBeingRemoved = (oldAttributeIds - renamedAttributeIds.keys).toList()
+            requireNoOrphanedDependents(attributeIdsBeingRemoved)
             categoryDao.deleteCategoryByName(originalName)
+            scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
     override suspend fun deleteCategory(name: String) {
         database.withTransaction {
             categoryDao.deleteCategoryByName(name)
+            scoreProfileDao.deleteOrphanedProfiles()
+            itemDao.purgeOrphanedRatings()
+            itemDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
@@ -121,6 +167,20 @@ class RoomCategoryRepository(
                 oldAttributeId = oldAttributeId,
                 newAttributeId = newAttributeId,
             )
+            categoryDao.renameAttributeIdInScoreProfileAttributes(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
+        }
+    }
+
+    private suspend fun requireNoOrphanedDependents(attributeIdsBeingRemoved: List<String>) {
+        if (attributeIdsBeingRemoved.isEmpty()) return
+        val dependentCount = categoryDao.countDependentsForAttributes(attributeIdsBeingRemoved)
+        require(dependentCount == 0) {
+            "Cannot remove attributes $attributeIdsBeingRemoved: " +
+                "$dependentCount dependent record(s) still reference them. " +
+                "Provide a complete renamedAttributeIds map."
         }
     }
 }
@@ -186,7 +246,10 @@ class RoomRatedItemRepository(
                             rankedItem.item.toDomain(
                                 ratings = rankedItem.ratings.filter { it.attributeId in numberAttributeIds },
                                 attributesById = attributesById,
-                                valueEntities = rankedItem.values.filter { it.attributeId in attributesById },
+                                valueEntities =
+                                    rankedItem.values.filter {
+                                        it.attributeId in attributesById && it.deletedAt == null
+                                    },
                             )
                         val dateScores =
                             rankableAttributes
@@ -209,6 +272,11 @@ class RoomRatedItemRepository(
             }
         }.distinctUntilChanged()
 
+    /**
+     * Persists item data using value-preservation semantics (not full history).
+     * A later save for the same (item_id, attribute_id) overwrites the row.
+     * Values omitted from the save are soft-deleted, not hard-deleted.
+     */
     override suspend fun saveRatedItem(ratedItem: RatedItem) {
         database.withTransaction {
             val existingItemWithRatings = itemDao.getItemWithRatings(ratedItem.id)
@@ -237,10 +305,13 @@ class RoomRatedItemRepository(
                     snapshotDao.upsertSnapshots(snapshots.map { it.toEntity() })
                 }
             }
-            itemDao.deleteItemValuesForItem(ratedItem.id)
             val valueEntities = ratedItem.toItemValueEntities()
             if (valueEntities.isNotEmpty()) {
                 itemDao.upsertItemValues(valueEntities)
+            }
+            val keepAttributeIds = valueEntities.map { it.attributeId }
+            if (keepAttributeIds.isNotEmpty()) {
+                itemDao.softDeleteItemValuesNotIn(ratedItem.id, keepAttributeIds, updatedAt)
             }
         }
     }

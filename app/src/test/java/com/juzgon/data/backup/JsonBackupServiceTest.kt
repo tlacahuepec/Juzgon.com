@@ -35,21 +35,31 @@ class JsonBackupServiceTest {
     private lateinit var itemDao: FakeItemDao
     private lateinit var scoreProfileDao: FakeScoreProfileDao
     private lateinit var service: JsonBackupService
+    private var maintenanceRanCount = 0
 
     @Before
     fun setUp() {
         categoryDao = FakeCategoryDao()
         itemDao = FakeItemDao()
         scoreProfileDao = FakeScoreProfileDao()
-        service = JsonBackupService(categoryDao, itemDao, scoreProfileDao)
+        maintenanceRanCount = 0
+        service =
+            JsonBackupService(
+                validator = JsonBackupValidator(),
+                categoryDao = categoryDao,
+                itemDao = itemDao,
+                scoreProfileDao = scoreProfileDao,
+                runInTransaction = { block -> block() },
+                runPostImportMaintenance = { maintenanceRanCount++ },
+            )
     }
 
     @Test
-    fun export_includesSchemaVersion2() =
+    fun export_includesSchemaVersion4() =
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(2, json.getInt("version"))
+            assertEquals(4, json.getInt("version"))
         }
 
     @Test
@@ -209,7 +219,7 @@ class JsonBackupServiceTest {
         runTest {
             val json = JSONObject(service.export())
 
-            assertEquals(2, json.getInt("version"))
+            assertEquals(4, json.getInt("version"))
             assertEquals(0, json.getJSONArray("categories").length())
             assertEquals(0, json.getJSONArray("items").length())
             assertEquals(0, json.getJSONArray("scoreProfiles").length())
@@ -232,15 +242,17 @@ class JsonBackupServiceTest {
     fun import_restoresCategoryAndAttributes() =
         runTest {
             val json =
-                """{"version":1,"categories":[{"name":"Cars",""" +
-                    """"attributes":[{"id":"Speed","weight":1.5,"position":2}]}],"items":[]}"""
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[{"id":"Speed","weight":1.5,"position":2,"type":"NUMBER"}]}]""",
+                )
 
             service.import(json)
 
             assertEquals(1, categoryDao.upsertedCategories.size)
             assertEquals("Cars", categoryDao.upsertedCategories[0].name)
             assertEquals(1, categoryDao.upsertedAttributes.size)
-            assertEquals("Speed", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Cars/Speed", categoryDao.upsertedAttributes[0].id)
             assertEquals(1.5, categoryDao.upsertedAttributes[0].weight, 0.001)
             assertEquals(2, categoryDao.upsertedAttributes[0].position)
         }
@@ -248,12 +260,14 @@ class JsonBackupServiceTest {
     @Test
     fun import_restoresItemsAndRatings() =
         runTest {
-            val catJson =
-                """{"name":"Cars","attributes":[{"id":"Speed","weight":1.0,"position":0}]}"""
-            val itemJson =
-                """{"id":"Roadster","categoryName":"Cars","notes":"cool",""" +
-                    """"createdAt":100,"updatedAt":200,"ratings":[{"attributeId":"Speed","score":9}]}"""
-            val json = """{"version":1,"categories":[$catJson],"items":[$itemJson]}"""
+            val json =
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[{"id":"Speed","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Roadster","categoryName":"Cars","notes":"cool",""" +
+                            """"createdAt":100,"updatedAt":200,"ratings":[{"attributeId":"Speed","score":9}]}]""",
+                )
 
             service.import(json)
 
@@ -272,7 +286,7 @@ class JsonBackupServiceTest {
                 listOf(CategoryWithAttributes(CategoryEntity("OldCategory"), emptyList()))
             itemDao.state.value =
                 listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
-            val json = """{"version":1,"categories":[],"items":[]}"""
+            val json = validImportJson()
 
             service.import(json)
 
@@ -288,8 +302,8 @@ class JsonBackupServiceTest {
                     CategoryWithAttributes(
                         CategoryEntity("Cars"),
                         listOf(
-                            AttributeEntity("Speed", "Cars", 1.0, 0),
-                            AttributeEntity("Brakes", "Cars", 2.0, 1),
+                            AttributeEntity("Cars/Speed", "Cars", 1.0, 0),
+                            AttributeEntity("Cars/Brakes", "Cars", 2.0, 1),
                         ),
                     ),
                 )
@@ -298,8 +312,8 @@ class JsonBackupServiceTest {
                     ItemWithRatings(
                         ItemEntity("Roadster", "weekend car", 100L, 200L),
                         listOf(
-                            RatingEntity("Roadster", "Speed", 9),
-                            RatingEntity("Roadster", "Brakes", 8),
+                            RatingEntity("Roadster", "Cars/Speed", 9),
+                            RatingEntity("Roadster", "Cars/Brakes", 8),
                         ),
                         emptyList(),
                     ),
@@ -317,8 +331,8 @@ class JsonBackupServiceTest {
             assertEquals(1, categoryDao.upsertedCategories.size)
             assertEquals("Cars", categoryDao.upsertedCategories[0].name)
             assertEquals(2, categoryDao.upsertedAttributes.size)
-            assertEquals("Speed", categoryDao.upsertedAttributes[0].id)
-            assertEquals("Brakes", categoryDao.upsertedAttributes[1].id)
+            assertEquals("Cars/Speed", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Cars/Brakes", categoryDao.upsertedAttributes[1].id)
             assertEquals(1, itemDao.upsertedItems.size)
             assertEquals("Roadster", itemDao.upsertedItems[0].id)
             assertEquals("weekend car", itemDao.upsertedItems[0].notes)
@@ -328,7 +342,7 @@ class JsonBackupServiceTest {
     @Test
     fun import_emptyBackup_succeeds() =
         runTest {
-            val json = """{"version":1,"categories":[],"items":[]}"""
+            val json = validImportJson()
 
             service.import(json)
 
@@ -353,6 +367,306 @@ class JsonBackupServiceTest {
         runTest {
             service.import("""{"version":999,"categories":[],"items":[]}""")
         }
+
+    @Test
+    fun import_invalidJsonLeavesExistingDataIntact() =
+        runTest {
+            categoryDao.state.value =
+                listOf(CategoryWithAttributes(CategoryEntity("Cars"), emptyList()))
+            itemDao.state.value =
+                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
+
+            runCatching { service.import("not json at all {{{") }
+
+            assertTrue(categoryDao.deletedCategoryNames.isEmpty())
+            assertTrue(itemDao.deletedItemIds.isEmpty())
+            assertFalse(categoryDao.writeMethodCalled)
+            assertFalse(itemDao.writeMethodCalled)
+        }
+
+    @Test
+    fun import_unsupportedVersionLeavesExistingDataIntact() =
+        runTest {
+            categoryDao.state.value =
+                listOf(CategoryWithAttributes(CategoryEntity("Cars"), emptyList()))
+            itemDao.state.value =
+                listOf(ItemWithRatings(ItemEntity("OldItem"), emptyList(), emptyList()))
+
+            runCatching { service.import("""{"version":999,"categories":[],"items":[]}""") }
+
+            assertTrue(categoryDao.deletedCategoryNames.isEmpty())
+            assertTrue(itemDao.deletedItemIds.isEmpty())
+            assertFalse(categoryDao.writeMethodCalled)
+            assertFalse(itemDao.writeMethodCalled)
+        }
+
+    @Test
+    fun import_runsPostImportMaintenanceAfterSuccess() =
+        runTest {
+            val json =
+                """{"version":4,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
+                    """"categories":[],"items":[],"scoreProfiles":[]}"""
+
+            service.import(json)
+
+            assertEquals(1, maintenanceRanCount)
+        }
+
+    @Test
+    fun import_doesNotRunMaintenanceOnFailure() =
+        runTest {
+            runCatching { service.import("not json at all {{{") }
+
+            assertEquals(0, maintenanceRanCount)
+        }
+
+    @Test
+    fun import_v1BareAttributeIdsAreScopedWithCategoryName() =
+        runTest {
+            val json =
+                validImportJson(
+                    categories =
+                        """[{"name":"Food","attributes":[{"id":"Taste","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Pizza","categoryName":"Food","notes":"","createdAt":1,"updatedAt":2,""" +
+                            """"ratings":[{"attributeId":"Taste","score":7}]}]""",
+                )
+
+            service.import(json)
+
+            assertEquals("Food/Taste", categoryDao.upsertedAttributes[0].id)
+            assertEquals("Food/Taste", itemDao.upsertedRatings[0].attributeId)
+        }
+
+    @Test
+    fun roundTrip_preservesItemValues() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity("People/Nationality", "People", type = "NATIONALITY"),
+                            AttributeEntity("People/Birthday", "People", type = "DATE"),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("Alice", "friend", 100L, 200L),
+                        listOf(RatingEntity("Alice", "People/Score", 8)),
+                        listOf(
+                            ItemValueEntity("Alice", "People/Nationality", "US"),
+                            ItemValueEntity("Alice", "People/Birthday", "1990-05-15"),
+                        ),
+                    ),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            service.import(json)
+
+            assertEquals(2, itemDao.upsertedValues.size)
+            val nationalityValue = itemDao.upsertedValues.find { it.attributeId == "People/Nationality" }
+            val birthdayValue = itemDao.upsertedValues.find { it.attributeId == "People/Birthday" }
+            assertEquals("US", nationalityValue?.valueText)
+            assertEquals("1990-05-15", birthdayValue?.valueText)
+            assertEquals("Alice", nationalityValue?.itemId)
+        }
+
+    @Test
+    fun export_excludesSoftDeletedValues() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity("People/Nationality", "People", type = "NATIONALITY"),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("Alice", "", 100L, 200L),
+                        listOf(RatingEntity("Alice", "People/Score", 8)),
+                        listOf(
+                            ItemValueEntity("Alice", "People/Nationality", "US"),
+                            ItemValueEntity("Alice", "People/OldAttr", "gone", deletedAt = 1000L),
+                        ),
+                    ),
+                )
+
+            val json = JSONObject(service.export())
+            val item = json.getJSONArray("items").getJSONObject(0)
+            val values = item.getJSONArray("values")
+
+            assertEquals(1, values.length())
+            assertEquals("People/Nationality", values.getJSONObject(0).getString("attributeId"))
+        }
+
+    @Test
+    fun roundTrip_preservesScoreProfiles() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity("People/Charisma", "People", type = "NUMBER"),
+                        ),
+                    ),
+                )
+            itemDao.state.value = emptyList()
+            scoreProfileDao.profiles.value =
+                listOf(
+                    ScoreProfileEntity("sp1", "People", "Default", 100L, 200L),
+                )
+            scoreProfileDao.profileAttributes.value =
+                listOf(
+                    ScoreProfileAttributeEntity("sp1", "People/Score", 0),
+                    ScoreProfileAttributeEntity("sp1", "People/Charisma", 1),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            scoreProfileDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+            scoreProfileDao.profiles.value = emptyList()
+            scoreProfileDao.profileAttributes.value = emptyList()
+
+            service.import(json)
+
+            assertEquals(1, scoreProfileDao.upsertedProfiles.size)
+            val profile = scoreProfileDao.upsertedProfiles[0]
+            assertEquals("sp1", profile.id)
+            assertEquals("People", profile.categoryName)
+            assertEquals("Default", profile.name)
+            assertEquals(100L, profile.createdAt)
+            assertEquals(200L, profile.updatedAt)
+
+            assertEquals(2, scoreProfileDao.upsertedAttributes.size)
+            val attr0 = scoreProfileDao.upsertedAttributes.find { it.position == 0 }!!
+            val attr1 = scoreProfileDao.upsertedAttributes.find { it.position == 1 }!!
+            assertEquals("People/Score", attr0.attributeId)
+            assertEquals("People/Charisma", attr1.attributeId)
+        }
+
+    @Test
+    fun import_clearsExistingScoreProfiles() =
+        runTest {
+            scoreProfileDao.profiles.value =
+                listOf(
+                    ScoreProfileEntity("old-profile", "Cars", "Old", 0L, 0L),
+                )
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            val json = validImportJson()
+            service.import(json)
+
+            assertTrue(scoreProfileDao.deletedProfileIds.contains("old-profile"))
+        }
+
+    @Test
+    fun import_v4BackupSucceeds() =
+        runTest {
+            val json =
+                validImportJson(
+                    categories =
+                        """[{"name":"Cars","attributes":[""" +
+                            """{"id":"Cars/Speed","weight":1.0,"position":0,"type":"NUMBER"}]}]""",
+                    items =
+                        """[{"id":"Jetta","categoryName":"Cars","notes":"","createdAt":1,"updatedAt":2,""" +
+                            """"ratings":[{"attributeId":"Cars/Speed","score":7}],"values":[]}]""",
+                )
+
+            service.import(json)
+
+            assertEquals(1, itemDao.upsertedItems.size)
+            assertEquals("Jetta", itemDao.upsertedItems[0].id)
+        }
+
+    @Test
+    fun roundTrip_preservesAttributeMetadata() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity(
+                                id = "People/Nationality",
+                                categoryName = "People",
+                                weight = 1.0,
+                                position = 0,
+                                type = "NATIONALITY",
+                                isRequired = false,
+                                displayInDiamond = false,
+                                diamondOrder = 3,
+                                scoringDirection = null,
+                            ),
+                            AttributeEntity(
+                                id = "People/Birthday",
+                                categoryName = "People",
+                                weight = 1.5,
+                                position = 1,
+                                type = "DATE",
+                                isRequired = true,
+                                displayInDiamond = true,
+                                diamondOrder = null,
+                                scoringDirection = "OLDER_IS_BETTER",
+                            ),
+                        ),
+                    ),
+                )
+            itemDao.state.value = emptyList()
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            service.import(json)
+
+            val nationality = categoryDao.upsertedAttributes.find { it.id == "People/Nationality" }!!
+            assertEquals("NATIONALITY", nationality.type)
+            assertEquals(false, nationality.isRequired)
+            assertEquals(false, nationality.displayInDiamond)
+            assertEquals(3, nationality.diamondOrder)
+
+            val birthday = categoryDao.upsertedAttributes.find { it.id == "People/Birthday" }!!
+            assertEquals("DATE", birthday.type)
+            assertEquals(true, birthday.isRequired)
+            assertEquals(true, birthday.displayInDiamond)
+            assertEquals("OLDER_IS_BETTER", birthday.scoringDirection)
+        }
+
+    // --- Helpers ---
+
+    private fun validImportJson(
+        version: Int = 4,
+        categories: String = "[]",
+        items: String = "[]",
+        scoreProfiles: String = "[]",
+    ): String =
+        """{"version":$version,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
+            """"categories":$categories,"items":$items,"scoreProfiles":$scoreProfiles}"""
 
     // --- Fakes ---
 
@@ -420,18 +734,27 @@ class JsonBackupServiceTest {
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
+
+        override suspend fun renameAttributeIdInScoreProfileAttributes(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
+        override suspend fun countDependentsForAttributes(attributeIds: List<String>): Int = error("not used")
     }
 
     private class FakeItemDao : ItemDao {
         val state = MutableStateFlow<List<ItemWithRatings>>(emptyList())
         val upsertedItems = mutableListOf<ItemEntity>()
         val upsertedRatings = mutableListOf<RatingEntity>()
+        val upsertedValues = mutableListOf<ItemValueEntity>()
         val deletedItemIds = mutableListOf<String>()
         var writeMethodCalled = false
 
         fun reset() {
             upsertedItems.clear()
             upsertedRatings.clear()
+            upsertedValues.clear()
             deletedItemIds.clear()
             writeMethodCalled = false
         }
@@ -459,10 +782,34 @@ class JsonBackupServiceTest {
 
         override suspend fun upsertItemValues(values: List<ItemValueEntity>) {
             writeMethodCalled = true
+            upsertedValues += values
         }
 
         override suspend fun deleteItemValuesForItem(itemId: String) {
             writeMethodCalled = true
+        }
+
+        override suspend fun softDeleteItemValuesNotIn(
+            itemId: String,
+            keepAttributeIds: List<String>,
+            deletedAt: Long,
+        ) {
+            writeMethodCalled = true
+        }
+
+        override suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int {
+            writeMethodCalled = true
+            return 0
+        }
+
+        override suspend fun purgeOrphanedRatings(): Int {
+            writeMethodCalled = true
+            return 0
+        }
+
+        override suspend fun purgeOrphanedSoftDeletedValues(): Int {
+            writeMethodCalled = true
+            return 0
         }
 
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
@@ -481,7 +828,17 @@ class JsonBackupServiceTest {
     private class FakeScoreProfileDao : ScoreProfileDao {
         val profiles = MutableStateFlow<List<ScoreProfileEntity>>(emptyList())
         val profileAttributes = MutableStateFlow<List<ScoreProfileAttributeEntity>>(emptyList())
+        val upsertedProfiles = mutableListOf<ScoreProfileEntity>()
+        val upsertedAttributes = mutableListOf<ScoreProfileAttributeEntity>()
+        val deletedProfileIds = mutableListOf<String>()
         var writeMethodCalled = false
+
+        fun reset() {
+            upsertedProfiles.clear()
+            upsertedAttributes.clear()
+            deletedProfileIds.clear()
+            writeMethodCalled = false
+        }
 
         override fun observeAllProfiles(): Flow<List<ScoreProfileEntity>> = profiles
 
@@ -493,6 +850,7 @@ class JsonBackupServiceTest {
 
         override suspend fun upsertProfile(profile: ScoreProfileEntity) {
             writeMethodCalled = true
+            upsertedProfiles += profile
         }
 
         override suspend fun deleteAttributesForProfile(profileId: String) {
@@ -501,6 +859,7 @@ class JsonBackupServiceTest {
 
         override suspend fun upsertProfileAttributes(attributes: List<ScoreProfileAttributeEntity>) {
             writeMethodCalled = true
+            upsertedAttributes += attributes
         }
 
         override fun observeAttributesForProfile(profileId: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
@@ -509,6 +868,12 @@ class JsonBackupServiceTest {
 
         override suspend fun deleteProfile(id: String) {
             writeMethodCalled = true
+            deletedProfileIds += id
+        }
+
+        override suspend fun deleteOrphanedProfiles(): Int {
+            writeMethodCalled = true
+            return 0
         }
 
         override suspend fun saveProfileWithAttributes(
@@ -516,6 +881,8 @@ class JsonBackupServiceTest {
             attributes: List<ScoreProfileAttributeEntity>,
         ) {
             writeMethodCalled = true
+            upsertedProfiles += profile
+            upsertedAttributes += attributes
         }
     }
 }

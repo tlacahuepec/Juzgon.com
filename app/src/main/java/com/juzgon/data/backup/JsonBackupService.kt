@@ -14,20 +14,23 @@ import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
 import com.juzgon.data.local.entity.ScoreProfileEntity
 import com.juzgon.domain.backup.BackupException
 import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.backup.BackupValidator
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.time.Instant
 
-private const val SCHEMA_VERSION = 2
-private const val IMPORT_MAX_SUPPORTED_VERSION = 2
+private const val SCHEMA_VERSION = 4
 
 @Suppress("TooManyFunctions")
 class JsonBackupService(
+    private val validator: BackupValidator,
     private val categoryDao: CategoryDao,
     private val itemDao: ItemDao,
     private val scoreProfileDao: ScoreProfileDao,
+    private val runInTransaction: suspend (suspend () -> Unit) -> Unit,
+    private val runPostImportMaintenance: suspend () -> Unit = {},
 ) : BackupService {
     override suspend fun export(): String {
         val categories = categoryDao.observeCategoriesWithAttributes().first()
@@ -100,7 +103,7 @@ class JsonBackupService(
                         put("createdAt", iwr.item.createdAt)
                         put("updatedAt", iwr.item.updatedAt)
                         put("ratings", serializeRatings(iwr))
-                        put("values", serializeItemValues(iwr.values))
+                        put("values", serializeItemValues(iwr.values.filter { it.deletedAt == null }))
                     },
                 )
             }
@@ -157,21 +160,28 @@ class JsonBackupService(
         }
 
     override suspend fun import(json: String) {
+        val validationResult = validator.validate(json)
+        if (!validationResult.isValid) {
+            throw BackupException("Backup validation failed: ${validationResult.errors.first()}")
+        }
+
         val root =
             try {
                 JSONObject(json)
             } catch (e: JSONException) {
                 throw BackupException("Invalid JSON: ${e.message}", e)
             }
-        if (!root.has("version")) throw BackupException("Missing version field")
-        val version = root.getInt("version")
-        if (version > IMPORT_MAX_SUPPORTED_VERSION) {
-            throw BackupException("Unsupported backup version: $version")
+
+        runInTransaction {
+            clearExistingData()
+            restoreCategories(root.getJSONArray("categories"))
+            restoreItems(root.getJSONArray("items"))
+            if (root.has("scoreProfiles")) {
+                restoreScoreProfiles(root.getJSONArray("scoreProfiles"))
+            }
         }
 
-        clearExistingData()
-        restoreCategories(root.getJSONArray("categories"))
-        restoreItems(root.getJSONArray("items"))
+        runPostImportMaintenance()
     }
 
     private suspend fun clearExistingData() {
@@ -183,6 +193,10 @@ class JsonBackupService(
             .observeItemsWithRatings()
             .first()
             .forEach { itemDao.deleteItemById(it.item.id) }
+        scoreProfileDao
+            .observeAllProfiles()
+            .first()
+            .forEach { scoreProfileDao.deleteProfile(it.id) }
     }
 
     private suspend fun restoreCategories(categoriesArray: JSONArray) {
@@ -194,11 +208,18 @@ class JsonBackupService(
             val attrs =
                 (0 until attrsArray.length()).map { j ->
                     val attr = attrsArray.getJSONObject(j)
+                    val rawId = attr.getString("id")
+                    val id =
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawId, name)
                     AttributeEntity(
-                        id = attr.getString("id"),
+                        id = id,
                         categoryName = name,
                         weight = attr.getDouble("weight"),
                         position = attr.getInt("position"),
+                        type = attr.optString("type", "NUMBER"),
+                        isRequired = attr.optBoolean("isRequired", true),
+                        displayInDiamond = attr.optBoolean("displayInDiamond", true),
+                        diamondOrder = if (attr.has("diamondOrder")) attr.getInt("diamondOrder") else null,
                         scoringDirection =
                             if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
                     )
@@ -211,6 +232,7 @@ class JsonBackupService(
         repeat(itemsArray.length()) { i ->
             val itemObj = itemsArray.getJSONObject(i)
             val itemId = itemObj.getString("id")
+            val categoryName = itemObj.optString("categoryName", "")
             itemDao.upsertItem(
                 ItemEntity(
                     id = itemId,
@@ -223,9 +245,57 @@ class JsonBackupService(
             val ratings =
                 (0 until ratingsArray.length()).map { j ->
                     val r = ratingsArray.getJSONObject(j)
-                    RatingEntity(itemId = itemId, attributeId = r.getString("attributeId"), score = r.getInt("score"))
+                    val rawAttrId = r.getString("attributeId")
+                    val attributeId =
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
+                    RatingEntity(itemId = itemId, attributeId = attributeId, score = r.getInt("score"))
                 }
             if (ratings.isNotEmpty()) itemDao.upsertRatings(ratings)
+            val valuesArray = itemObj.optJSONArray("values")
+            if (valuesArray != null && valuesArray.length() > 0) {
+                val values =
+                    (0 until valuesArray.length()).map { j ->
+                        val v = valuesArray.getJSONObject(j)
+                        val rawAttrId = v.getString("attributeId")
+                        val attributeId =
+                            BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
+                        ItemValueEntity(
+                            itemId = itemId,
+                            attributeId = attributeId,
+                            valueText = v.getString("value"),
+                        )
+                    }
+                itemDao.upsertItemValues(values)
+            }
+        }
+    }
+
+    private suspend fun restoreScoreProfiles(profilesArray: JSONArray) {
+        repeat(profilesArray.length()) { i ->
+            val obj = profilesArray.getJSONObject(i)
+            val profileId = obj.getString("id")
+            val categoryName = obj.getString("categoryName")
+            val profile =
+                ScoreProfileEntity(
+                    id = profileId,
+                    categoryName = categoryName,
+                    name = obj.getString("name"),
+                    createdAt = obj.getLong("createdAt"),
+                    updatedAt = obj.getLong("updatedAt"),
+                )
+            val attrIds = obj.getJSONArray("attributeIds")
+            val attributes =
+                (0 until attrIds.length()).map { j ->
+                    val rawAttrId = attrIds.getString(j)
+                    val attributeId =
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
+                    ScoreProfileAttributeEntity(
+                        profileId = profileId,
+                        attributeId = attributeId,
+                        position = j,
+                    )
+                }
+            scoreProfileDao.saveProfileWithAttributes(profile, attributes)
         }
     }
 }

@@ -68,7 +68,7 @@ data class CategoryFormUiState(
             attributes =
                 attributes.map { attribute ->
                     Attribute(
-                        id = attribute.name.trim(),
+                        id = "${name.trim()}/${attribute.name.trim()}",
                         weight = attribute.parsedWeight(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,
@@ -94,7 +94,7 @@ object CategoryFormReducer {
                     CategoryAttributeInput(
                         key = index.toLong(),
                         sourceId = attribute.id,
-                        name = attribute.id,
+                        name = attribute.displayName,
                         weightText = attribute.weight.toString(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,

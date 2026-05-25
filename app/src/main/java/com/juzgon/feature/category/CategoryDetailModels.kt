@@ -199,7 +199,7 @@ private fun RankedRatedItem.toCardMetric(
                 } else {
                     item.textValueForAttribute(attribute.id)
                 } ?: MISSING_ATTRIBUTE_VALUE_TEXT
-            CategoryDetailCardMetric(label = attribute.id, valueText = valueText)
+            CategoryDetailCardMetric(label = attribute.displayName, valueText = valueText)
         }
 
         else -> CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
@@ -209,12 +209,12 @@ private fun Category.toSortOptions(): List<CategoryDetailSortOptionUiModel> =
     defaultSortOptions() +
         attributes
             .filterNot { attribute ->
-                attribute.type == AttributeType.IMAGE || attribute.type == AttributeType.NATIONALITY
+                attribute.type == AttributeType.IMAGE
             }.map { attribute ->
                 CategoryDetailSortOptionUiModel(
                     option = CategoryDetailSortOption.Attribute(attribute.id),
-                    label = attribute.id,
-                    contentDescription = "Sort items by ${attribute.id}",
+                    label = attribute.displayName,
+                    contentDescription = "Sort items by ${attribute.displayName}",
                 )
             }
 
@@ -321,5 +321,5 @@ private fun RatedItem.resolveNationalityBadge(category: Category): String? {
             ?.takeIf { value -> value.isNotEmpty() }
             ?: return null
     val option = NationalityDataset.findByCode(code) ?: return null
-    return "${option.flagEmoji} ${option.nationality}"
+    return option.flagEmoji
 }

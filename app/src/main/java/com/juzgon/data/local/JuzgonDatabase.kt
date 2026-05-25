@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.juzgon.data.local.dao.AttributeRankSnapshotDao
 import com.juzgon.data.local.dao.CategoryDao
+import com.juzgon.data.local.dao.DatabaseIntegrityDao
 import com.juzgon.data.local.dao.ItemDao
 import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.data.local.entity.AttributeEntity
@@ -26,7 +27,7 @@ import com.juzgon.data.local.entity.ScoreProfileEntity
         ScoreProfileEntity::class,
         ScoreProfileAttributeEntity::class,
     ],
-    version = 11,
+    version = 15,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {
@@ -37,4 +38,6 @@ abstract class JuzgonDatabase : RoomDatabase() {
     abstract fun attributeRankSnapshotDao(): AttributeRankSnapshotDao
 
     abstract fun scoreProfileDao(): ScoreProfileDao
+
+    abstract fun databaseIntegrityDao(): DatabaseIntegrityDao
 }

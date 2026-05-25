@@ -53,7 +53,7 @@ class ScoreProfileFormViewModel
                         .map { attribute ->
                             RankableAttributeCheckbox(
                                 id = attribute.id,
-                                name = attribute.id,
+                                name = attribute.displayName,
                                 type = attribute.type,
                                 scoringDirection = attribute.scoringDirection,
                             )

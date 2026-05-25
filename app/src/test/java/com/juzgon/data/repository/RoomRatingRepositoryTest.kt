@@ -11,8 +11,10 @@ import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoreProfile
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
+import com.juzgon.domain.repository.ScoreProfileRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -29,6 +31,7 @@ class RoomRatingRepositoryTest {
     private lateinit var database: JuzgonDatabase
     private lateinit var categoryRepository: CategoryRepository
     private lateinit var ratedItemRepository: RatedItemRepository
+    private lateinit var scoreProfileRepository: ScoreProfileRepository
     private var currentTime = 1_000L
 
     @Before
@@ -41,6 +44,7 @@ class RoomRatingRepositoryTest {
                 .build()
         categoryRepository = RoomCategoryRepository(database)
         ratedItemRepository = RoomRatedItemRepository(database) { currentTime }
+        scoreProfileRepository = RoomScoreProfileRepository(database)
     }
 
     @After
@@ -387,6 +391,158 @@ class RoomRatingRepositoryTest {
                     ScoreEntry(attribute = Attribute(id = "service"), score = 7),
                 ),
         )
+
+    @Test
+    fun saveRatedItemWithoutValuePreservesExistingValueViaSoftDelete() =
+        runTest {
+            val score = Attribute("Score")
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.saveCategory(Category("People", attributes = listOf(score, nationality)))
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Alice",
+                    scores = listOf(ScoreEntry(score, 9)),
+                    values = listOf(ItemAttributeValue(nationality, "US")),
+                ),
+            )
+
+            val savedItem = ratedItemRepository.observeRatedItem("Alice").first()
+            assertEquals("US", savedItem?.values?.first()?.value)
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Alice",
+                    scores = listOf(ScoreEntry(score, 10)),
+                    values = emptyList(),
+                ),
+            )
+
+            val updatedItem = ratedItemRepository.observeRatedItem("Alice").first()
+            assertEquals(10, updatedItem?.scores?.first()?.score)
+            assertEquals("US", updatedItem?.values?.first()?.value)
+        }
+
+    @Test
+    fun observeRatedItemsReturnsItemsWithOnlyValues() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.saveCategory(Category("People", attributes = listOf(nationality)))
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Bob",
+                    scores = emptyList(),
+                    values = listOf(ItemAttributeValue(nationality, "UK")),
+                ),
+            )
+
+            val items = ratedItemRepository.observeRatedItems().first()
+            assertEquals(1, items.size)
+            assertEquals("Bob", items.first().id)
+            assertEquals(
+                "UK",
+                items
+                    .first()
+                    .values
+                    .first()
+                    .value,
+            )
+        }
+
+    @Test
+    fun renameCategory_fullAttributeMapPreservesScoreProfileAttributes() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            scoreProfileRepository.saveProfile(
+                ScoreProfile(
+                    id = "profile-1",
+                    categoryName = "Cars",
+                    name = "Performance",
+                    includedAttributeIds = listOf("Speed", "Handling"),
+                ),
+            )
+
+            categoryRepository.renameCategory(
+                originalName = "Cars",
+                category = Category("Cars", attributes = listOf(Attribute("Pace"), Attribute("Grip"))),
+                renamedAttributeIds = mapOf("Speed" to "Pace", "Handling" to "Grip"),
+            )
+
+            val profiles = scoreProfileRepository.observeProfilesForCategory("Cars").first()
+            assertEquals(1, profiles.size)
+            assertEquals(listOf("Grip", "Pace"), profiles.first().includedAttributeIds.sorted())
+        }
+
+    @Test
+    fun renameCategory_incompleteMapFailsAndRollsBack() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 8), ScoreEntry(handling, 7))),
+            )
+
+            val result =
+                runCatching {
+                    categoryRepository.renameCategory(
+                        originalName = "Cars",
+                        category = Category("Cars", attributes = listOf(Attribute("Pace"))),
+                        renamedAttributeIds = mapOf("Speed" to "Pace"),
+                    )
+                }
+
+            assertEquals(true, result.isFailure)
+            assertEquals(true, result.exceptionOrNull()?.message?.contains("dependent record"))
+            val category = categoryRepository.observeCategory("Cars").first()
+            assertEquals(listOf("Handling", "Speed"), category?.attributes?.map { it.id }?.sorted())
+            val item = ratedItemRepository.observeRatedItem("Jetta").first()
+            assertEquals(listOf("Handling:7:1.0", "Speed:8:1.0"), item?.toScorePairs())
+        }
+
+    @Test
+    fun saveCategory_incompleteMapForRemovedAttributeFailsAndRollsBack() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 8), ScoreEntry(handling, 7))),
+            )
+
+            val result =
+                runCatching {
+                    categoryRepository.saveCategory(
+                        Category("Cars", attributes = listOf(Attribute("Pace"))),
+                    )
+                }
+
+            assertEquals(true, result.isFailure)
+            assertEquals(true, result.exceptionOrNull()?.message?.contains("dependent record"))
+            val category = categoryRepository.observeCategory("Cars").first()
+            assertEquals(listOf("Handling", "Speed"), category?.attributes?.map { it.id }?.sorted())
+            val item = ratedItemRepository.observeRatedItem("Jetta").first()
+            assertEquals(listOf("Handling:7:1.0", "Speed:8:1.0"), item?.toScorePairs())
+        }
+
+    @Test
+    fun saveCategory_removingAttributeWithNoDependentsSucceeds() =
+        runTest {
+            val speed = Attribute("Speed")
+            val unused = Attribute("Unused")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, unused)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 8))),
+            )
+
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed)))
+
+            val category = categoryRepository.observeCategory("Cars").first()
+            assertEquals(listOf("Speed"), category?.attributes?.map { it.id })
+        }
 
     private companion object {
         const val CATEGORY_NAME = "Food"

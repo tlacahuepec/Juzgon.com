@@ -48,6 +48,17 @@ interface ScoreProfileDao {
     @Query("DELETE FROM score_profiles WHERE id = :id")
     suspend fun deleteProfile(id: String)
 
+    @Query(
+        """
+        DELETE FROM score_profiles WHERE id IN (
+            SELECT sp.id FROM score_profiles sp
+            LEFT JOIN score_profile_attributes spa ON spa.profile_id = sp.id
+            WHERE spa.profile_id IS NULL
+        )
+        """,
+    )
+    suspend fun deleteOrphanedProfiles(): Int
+
     @Transaction
     suspend fun saveProfileWithAttributes(
         profile: ScoreProfileEntity,

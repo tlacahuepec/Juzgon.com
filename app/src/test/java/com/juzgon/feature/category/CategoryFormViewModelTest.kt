@@ -3,6 +3,7 @@ package com.juzgon.feature.category
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -71,7 +72,7 @@ class CategoryFormViewModelTest {
             viewModel.onSaveClick()
 
             assertEquals(
-                Category(name = "Food", attributes = listOf(Attribute(id = "Taste", weight = 1.0))),
+                Category(name = "Food", attributes = listOf(Attribute(id = "Food/Taste", weight = 1.0))),
                 repository.savedCategory,
             )
             assertTrue(currentState.saveCompleted)
@@ -139,8 +140,8 @@ class CategoryFormViewModelTest {
                     name = "Food",
                     attributes =
                         listOf(
-                            Attribute(id = "Taste", weight = 1.5),
-                            Attribute(id = "Service", weight = 1.0),
+                            Attribute(id = "Food/Taste", weight = 1.5),
+                            Attribute(id = "Food/Service", weight = 1.0),
                         ),
                 ),
                 repository.savedCategory,
@@ -154,7 +155,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", weight = 1.5)),
+                        attributes = listOf(Attribute(id = "Food/Taste", weight = 1.5)),
                     ),
                 )
 
@@ -171,11 +172,11 @@ class CategoryFormViewModelTest {
             assertEquals(
                 Category(
                     name = "Dining",
-                    attributes = listOf(Attribute(id = "Taste", weight = 1.5)),
+                    attributes = listOf(Attribute(id = "Dining/Taste", weight = 1.5)),
                 ),
                 repository.renamedCategory,
             )
-            assertEquals(emptyMap<String, String>(), repository.renamedAttributeIds)
+            assertEquals(mapOf("Food/Taste" to "Dining/Taste"), repository.renamedAttributeIds)
         }
 
     @Test
@@ -187,8 +188,8 @@ class CategoryFormViewModelTest {
                         name = "Food",
                         attributes =
                             listOf(
-                                Attribute(id = "Taste", weight = 1.5),
-                                Attribute(id = "Service", weight = 1.0),
+                                Attribute(id = "Food/Taste", weight = 1.5),
+                                Attribute(id = "Food/Service", weight = 1.0),
                             ),
                     ),
                 )
@@ -203,13 +204,13 @@ class CategoryFormViewModelTest {
                     name = "Food",
                     attributes =
                         listOf(
-                            Attribute(id = "Flavor", weight = 1.5),
-                            Attribute(id = "Service", weight = 1.0),
+                            Attribute(id = "Food/Flavor", weight = 1.5),
+                            Attribute(id = "Food/Service", weight = 1.0),
                         ),
                 ),
                 repository.renamedCategory,
             )
-            assertEquals(mapOf("Taste" to "Flavor"), repository.renamedAttributeIds)
+            assertEquals(mapOf("Food/Taste" to "Food/Flavor"), repository.renamedAttributeIds)
         }
 
     private class FakeCategoryRepository : CategoryRepository {
@@ -287,7 +288,7 @@ class CategoryFormViewModelTest {
                     attributes =
                         listOf(
                             Attribute(
-                                id = "Speed",
+                                id = "Cars/Speed",
                                 displayInDiamond = false,
                                 diamondOrder = 2,
                             ),
@@ -316,7 +317,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -325,7 +326,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -347,7 +348,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -356,7 +357,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -378,7 +379,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -387,7 +388,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -409,7 +410,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -418,7 +419,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -439,7 +440,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -448,7 +449,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -470,7 +471,7 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Taste", type = AttributeType.NUMBER)),
+                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -479,7 +480,7 @@ class CategoryFormViewModelTest {
                         item =
                             RatedItem(
                                 id = "espresso",
-                                scores = listOf(ScoreEntry(Attribute("Taste"), 8)),
+                                scores = listOf(ScoreEntry(Attribute("Food/Taste"), 8)),
                             ),
                         aggregateScore = 8.0,
                     ),
@@ -508,10 +509,50 @@ class CategoryFormViewModelTest {
             assertEquals(
                 Category(
                     name = "Food",
-                    attributes = listOf(Attribute(id = "Taste", type = AttributeType.DATE, isRequired = false)),
+                    attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.DATE, isRequired = false)),
                 ),
                 repository.savedCategory,
             )
+        }
+
+    @Test
+    fun removingAttributeWithOnlyValuesShowsDeleteWarning() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "People",
+                        attributes =
+                            listOf(
+                                Attribute(id = "People/Score", type = AttributeType.NUMBER),
+                                Attribute(id = "People/Nationality", type = AttributeType.NATIONALITY),
+                            ),
+                    ),
+                )
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "Alice",
+                                scores = listOf(ScoreEntry(Attribute("People/Score"), 8)),
+                                values =
+                                    listOf(
+                                        ItemAttributeValue(
+                                            Attribute("People/Nationality", type = AttributeType.NATIONALITY),
+                                            "US",
+                                        ),
+                                    ),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.loadCategory("People")
+            val nationalityKey = attributes.first { it.name == "Nationality" }.key
+            viewModel.removeAttribute(nationalityKey)
+
+            assertTrue(currentState.showAttributeDeleteWarning)
         }
 
     private class FakeRatedItemRepository : RatedItemRepository {

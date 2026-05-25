@@ -42,8 +42,15 @@ class BackupContractTest {
         categoryDao = ContractCategoryDao()
         itemDao = ContractItemDao()
         scoreProfileDao = ContractScoreProfileDao()
-        service = JsonBackupService(categoryDao, itemDao, scoreProfileDao)
         validator = JsonBackupValidator()
+        service =
+            JsonBackupService(
+                validator = validator,
+                categoryDao = categoryDao,
+                itemDao = itemDao,
+                scoreProfileDao = scoreProfileDao,
+                runInTransaction = { block -> block() },
+            )
     }
 
     @Test
@@ -309,6 +316,13 @@ class BackupContractTest {
             oldAttributeId: String,
             newAttributeId: String,
         ) = error("not used")
+
+        override suspend fun renameAttributeIdInScoreProfileAttributes(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
+        override suspend fun countDependentsForAttributes(attributeIds: List<String>): Int = error("not used")
     }
 
     @Suppress("TooManyFunctions")
@@ -328,6 +342,18 @@ class BackupContractTest {
         override suspend fun upsertItemValues(values: List<ItemValueEntity>) = error("not used")
 
         override suspend fun deleteItemValuesForItem(itemId: String) = error("not used")
+
+        override suspend fun softDeleteItemValuesNotIn(
+            itemId: String,
+            keepAttributeIds: List<String>,
+            deletedAt: Long,
+        ) = error("not used")
+
+        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) = error("not used")
+
+        override suspend fun purgeOrphanedRatings() = error("not used")
+
+        override suspend fun purgeOrphanedSoftDeletedValues() = error("not used")
 
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
 
@@ -362,6 +388,8 @@ class BackupContractTest {
         override fun observeAttributesForCategory(categoryName: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
 
         override suspend fun deleteProfile(id: String) = error("not used")
+
+        override suspend fun deleteOrphanedProfiles() = error("not used")
 
         override suspend fun saveProfileWithAttributes(
             profile: ScoreProfileEntity,

@@ -1,12 +1,16 @@
 package com.juzgon.data.backup
 
+import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.backup.BackupValidationResult
 import com.juzgon.domain.backup.BackupValidator
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val MAX_SUPPORTED_VERSION = 2
+private const val MAX_SUPPORTED_VERSION = 4
+private val VALID_TYPES = AttributeType.entries.map { it.name }.toSet()
+private val VALID_SCORING_DIRECTIONS = ScoringDirection.entries.map { it.name }.toSet()
 
 class JsonBackupValidator : BackupValidator {
     @Suppress("ReturnCount")
@@ -97,12 +101,33 @@ class JsonBackupValidator : BackupValidator {
                         return@repeat
                     }
                     val attrId = attr.getString("id")
-                    if (!attrIds.add(attrId)) {
-                        errors += "Duplicate attribute id '$attrId' in category '$name'"
+                    val normalized = BackupAttributeIdNormalizer.normalize(attrId, name)
+                    val resolvedId =
+                        when (normalized) {
+                            is NormalizedAttributeId.Resolved -> normalized.id
+                            is NormalizedAttributeId.Invalid -> {
+                                errors += normalized.reason
+                                return@repeat
+                            }
+                        }
+                    if (!attrIds.add(resolvedId)) {
+                        errors += "Duplicate attribute id '$resolvedId' in category '$name'"
                     }
-                    attributeIndex[attrId] =
+                    val type = attr.optString("type", "NUMBER")
+                    if (type !in VALID_TYPES) {
+                        errors += "Attribute '$resolvedId' in category '$name' has invalid type: '$type'"
+                    }
+                    if (attr.has("scoringDirection")) {
+                        val direction = attr.getString("scoringDirection")
+                        if (direction !in VALID_SCORING_DIRECTIONS) {
+                            errors +=
+                                "Attribute '$resolvedId' in category '$name' " +
+                                "has invalid scoringDirection: '$direction'"
+                        }
+                    }
+                    attributeIndex[resolvedId] =
                         AttributeInfo(
-                            type = attr.optString("type", "NUMBER"),
+                            type = type,
                             scoringDirection =
                                 if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
                         )
@@ -134,25 +159,35 @@ class JsonBackupValidator : BackupValidator {
                     errors += "Item '$id' references non-existent category: '$catName'"
                 }
             }
-            if (item.has("ratings")) {
-                val ratings = item.getJSONArray("ratings")
-                repeat(ratings.length()) { j ->
-                    val rating = ratings.getJSONObject(j)
-                    val attrId = rating.optString("attributeId", "")
-                    if (attrId.isNotEmpty() && attrId !in attributeIndex) {
-                        errors += "Item '$id' rating references non-existent attribute: '$attrId'"
+            val itemCategoryName = item.optString("categoryName", "")
+            validateItemAttributeRefs(item, id, itemCategoryName, "ratings", attributeIndex, errors)
+            validateItemAttributeRefs(item, id, itemCategoryName, "values", attributeIndex, errors)
+        }
+    }
+
+    @Suppress("LongParameterList")
+    private fun validateItemAttributeRefs(
+        item: JSONObject,
+        itemId: String,
+        categoryName: String,
+        arrayKey: String,
+        attributeIndex: Map<String, AttributeInfo>,
+        errors: MutableList<String>,
+    ) {
+        if (!item.has(arrayKey)) return
+        val array = item.getJSONArray(arrayKey)
+        repeat(array.length()) { j ->
+            val obj = array.getJSONObject(j)
+            val rawAttrId = obj.optString("attributeId", "")
+            if (rawAttrId.isEmpty()) return@repeat
+            val normalized = BackupAttributeIdNormalizer.normalize(rawAttrId, categoryName)
+            when (normalized) {
+                is NormalizedAttributeId.Resolved ->
+                    if (normalized.id !in attributeIndex) {
+                        errors += "Item '$itemId' $arrayKey references non-existent attribute: '$rawAttrId'"
                     }
-                }
-            }
-            if (item.has("values")) {
-                val values = item.getJSONArray("values")
-                repeat(values.length()) { j ->
-                    val value = values.getJSONObject(j)
-                    val attrId = value.optString("attributeId", "")
-                    if (attrId.isNotEmpty() && attrId !in attributeIndex) {
-                        errors += "Item '$id' value references non-existent attribute: '$attrId'"
-                    }
-                }
+                is NormalizedAttributeId.Invalid ->
+                    errors += "Item '$itemId' $arrayKey: ${normalized.reason}"
             }
         }
     }
@@ -166,21 +201,26 @@ class JsonBackupValidator : BackupValidator {
         repeat(profiles.length()) { i ->
             val profile = profiles.getJSONObject(i)
             val profileId = profile.optString("id", "profile[$i]")
-            if (profile.has("categoryName")) {
-                val catName = profile.getString("categoryName")
-                if (catName !in categoryNames) {
-                    errors += "Score profile '$profileId' references non-existent category: '$catName'"
-                }
+            val profileCategoryName = profile.optString("categoryName", "")
+            if (profileCategoryName.isNotEmpty() && profileCategoryName !in categoryNames) {
+                errors += "Score profile '$profileId' references non-existent category: '$profileCategoryName'"
             }
             if (profile.has("attributeIds")) {
                 val attrIds = profile.getJSONArray("attributeIds")
                 repeat(attrIds.length()) { j ->
-                    val attrId = attrIds.getString(j)
-                    val info = attributeIndex[attrId]
-                    if (info == null) {
-                        errors += "Score profile '$profileId' references non-existent attribute: '$attrId'"
-                    } else if (!info.isRankable) {
-                        errors += "Score profile '$profileId' includes non-rankable attribute: '$attrId'"
+                    val rawAttrId = attrIds.getString(j)
+                    val normalized = BackupAttributeIdNormalizer.normalize(rawAttrId, profileCategoryName)
+                    when (normalized) {
+                        is NormalizedAttributeId.Resolved -> {
+                            val info = attributeIndex[normalized.id]
+                            if (info == null) {
+                                errors += "Score profile '$profileId' references non-existent attribute: '$rawAttrId'"
+                            } else if (!info.isRankable) {
+                                errors += "Score profile '$profileId' includes non-rankable attribute: '$rawAttrId'"
+                            }
+                        }
+                        is NormalizedAttributeId.Invalid ->
+                            errors += "Score profile '$profileId': ${normalized.reason}"
                     }
                 }
             }

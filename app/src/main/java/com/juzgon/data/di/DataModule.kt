@@ -3,10 +3,12 @@ package com.juzgon.data.di
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.juzgon.BuildConfig
 import com.juzgon.data.backup.JsonBackupService
 import com.juzgon.data.backup.JsonBackupValidator
+import com.juzgon.data.local.DatabaseMaintenanceRunner
 import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
@@ -62,6 +64,10 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_8_9,
                     DatabaseMigrations.MIGRATION_9_10,
                     DatabaseMigrations.MIGRATION_10_11,
+                    DatabaseMigrations.MIGRATION_11_12,
+                    DatabaseMigrations.MIGRATION_12_13,
+                    DatabaseMigrations.MIGRATION_13_14,
+                    DatabaseMigrations.MIGRATION_14_15,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -73,6 +79,13 @@ object DataModule {
                                 ).seed()
                             }
                         }
+
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            seedScope.launch {
+                                DatabaseMaintenanceRunner(database).runCleanup()
+                            }
+                        }
                     },
                 ).build()
         return database
@@ -80,11 +93,17 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideBackupService(database: JuzgonDatabase): BackupService =
+    fun provideBackupService(
+        database: JuzgonDatabase,
+        validator: BackupValidator,
+    ): BackupService =
         JsonBackupService(
+            validator = validator,
             categoryDao = database.categoryDao(),
             itemDao = database.itemDao(),
             scoreProfileDao = database.scoreProfileDao(),
+            runInTransaction = { block -> database.withTransaction { block() } },
+            runPostImportMaintenance = { DatabaseMaintenanceRunner(database).runCleanup() },
         )
 
     @Provides

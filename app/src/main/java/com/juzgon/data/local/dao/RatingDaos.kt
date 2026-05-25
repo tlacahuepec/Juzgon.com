@@ -123,6 +123,24 @@ interface CategoryDao {
         newAttributeId: String,
     )
 
+    @Query("UPDATE score_profile_attributes SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInScoreProfileAttributes(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM (
+            SELECT attribute_id FROM ratings WHERE attribute_id IN (:attributeIds)
+            UNION ALL
+            SELECT attribute_id FROM item_values
+                WHERE attribute_id IN (:attributeIds) AND deleted_at IS NULL
+        )
+        """,
+    )
+    suspend fun countDependentsForAttributes(attributeIds: List<String>): Int
+
     @Query(
         """
         SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count
@@ -163,7 +181,10 @@ interface ItemDao {
             items.notes AS notes,
             items.created_at AS created_at,
             items.updated_at AS updated_at,
-            ROUND(SUM(ratings.score * attributes.weight) / SUM(attributes.weight), 1) AS aggregate_score
+            COALESCE(
+                ROUND(SUM(ratings.score * attributes.weight) / NULLIF(SUM(attributes.weight), 0), 1),
+                0.0
+            ) AS aggregate_score
         FROM items
         INNER JOIN ratings ON ratings.item_id = items.id
         INNER JOIN attributes ON attributes.id = ratings.attribute_id
@@ -186,8 +207,31 @@ interface ItemDao {
     @Query("DELETE FROM item_values WHERE item_id = :itemId")
     suspend fun deleteItemValuesForItem(itemId: String)
 
+    @Query(
+        """
+        UPDATE item_values SET deleted_at = :deletedAt
+        WHERE item_id = :itemId
+        AND attribute_id NOT IN (:keepAttributeIds)
+        AND deleted_at IS NULL
+        """,
+    )
+    suspend fun softDeleteItemValuesNotIn(
+        itemId: String,
+        keepAttributeIds: List<String>,
+        deletedAt: Long,
+    )
+
     @Query("DELETE FROM items WHERE id = :id")
     suspend fun deleteItemById(id: String)
+
+    @Query("DELETE FROM item_values WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff")
+    suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int
+
+    @Query("DELETE FROM ratings WHERE attribute_id NOT IN (SELECT id FROM attributes)")
+    suspend fun purgeOrphanedRatings(): Int
+
+    @Query("DELETE FROM item_values WHERE attribute_id NOT IN (SELECT id FROM attributes) AND deleted_at IS NOT NULL")
+    suspend fun purgeOrphanedSoftDeletedValues(): Int
 }
 
 @Dao

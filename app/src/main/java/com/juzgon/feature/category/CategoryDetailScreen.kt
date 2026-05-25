@@ -784,7 +784,7 @@ private fun CategoryDetailItemOverlay(
             item.nationalityBadge?.let { badge ->
                 Text(
                     text = badge,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
             }
