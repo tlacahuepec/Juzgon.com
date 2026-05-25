@@ -1,5 +1,7 @@
 package com.juzgon.data.backup
 
+import com.juzgon.domain.AttributeType
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.backup.BackupValidationResult
 import com.juzgon.domain.backup.BackupValidator
 import org.json.JSONArray
@@ -7,6 +9,8 @@ import org.json.JSONException
 import org.json.JSONObject
 
 private const val MAX_SUPPORTED_VERSION = 4
+private val VALID_TYPES = AttributeType.entries.map { it.name }.toSet()
+private val VALID_SCORING_DIRECTIONS = ScoringDirection.entries.map { it.name }.toSet()
 
 class JsonBackupValidator : BackupValidator {
     @Suppress("ReturnCount")
@@ -100,9 +104,21 @@ class JsonBackupValidator : BackupValidator {
                     if (!attrIds.add(attrId)) {
                         errors += "Duplicate attribute id '$attrId' in category '$name'"
                     }
+                    val type = attr.optString("type", "NUMBER")
+                    if (type !in VALID_TYPES) {
+                        errors += "Attribute '$attrId' in category '$name' has invalid type: '$type'"
+                    }
+                    if (attr.has("scoringDirection")) {
+                        val direction = attr.getString("scoringDirection")
+                        if (direction !in VALID_SCORING_DIRECTIONS) {
+                            errors +=
+                                "Attribute '$attrId' in category '$name' " +
+                                "has invalid scoringDirection: '$direction'"
+                        }
+                    }
                     attributeIndex[attrId] =
                         AttributeInfo(
-                            type = attr.optString("type", "NUMBER"),
+                            type = type,
                             scoringDirection =
                                 if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
                         )
