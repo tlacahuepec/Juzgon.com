@@ -17,6 +17,7 @@ private const val DATABASE_VERSION_11 = 11
 private const val DATABASE_VERSION_12 = 12
 private const val DATABASE_VERSION_13 = 13
 private const val DATABASE_VERSION_14 = 14
+private const val DATABASE_VERSION_15 = 15
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -237,6 +238,51 @@ object DatabaseMigrations {
                     )
                     WHERE attribute_id NOT IN (SELECT id FROM attributes)
                       AND INSTR(attribute_id, '/') > 0
+                    """.trimIndent(),
+                )
+            }
+        }
+
+    @Suppress("MaxLineLength")
+    val MIGRATION_14_15: Migration =
+        object : Migration(DATABASE_VERSION_14, DATABASE_VERSION_15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE item_values
+                    SET attribute_id = (
+                        SELECT candidate.id
+                        FROM attributes candidate
+                        WHERE INSTR(candidate.id, '/') > 0
+                          AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                    )
+                    WHERE attribute_id NOT IN (SELECT id FROM attributes)
+                      AND INSTR(attribute_id, '/') > 0
+                      AND (
+                          SELECT COUNT(*)
+                          FROM attributes candidate
+                          WHERE INSTR(candidate.id, '/') > 0
+                            AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                      ) = 1
+                      AND (
+                          SELECT COUNT(*)
+                          FROM item_values sibling
+                          WHERE sibling.item_id = item_values.item_id
+                            AND sibling.attribute_id NOT IN (SELECT id FROM attributes)
+                            AND INSTR(sibling.attribute_id, '/') > 0
+                            AND SUBSTR(sibling.attribute_id, INSTR(sibling.attribute_id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                      ) = 1
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM item_values existing
+                          WHERE existing.item_id = item_values.item_id
+                            AND existing.attribute_id = (
+                                SELECT candidate.id
+                                FROM attributes candidate
+                                WHERE INSTR(candidate.id, '/') > 0
+                                  AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                            )
+                      )
                     """.trimIndent(),
                 )
             }
