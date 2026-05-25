@@ -477,6 +477,116 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(14, listOf(DatabaseMigrations.MIGRATION_13_14)).close()
     }
 
+    @Test
+    fun migrate14To15_repairsValueOnlyItemWhenSuffixMatchIsUnique() {
+        val connection = helper.createDatabase(14)
+        insertV14Category(connection, "Coffee")
+        insertV14Category(connection, "Tea")
+        insertV14Attribute(connection, "Coffee/Nationality", "Coffee", type = "NATIONALITY")
+        insertV14Item(connection, ITEM_ID)
+        insertV14ItemValue(connection, ITEM_ID, "Tea/Nationality", "MX")
+        connection.close()
+
+        helper.runMigrationsAndValidate(15, listOf(DatabaseMigrations.MIGRATION_14_15)).use { conn ->
+            conn.prepare("SELECT attribute_id, value_text FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("Coffee/Nationality", stmt.getText(0))
+                assertEquals("MX", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate14To15_leavesAmbiguousSuffixMatchesUntouched() {
+        val connection = helper.createDatabase(14)
+        insertV14Category(connection, "Coffee")
+        insertV14Category(connection, "Tea")
+        insertV14Attribute(connection, "Coffee/Nationality", "Coffee", type = "NATIONALITY")
+        insertV14Attribute(connection, "Tea/Nationality", "Tea", type = "NATIONALITY")
+        insertV14Item(connection, ITEM_ID)
+        insertV14ItemValue(connection, ITEM_ID, "Old/Nationality", "MX")
+        connection.close()
+
+        helper.runMigrationsAndValidate(15, listOf(DatabaseMigrations.MIGRATION_14_15)).use { conn ->
+            conn.prepare("SELECT attribute_id, value_text FROM item_values").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("Old/Nationality", stmt.getText(0))
+                assertEquals("MX", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate14To15_leavesPrimaryKeyCollisionsUntouched() {
+        val connection = helper.createDatabase(14)
+        insertV14Category(connection, "Coffee")
+        insertV14Category(connection, "Tea")
+        insertV14Attribute(connection, "Coffee/Nationality", "Coffee", type = "NATIONALITY")
+        insertV14Item(connection, ITEM_ID)
+        insertV14ItemValue(connection, ITEM_ID, "Coffee/Nationality", "US")
+        insertV14ItemValue(connection, ITEM_ID, "Tea/Nationality", "MX")
+        connection.close()
+
+        helper.runMigrationsAndValidate(15, listOf(DatabaseMigrations.MIGRATION_14_15)).use { conn ->
+            conn.prepare("SELECT attribute_id, value_text FROM item_values ORDER BY attribute_id").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("Coffee/Nationality", stmt.getText(0))
+                assertEquals("US", stmt.getText(1))
+                assertTrue(stmt.step())
+                assertEquals("Tea/Nationality", stmt.getText(0))
+                assertEquals("MX", stmt.getText(1))
+            }
+        }
+    }
+
+    @Test
+    fun migrate14To15_validatesLatestSchema() {
+        helper.createDatabase(14).close()
+        helper.runMigrationsAndValidate(15, listOf(DatabaseMigrations.MIGRATION_14_15)).close()
+    }
+
+    private fun insertV14Category(
+        connection: androidx.sqlite.SQLiteConnection,
+        name: String,
+    ) {
+        connection.prepare("INSERT INTO categories (name) VALUES ('$name')").use { it.step() }
+    }
+
+    private fun insertV14Attribute(
+        connection: androidx.sqlite.SQLiteConnection,
+        id: String,
+        categoryName: String,
+        type: String = "NUMBER",
+    ) {
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$id', '$categoryName', 1.0, 0, '$type', 0, 0)",
+            ).use { it.step() }
+    }
+
+    private fun insertV14Item(
+        connection: androidx.sqlite.SQLiteConnection,
+        id: String,
+    ) {
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$id', '', 0, 0)")
+            .use { it.step() }
+    }
+
+    private fun insertV14ItemValue(
+        connection: androidx.sqlite.SQLiteConnection,
+        itemId: String,
+        attributeId: String,
+        value: String,
+    ) {
+        connection
+            .prepare(
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$itemId', '$attributeId', '$value')",
+            ).use { it.step() }
+    }
+
     private companion object {
         const val ATTRIBUTE_ID = "taste"
         const val CATEGORY_NAME = "Coffee"
