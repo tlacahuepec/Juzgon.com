@@ -202,7 +202,8 @@ class JsonBackupService(
                 (0 until attrsArray.length()).map { j ->
                     val attr = attrsArray.getJSONObject(j)
                     val rawId = attr.getString("id")
-                    val id = if ("/" in rawId) rawId else "$name/$rawId"
+                    val id =
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawId, name)
                     AttributeEntity(
                         id = id,
                         categoryName = name,
@@ -239,7 +240,7 @@ class JsonBackupService(
                     val r = ratingsArray.getJSONObject(j)
                     val rawAttrId = r.getString("attributeId")
                     val attributeId =
-                        if ("/" in rawAttrId) rawAttrId else "$categoryName/$rawAttrId"
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
                     RatingEntity(itemId = itemId, attributeId = attributeId, score = r.getInt("score"))
                 }
             if (ratings.isNotEmpty()) itemDao.upsertRatings(ratings)
@@ -250,7 +251,7 @@ class JsonBackupService(
                         val v = valuesArray.getJSONObject(j)
                         val rawAttrId = v.getString("attributeId")
                         val attributeId =
-                            if ("/" in rawAttrId) rawAttrId else "$categoryName/$rawAttrId"
+                            BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
                         ItemValueEntity(
                             itemId = itemId,
                             attributeId = attributeId,
@@ -266,10 +267,11 @@ class JsonBackupService(
         repeat(profilesArray.length()) { i ->
             val obj = profilesArray.getJSONObject(i)
             val profileId = obj.getString("id")
+            val categoryName = obj.getString("categoryName")
             val profile =
                 ScoreProfileEntity(
                     id = profileId,
-                    categoryName = obj.getString("categoryName"),
+                    categoryName = categoryName,
                     name = obj.getString("name"),
                     createdAt = obj.getLong("createdAt"),
                     updatedAt = obj.getLong("updatedAt"),
@@ -277,9 +279,12 @@ class JsonBackupService(
             val attrIds = obj.getJSONArray("attributeIds")
             val attributes =
                 (0 until attrIds.length()).map { j ->
+                    val rawAttrId = attrIds.getString(j)
+                    val attributeId =
+                        BackupAttributeIdNormalizer.resolveOrThrow(rawAttrId, categoryName)
                     ScoreProfileAttributeEntity(
                         profileId = profileId,
-                        attributeId = attrIds.getString(j),
+                        attributeId = attributeId,
                         position = j,
                     )
                 }
