@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "TooManyFunctions")
+@file:Suppress("FunctionName", "TooManyFunctions", "LongParameterList")
 
 package com.juzgon.feature.home
 
@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -58,6 +59,7 @@ import java.time.format.DateTimeFormatter
 fun HomeRoute(
     onNavigateToCreateCategory: () -> Unit,
     onNavigateToCategory: (String) -> Unit,
+    onNavigateToAiSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     exportViewModel: ExportBackupViewModel = hiltViewModel(),
     aboutViewModel: AboutViewModel = hiltViewModel(),
@@ -105,6 +107,7 @@ fun HomeRoute(
                 onRetry = viewModel::onRetry,
                 onExportClick = exportViewModel::export,
                 onAboutClick = { showAboutDialog = true },
+                onAiSettingsClick = onNavigateToAiSettings,
             ),
     )
 
@@ -247,6 +250,18 @@ private fun HomeHeader(actions: HomeScreenActions) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconButton(
+                onClick = actions.onAiSettingsClick,
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "AI Settings"
+                    },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                )
+            }
             IconButton(
                 onClick = actions.onAboutClick,
                 modifier =

@@ -160,6 +160,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.timber)
+    implementation(libs.androidx.security.crypto)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.compose.ui.test.junit4)
