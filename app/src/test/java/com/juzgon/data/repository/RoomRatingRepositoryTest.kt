@@ -446,6 +446,60 @@ class RoomRatingRepositoryTest {
             )
         }
 
+    @Test
+    fun deleteCategory_purgesOrphanedRatingsFromRankedResults() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 8), ScoreEntry(handling, 7))),
+            )
+
+            categoryRepository.deleteCategory("Cars")
+
+            val rawRatings = database.itemDao().getRatingsForItem("Jetta")
+            assertEquals(emptyList<Any>(), rawRatings)
+        }
+
+    @Test
+    fun saveCategory_removingAttributePurgesStaleRatingsFromResults() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Jetta", scores = listOf(ScoreEntry(speed, 8), ScoreEntry(handling, 7))),
+            )
+
+            categoryRepository.renameCategory(
+                originalName = "Cars",
+                category = Category("Cars", attributes = listOf(Attribute("Speed"))),
+                renamedAttributeIds = emptyMap(),
+            )
+
+            val rawRatings = database.itemDao().getRatingsForItem("Jetta")
+            assertEquals(listOf("Speed"), rawRatings.map { it.attributeId })
+        }
+
+    @Test
+    fun deleteCategory_preservesActiveItemValuesForValueOnlyItems() =
+        runTest {
+            val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY, isRequired = false)
+            categoryRepository.saveCategory(Category("People", attributes = listOf(nationality)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "Alice", scores = emptyList(), values = listOf(ItemAttributeValue(nationality, "US"))),
+            )
+
+            categoryRepository.deleteCategory("People")
+
+            val item = ratedItemRepository.observeRatedItem("Alice").first()
+            assertEquals("Alice", item?.id)
+            val rawItem = database.itemDao().getItemWithRatings("Alice")
+            assertEquals(1, rawItem?.values?.filter { it.deletedAt == null }?.size)
+            assertEquals("US", rawItem?.values?.first()?.valueText)
+        }
+
     private companion object {
         const val CATEGORY_NAME = "Food"
         const val RENAMED_CATEGORY_NAME = "Dining"
