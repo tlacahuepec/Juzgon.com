@@ -58,7 +58,7 @@ class CategoryFormScreenTest {
         setContent(CategoryFormReducer.createState().copy(showValidationErrors = true))
 
         composeRule.onNodeWithText("Category name is required").assertIsDisplayed()
-        composeRule.onNodeWithText("Attribute name is required").assertIsDisplayed()
+        composeRule.onNodeWithText("Attribute name is required").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -176,14 +176,14 @@ class CategoryFormScreenTest {
     fun typePickerIsRenderedForEachAttribute() {
         setContent(CategoryFormReducer.createState())
 
-        composeRule.onNodeWithContentDescription("Attribute 1 type").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 type").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun requiredToggleIsRenderedForEachAttribute() {
         setContent(CategoryFormReducer.createState())
 
-        composeRule.onNodeWithContentDescription("Attribute 1 required").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Attribute 1 required").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -256,6 +256,8 @@ class CategoryFormScreenTest {
                 CategoryFormScreen(
                     state = state,
                     onNameChange = {},
+                    onDescriptionChange = {},
+                    onCatalogTypeChange = {},
                     onAttributeNameChange = { _, _ -> },
                     onAttributeWeightChange = { _, _ -> },
                     onAttributeTypeChange = { _, _ -> },

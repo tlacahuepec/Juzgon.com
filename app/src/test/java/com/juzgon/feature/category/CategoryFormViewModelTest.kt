@@ -2,6 +2,7 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
@@ -553,6 +554,64 @@ class CategoryFormViewModelTest {
             viewModel.removeAttribute(nationalityKey)
 
             assertTrue(currentState.showAttributeDeleteWarning)
+        }
+
+    @Test
+    fun onDescriptionChangedUpdatesState() =
+        runTest {
+            viewModel.onDescriptionChanged("A ranking of soccer players")
+            assertEquals("A ranking of soccer players", currentState.description)
+        }
+
+    @Test
+    fun onCatalogTypeChangedUpdatesState() =
+        runTest {
+            viewModel.onCatalogTypeChanged(CatalogType.PERSON)
+            assertEquals(CatalogType.PERSON, currentState.catalogType)
+        }
+
+    @Test
+    fun saveIncludesDescriptionAndTypeInCategory() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onNameChanged("Players")
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onDescriptionChanged("Soccer players ranking")
+            viewModel.onCatalogTypeChanged(CatalogType.PERSON)
+            viewModel.onSaveClick()
+
+            assertEquals("Soccer players ranking", repository.savedCategory?.description)
+            assertEquals(CatalogType.PERSON, repository.savedCategory?.type)
+        }
+
+    @Test
+    fun editModeLoadsDescriptionAndType() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Players",
+                        attributes = listOf(Attribute(id = "Players/Speed")),
+                        description = "Soccer players",
+                        type = CatalogType.PERSON,
+                    ),
+                )
+
+            viewModel.loadCategory("Players")
+            assertEquals("Soccer players", currentState.description)
+            assertEquals(CatalogType.PERSON, currentState.catalogType)
+        }
+
+    @Test
+    fun blankDescriptionSavesAsNull() =
+        runTest {
+            val key = attributes.single().key
+            viewModel.onNameChanged("Cars")
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onDescriptionChanged("  ")
+            viewModel.onSaveClick()
+
+            assertEquals(null, repository.savedCategory?.description)
         }
 
     private class FakeRatedItemRepository : RatedItemRepository {

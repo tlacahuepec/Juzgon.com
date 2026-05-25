@@ -3,6 +3,7 @@ package com.juzgon.feature.category
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.CatalogType
 import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
@@ -73,6 +74,14 @@ class CategoryFormViewModel
 
         fun onNameChanged(name: String) {
             mutableState.update { it.copy(name = name, saveCompleted = false, errorMessage = null) }
+        }
+
+        fun onDescriptionChanged(description: String) {
+            mutableState.update { it.copy(description = description, saveCompleted = false, errorMessage = null) }
+        }
+
+        fun onCatalogTypeChanged(catalogType: CatalogType?) {
+            mutableState.update { it.copy(catalogType = catalogType, saveCompleted = false, errorMessage = null) }
         }
 
         fun onAttributeNameChanged(
