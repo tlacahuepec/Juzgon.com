@@ -81,7 +81,7 @@ open class GeminiApiClient
 
         private companion object {
             const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-            const val MODEL = "gemini-2.0-flash"
+            const val MODEL = "gemini-2.5-flash"
             const val HTTP_OK = 200
         }
     }

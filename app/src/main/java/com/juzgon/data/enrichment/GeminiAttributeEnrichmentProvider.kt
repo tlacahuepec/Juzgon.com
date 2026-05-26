@@ -39,16 +39,31 @@ class GeminiAttributeEnrichmentProvider
                 result
             } catch (e: IOException) {
                 timber.log.Timber.e(e, "Network error during enrichment")
-                logFailure(EnrichmentFailureCode.NETWORK_ERROR, request.targetAttributeKey, startTime)
+                logFailure(
+                    EnrichmentFailureCode.NETWORK_ERROR,
+                    request.targetAttributeKey,
+                    startTime,
+                    "IOException: ${e.message}",
+                )
                 errorResult(EnrichmentFailureCode.NETWORK_ERROR)
             } catch (e: GeminiApiException) {
                 timber.log.Timber.e(e, "Gemini API error: HTTP ${e.httpCode} body=${e.body}")
                 val failureCode = mapHttpCode(e.httpCode)
-                logFailure(failureCode, request.targetAttributeKey, startTime)
+                logFailure(
+                    failureCode,
+                    request.targetAttributeKey,
+                    startTime,
+                    "HTTP ${e.httpCode}: ${e.body.take(MAX_ERROR_DETAIL_LENGTH)}",
+                )
                 errorResult(failureCode)
             } catch (e: Exception) {
                 timber.log.Timber.e(e, "Unexpected enrichment error: ${e.javaClass.simpleName}")
-                logFailure(EnrichmentFailureCode.PROVIDER_ERROR, request.targetAttributeKey, startTime)
+                logFailure(
+                    EnrichmentFailureCode.PROVIDER_ERROR,
+                    request.targetAttributeKey,
+                    startTime,
+                    "${e.javaClass.simpleName}: ${e.message}",
+                )
                 errorResult(EnrichmentFailureCode.PROVIDER_ERROR)
             }
         }
@@ -88,12 +103,14 @@ class GeminiAttributeEnrichmentProvider
             failureCode: EnrichmentFailureCode,
             attributeKey: String,
             startTime: Long,
+            errorDetail: String? = null,
         ) {
             EnrichmentLogger.failed(
                 provider = PROVIDER_NAME,
                 attributeKey = attributeKey,
                 failureCode = failureCode.name,
                 durationMs = System.currentTimeMillis() - startTime,
+                errorDetail = errorDetail,
             )
         }
 
@@ -108,5 +125,6 @@ class GeminiAttributeEnrichmentProvider
             const val HTTP_UNAUTHORIZED = 401
             const val HTTP_FORBIDDEN = 403
             const val HTTP_TOO_MANY_REQUESTS = 429
+            const val MAX_ERROR_DETAIL_LENGTH = 200
         }
     }
