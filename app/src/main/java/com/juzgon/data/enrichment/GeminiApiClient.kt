@@ -68,7 +68,15 @@ open class GeminiApiClient
             if (text == null) {
                 throw GeminiApiException(0, "No text in response")
             }
-            return text
+            return stripMarkdownFences(text)
+        }
+
+        fun stripMarkdownFences(text: String): String {
+            val trimmed = text.trim()
+            if (!trimmed.startsWith("```")) return trimmed
+            val withoutOpening = trimmed.removePrefix("```json").removePrefix("```")
+            val withoutFences = withoutOpening.removeSuffix("```")
+            return withoutFences.trim()
         }
 
         private companion object {

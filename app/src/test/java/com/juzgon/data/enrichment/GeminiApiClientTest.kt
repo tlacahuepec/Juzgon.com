@@ -63,4 +63,46 @@ class GeminiApiClientTest {
     fun extractTextFromResponse_invalidJson_throws() {
         client.extractTextFromResponse("not json at all")
     }
+
+    @Test
+    fun stripMarkdownFences_plainJson_unchanged() {
+        val json = """{"status":"FOUND","value":"1987-06-24"}"""
+        assertEquals(json, client.stripMarkdownFences(json))
+    }
+
+    @Test
+    fun stripMarkdownFences_jsonFence_stripped() {
+        val input = "```json\n{\"status\":\"FOUND\"}\n```"
+        assertEquals("{\"status\":\"FOUND\"}", client.stripMarkdownFences(input))
+    }
+
+    @Test
+    fun stripMarkdownFences_plainFence_stripped() {
+        val input = "```\n{\"status\":\"FOUND\"}\n```"
+        assertEquals("{\"status\":\"FOUND\"}", client.stripMarkdownFences(input))
+    }
+
+    @Test
+    fun extractTextFromResponse_markdownWrapped_stripsAndReturns() {
+        val json =
+            """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "```json\n{\"status\":\"FOUND\",\"value\":\"1987-06-24\"}\n```"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+
+        val result = client.extractTextFromResponse(json)
+
+        assertEquals("{\"status\":\"FOUND\",\"value\":\"1987-06-24\"}", result)
+    }
 }
