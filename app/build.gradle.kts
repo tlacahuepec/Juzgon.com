@@ -162,7 +162,6 @@ dependencies {
 
     implementation(libs.timber)
     implementation(libs.androidx.security.crypto)
-    implementation(libs.google.ai.generativeai)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)

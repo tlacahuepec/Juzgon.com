@@ -40,13 +40,15 @@ object EnrichmentLogger {
         attributeKey: String,
         failureCode: String,
         durationMs: Long,
+        errorDetail: String? = null,
     ) {
         Timber.tag(TAG).w(
-            "Enrichment failed provider=%s attribute=%s failureCode=%s durationMs=%d",
+            "Enrichment failed provider=%s attribute=%s failureCode=%s durationMs=%d detail=%s",
             provider,
             attributeKey,
             failureCode,
             durationMs,
+            errorDetail ?: "none",
         )
     }
 

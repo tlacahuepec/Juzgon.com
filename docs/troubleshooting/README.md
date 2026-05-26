@@ -5,6 +5,7 @@ Use this directory for reusable, contributor-facing troubleshooting guides. Each
 ## Available guides
 
 - [Build and CI](build-and-ci.md) - Gradle, Kotlin, KSP, ktlint, detekt, Spotless, and GitHub Actions issues.
+- [Gemini Enrichment](gemini-enrichment.md) - AI attribute suggestion API debugging (logcat filters, HTTP errors, model deprecation).
 
 ## Adding a new troubleshooting guide
 
