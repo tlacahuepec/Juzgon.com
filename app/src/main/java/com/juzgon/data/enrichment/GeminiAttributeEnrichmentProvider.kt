@@ -2,8 +2,6 @@
 
 package com.juzgon.data.enrichment
 
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
@@ -19,6 +17,7 @@ class GeminiAttributeEnrichmentProvider
         private val apiKeyStore: SecureApiKeyStore,
         private val promptBuilder: GeminiPromptBuilder,
         private val responseParser: GeminiResponseParser,
+        private val apiClient: GeminiApiClient,
     ) : AttributeEnrichmentProvider {
         override suspend fun enrichAttribute(request: AttributeEnrichmentRequest): AttributeEnrichmentResult {
             val apiKey =
@@ -33,45 +32,33 @@ class GeminiAttributeEnrichmentProvider
 
             val startTime = System.currentTimeMillis()
             return try {
-                val model = createModel(apiKey)
                 val prompt = promptBuilder.build(request)
-                val response = model.generateContent(prompt)
-                val result = responseParser.parse(response.text ?: "")
+                val responseText = apiClient.generateContent(apiKey, prompt)
+                val result = responseParser.parse(responseText)
                 logResult(result, request.targetAttributeKey, startTime)
                 result
             } catch (e: IOException) {
                 timber.log.Timber.d(e, "Network error during enrichment")
                 logFailure(EnrichmentFailureCode.NETWORK_ERROR, request.targetAttributeKey, startTime)
                 errorResult(EnrichmentFailureCode.NETWORK_ERROR)
-            } catch (e: Exception) {
-                val failureCode = mapException(e)
+            } catch (e: GeminiApiException) {
+                timber.log.Timber.d(e, "Gemini API error: HTTP ${e.httpCode}")
+                val failureCode = mapHttpCode(e.httpCode)
                 logFailure(failureCode, request.targetAttributeKey, startTime)
                 errorResult(failureCode)
+            } catch (e: Exception) {
+                timber.log.Timber.d(e, "Unexpected enrichment error")
+                logFailure(EnrichmentFailureCode.PROVIDER_ERROR, request.targetAttributeKey, startTime)
+                errorResult(EnrichmentFailureCode.PROVIDER_ERROR)
             }
         }
 
-        private fun createModel(apiKey: String): GenerativeModel =
-            GenerativeModel(
-                modelName = MODEL_NAME,
-                apiKey = apiKey,
-                generationConfig =
-                    generationConfig {
-                        responseMimeType = "application/json"
-                    },
-            )
-
-        private fun mapException(e: Exception): EnrichmentFailureCode {
-            val message = e.message?.lowercase() ?: ""
-            return when {
-                "api key" in message || "401" in message || "403" in message ->
-                    EnrichmentFailureCode.INVALID_API_KEY
-                "429" in message || "rate" in message ->
-                    EnrichmentFailureCode.RATE_LIMITED
-                "quota" in message ->
-                    EnrichmentFailureCode.QUOTA_EXCEEDED
+        private fun mapHttpCode(httpCode: Int): EnrichmentFailureCode =
+            when (httpCode) {
+                HTTP_UNAUTHORIZED, HTTP_FORBIDDEN -> EnrichmentFailureCode.INVALID_API_KEY
+                HTTP_TOO_MANY_REQUESTS -> EnrichmentFailureCode.RATE_LIMITED
                 else -> EnrichmentFailureCode.PROVIDER_ERROR
             }
-        }
 
         private fun logResult(
             result: AttributeEnrichmentResult,
@@ -118,6 +105,8 @@ class GeminiAttributeEnrichmentProvider
 
         private companion object {
             const val PROVIDER_NAME = "Gemini"
-            const val MODEL_NAME = "gemini-2.0-flash"
+            const val HTTP_UNAUTHORIZED = 401
+            const val HTTP_FORBIDDEN = 403
+            const val HTTP_TOO_MANY_REQUESTS = 429
         }
     }

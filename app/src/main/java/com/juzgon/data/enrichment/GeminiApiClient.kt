@@ -1,0 +1,99 @@
+@file:Suppress("TooGenericExceptionCaught")
+
+package com.juzgon.data.enrichment
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
+import javax.inject.Inject
+
+open class GeminiApiClient
+    @Inject
+    constructor() {
+        private val json = Json { ignoreUnknownKeys = true }
+
+        open suspend fun generateContent(
+            apiKey: String,
+            prompt: String,
+        ): String =
+            withContext(Dispatchers.IO) {
+                val url = URL("$BASE_URL/models/$MODEL:generateContent?key=$apiKey")
+                val conn = (url.openConnection() as HttpURLConnection)
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.doOutput = true
+
+                val body = buildRequestBody(prompt)
+                conn.outputStream.use { it.write(body.toByteArray()) }
+
+                val code = conn.responseCode
+                if (code != HTTP_OK) {
+                    val error = conn.errorStream?.bufferedReader()?.readText() ?: ""
+                    throw GeminiApiException(code, error)
+                }
+                val responseJson = conn.inputStream.bufferedReader().readText()
+                extractTextFromResponse(responseJson)
+            }
+
+        fun buildRequestBody(prompt: String): String {
+            val escapedPrompt =
+                prompt
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t")
+            return """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
+                """"generationConfig":{"responseMimeType":"application/json"}}"""
+        }
+
+        fun extractTextFromResponse(responseJson: String): String {
+            val response =
+                try {
+                    json.decodeFromString<GeminiApiResponse>(responseJson)
+                } catch (e: Exception) {
+                    throw GeminiApiException(0, "Invalid response format: ${e.message}", e)
+                }
+            val text =
+                response.candidates
+                    ?.firstOrNull()
+                    ?.content
+                    ?.parts
+                    ?.firstOrNull()
+                    ?.text
+            if (text == null) {
+                throw GeminiApiException(0, "No text in response")
+            }
+            return text
+        }
+
+        private companion object {
+            const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+            const val MODEL = "gemini-2.0-flash"
+            const val HTTP_OK = 200
+        }
+    }
+
+@Serializable
+internal data class GeminiApiResponse(
+    val candidates: List<GeminiCandidate>? = null,
+)
+
+@Serializable
+internal data class GeminiCandidate(
+    val content: GeminiContent? = null,
+)
+
+@Serializable
+internal data class GeminiContent(
+    val parts: List<GeminiPart>? = null,
+)
+
+@Serializable
+internal data class GeminiPart(
+    @SerialName("text") val text: String? = null,
+)
