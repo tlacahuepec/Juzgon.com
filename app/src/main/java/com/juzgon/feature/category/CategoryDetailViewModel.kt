@@ -32,6 +32,7 @@ class CategoryDetailViewModel
         private var loadJob: Job? = null
         private val sortOption = MutableStateFlow<CategoryDetailSortOption>(CategoryDetailSortOption.Score)
         private val activeProfileId = MutableStateFlow<String?>(null)
+        private val searchQuery = MutableStateFlow<String>("")
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
@@ -52,6 +53,7 @@ class CategoryDetailViewModel
                         scoreProfileRepository.observeProfilesForCategory(categoryName),
                         sortOption,
                         activeProfileId,
+                        searchQuery,
                     ) { flows ->
                         @Suppress("UNCHECKED_CAST")
                         CategoryDetailReducer.reduce(
@@ -62,6 +64,7 @@ class CategoryDetailViewModel
                             profiles = flows[2] as List<com.juzgon.domain.ScoreProfile>,
                             activeProfileId = flows[4] as String?,
                             calculateProfileRankedItems = calculateProfileRankedItems,
+                            searchQuery = flows[5] as String,
                         )
                     }.collect { detailState ->
                         mutableState.value =
@@ -80,6 +83,10 @@ class CategoryDetailViewModel
 
         fun onProfileSelected(profileId: String?) {
             activeProfileId.value = profileId
+        }
+
+        fun onSearchQueryChanged(query: String) {
+            searchQuery.value = query
         }
 
         fun onRetry() {
