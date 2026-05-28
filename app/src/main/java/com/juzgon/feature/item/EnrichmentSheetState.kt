@@ -34,3 +34,14 @@ sealed interface EnrichmentSheetState {
         val reason: String?,
     ) : EnrichmentSheetState
 }
+
+fun EnrichmentSheetState.canRetry(
+    retryAttemptsUsed: Int,
+    maxRetryAttempts: Int,
+): Boolean =
+    when (this) {
+        is EnrichmentSheetState.NotFound -> retryAttemptsUsed < maxRetryAttempts
+        is EnrichmentSheetState.Conflict -> retryAttemptsUsed < maxRetryAttempts
+        is EnrichmentSheetState.Error -> retryAttemptsUsed < maxRetryAttempts
+        else -> false
+    }
