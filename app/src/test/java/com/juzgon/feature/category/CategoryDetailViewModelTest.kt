@@ -860,6 +860,190 @@ class CategoryDetailViewModelTest {
             }
         }
 
+    @Test
+    fun searchFiltersItemsByNameCaseInsensitive() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                    RankedRatedItem(item = ratedItem("COUPE"), aggregateScore = 8.25),
+                    RankedRatedItem(item = ratedItem("Truck"), aggregateScore = 7.5),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(3, state.items.size)
+
+                viewModel.onSearchQueryChanged("coup")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("COUPE", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun searchTrimsWhitespaceFromQuery() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 8.25),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("  sedan  ")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("sedan", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun emptySearchReturnsFullList() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 8.25),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("sedan")
+                state = awaitItem()
+                assertEquals(1, state.items.size)
+
+                viewModel.onSearchQueryChanged("")
+                state = awaitItem()
+                assertEquals(2, state.items.size)
+            }
+        }
+
+    @Test
+    fun searchAppliesBeforeProfileRankingAndSort() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(attribute = speed, score = 9)),
+                            ),
+                        aggregateScore = 9.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores = listOf(ScoreEntry(attribute = speed, score = 5)),
+                            ),
+                        aggregateScore = 5.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "truck",
+                                scores = listOf(ScoreEntry(attribute = speed, score = 3)),
+                            ),
+                        aggregateScore = 3.0,
+                    ),
+                )
+            scoreProfileRepository.profiles.value =
+                listOf(
+                    ScoreProfile(
+                        id = "p1",
+                        categoryName = "Cars",
+                        name = "Speed Focus",
+                        includedAttributeIds = listOf("Speed"),
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("coupe")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("coupe", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun searchPreservesProfileRankingAndSort() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                    RankedRatedItem(item = ratedItem("coupe"), aggregateScore = 8.25),
+                    RankedRatedItem(item = ratedItem("truck"), aggregateScore = 7.5),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    listOf("sedan", "coupe", "truck"),
+                    state.items.map { it.id },
+                )
+
+                viewModel.onSearchQueryChanged("sedan")
+                state = awaitItem()
+
+                assertEquals(listOf("sedan"), state.items.map { it.id })
+                assertEquals("8.7", state.items.single().averageScoreText)
+            }
+        }
+
+    @Test
+    fun onSearchQueryChangedUpdatesState() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(item = ratedItem("sedan"), aggregateScore = 8.74),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("test")
+                state = awaitItem()
+
+                assertEquals("test", state.searchQuery)
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val category = MutableStateFlow<Category?>(null)
 
