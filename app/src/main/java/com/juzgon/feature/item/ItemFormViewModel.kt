@@ -462,7 +462,7 @@ class ItemFormViewModel
 
             mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading) }
             viewModelScope.launch {
-                val result = suggestAttributeValueUseCase(request)
+                val result = suggestAttributeValueUseCase(request, bypassCache = true)
                 mutableState.update { state ->
                     state.copy(
                         enrichmentSheet =
