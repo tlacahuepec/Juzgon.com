@@ -1030,4 +1030,66 @@ class ItemFormViewModelTest {
             val dismissedLogs = fakeEventLogger.logs.filter { it.type == "dismissed" }
             assertTrue(dismissedLogs.isEmpty())
         }
+
+    // --- RED tests for #214 (Date picker) ---
+
+    @Test
+    fun onDateSelected_storesIsoDateForDateAttribute() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+
+            // This method does not exist yet → RED
+            viewModel.onDateSelected(birthDateAttr.id, "1995-03-17")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("1995-03-17", dateValue)
+        }
+
+    @Test
+    fun onDateSelected_overwritesPreviousDateValue() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onValueChanged(birthDateAttr.id, "1990-01-01")
+
+            viewModel.onDateSelected(birthDateAttr.id, "2005-07-22")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("2005-07-22", dateValue)
+        }
+
+    @Test
+    fun onDateSelected_allowsClearingOptionalDate() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onValueChanged(birthDateAttr.id, "1985-12-01")
+
+            viewModel.onDateSelected(birthDateAttr.id, "")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("", dateValue)
+        }
 }
