@@ -11,6 +11,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+@Suppress("LargeClass")
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class JuzgonDatabaseMigrationTest {
@@ -245,6 +246,71 @@ class JuzgonDatabaseMigrationTest {
     fun migrate8To9_validatesLatestSchema() {
         helper.createDatabase(8).close()
         helper.runMigrationsAndValidate(9, listOf(DatabaseMigrations.MIGRATION_8_9)).close()
+    }
+
+    @Test
+    fun migrate9To10_addsScoringDirectionColumn() {
+        val connection = helper.createDatabase(9)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond, diamond_order) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, 'NUMBER', 1, 1, NULL)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(10, listOf(DatabaseMigrations.MIGRATION_9_10)).use { conn ->
+            conn.prepare("SELECT scoring_direction FROM attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertTrue(stmt.isNull(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate9To10_validatesLatestSchema() {
+        helper.createDatabase(9).close()
+        helper.runMigrationsAndValidate(10, listOf(DatabaseMigrations.MIGRATION_9_10)).close()
+    }
+
+    @Test
+    fun migrate10To11_createsScoreProfilesTables() {
+        val connection = helper.createDatabase(10)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond, diamond_order, scoring_direction) " +
+                    "VALUES ('$ATTRIBUTE_ID', '$CATEGORY_NAME', 1.0, 0, 'NUMBER', 1, 1, NULL, NULL)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(11, listOf(DatabaseMigrations.MIGRATION_10_11)).use { conn ->
+            // Verify post-migration inserts succeed into the newly created tables (FK constraints satisfied)
+            val profileId = "profile-1"
+            conn
+                .prepare(
+                    "INSERT INTO score_profiles (id, category_name, name, created_at, updated_at) " +
+                        "VALUES ('$profileId', '$CATEGORY_NAME', 'My Profile', 0, 0)",
+                ).use { it.step() }
+            conn
+                .prepare(
+                    "INSERT INTO score_profile_attributes (profile_id, attribute_id, position) " +
+                        "VALUES ('$profileId', '$ATTRIBUTE_ID', 0)",
+                ).use { it.step() }
+
+            conn.prepare("SELECT COUNT(*) FROM score_profiles").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(1L, stmt.getLong(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate10To11_validatesLatestSchema() {
+        helper.createDatabase(10).close()
+        helper.runMigrationsAndValidate(11, listOf(DatabaseMigrations.MIGRATION_10_11)).close()
     }
 
     @Test
