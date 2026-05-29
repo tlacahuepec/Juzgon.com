@@ -17,6 +17,7 @@ import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.FakeEnrichmentEventLogger
+import com.juzgon.domain.enrichment.FakeEnrichmentSuggestionCacheRepository
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.enrichment.usecase.ValidateEnrichmentResultUseCase
@@ -45,6 +46,7 @@ class ItemFormViewModelTest {
     private lateinit var fakeApiKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
     private lateinit var fakeEventLogger: FakeEnrichmentEventLogger
+    private lateinit var fakeCache: FakeEnrichmentSuggestionCacheRepository
     private lateinit var viewModel: ItemFormViewModel
 
     @Before
@@ -54,6 +56,7 @@ class ItemFormViewModelTest {
         fakeApiKeyStore = FakeSecureApiKeyStore()
         fakeProvider = FakeAttributeEnrichmentProvider()
         fakeEventLogger = FakeEnrichmentEventLogger()
+        fakeCache = FakeEnrichmentSuggestionCacheRepository()
         viewModel =
             ItemFormViewModel(
                 categoryRepository,
@@ -64,6 +67,7 @@ class ItemFormViewModelTest {
                     fakeProvider,
                     ValidateEnrichmentResultUseCase(),
                     fakeEventLogger,
+                    fakeCache,
                 ),
                 fakeEventLogger,
             )

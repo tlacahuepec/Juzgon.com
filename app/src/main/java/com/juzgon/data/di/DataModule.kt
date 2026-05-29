@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.data.di
 
 import android.content.Context
@@ -13,6 +15,7 @@ import com.juzgon.data.local.DatabaseMigrations
 import com.juzgon.data.local.DebugSampleDataSeeder
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.data.local.RoomSampleDataStore
+import com.juzgon.data.local.dao.EnrichmentSuggestionCacheDao
 import com.juzgon.data.repository.RoomAttributeRankSnapshotRepository
 import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
@@ -69,6 +72,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_13_14,
                     DatabaseMigrations.MIGRATION_14_15,
                     DatabaseMigrations.MIGRATION_15_16,
+                    DatabaseMigrations.MIGRATION_16_17,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -151,4 +155,8 @@ object DataModule {
     @Provides
     @Singleton
     fun provideScoreProfileRepository(db: JuzgonDatabase): ScoreProfileRepository = RoomScoreProfileRepository(db)
+
+    @Provides
+    fun provideEnrichmentSuggestionCacheDao(database: JuzgonDatabase): EnrichmentSuggestionCacheDao =
+        database.enrichmentSuggestionCacheDao()
 }
