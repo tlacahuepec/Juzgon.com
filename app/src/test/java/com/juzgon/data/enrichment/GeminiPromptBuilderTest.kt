@@ -3,6 +3,7 @@ package com.juzgon.data.enrichment
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.CatalogType
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -125,4 +126,133 @@ class GeminiPromptBuilderTest {
             targetAttributeLabel = "Birth Date",
             targetAttributeType = AttributeType.DATE,
         )
+
+    @Test
+    fun build_personDateType_includesTrustedSites() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertTrue(prompt.contains("famousbirthdays.com"))
+        assertTrue(prompt.contains("sunoti.com"))
+        assertTrue(prompt.contains("Reference sites"))
+    }
+
+    @Test
+    fun build_nonPersonType_excludesTrustedSites() {
+        val request = requestWithAllFields().copy(catalogType = CatalogType.MOVIE)
+
+        val prompt = builder.build(request)
+
+        assertFalse(prompt.contains("famousbirthdays.com"))
+    }
+
+    @Test
+    fun build_personNonDateType_excludesTrustedSites() {
+        val request = requestWithAllFields().copy(targetAttributeType = AttributeType.NUMBER)
+
+        val prompt = builder.build(request)
+
+        assertFalse(prompt.contains("famousbirthdays.com"))
+    }
+
+    @Test
+    fun build_withInstagramAttribute_includesDisambiguation() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes =
+                    mapOf(
+                        "Nationality" to "AR",
+                        "Instagram" to "https://instagram.com/leomessi",
+                    ),
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Disambiguation"))
+        assertTrue(prompt.contains("instagram.com/leomessi"))
+    }
+
+    @Test
+    fun build_withSocialMediaInValue_includesDisambiguation() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes =
+                    mapOf(
+                        "Nationality" to "AR",
+                        "Profile" to "https://tiktok.com/@leomessi",
+                    ),
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Disambiguation"))
+        assertTrue(prompt.contains("tiktok.com/@leomessi"))
+    }
+
+    @Test
+    fun build_noSocialMedia_excludesDisambiguation() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertFalse(prompt.contains("Disambiguation"))
+    }
+
+    @Test
+    fun build_personWithNationality_includesSearchHint() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes = mapOf("Nationality" to "BR"),
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Search strategy"))
+        assertTrue(prompt.contains("Portuguese"))
+    }
+
+    @Test
+    fun build_nonPersonWithNationality_excludesSearchHint() {
+        val request =
+            requestWithAllFields().copy(
+                catalogType = CatalogType.MOVIE,
+                existingAttributes = mapOf("Nationality" to "BR"),
+            )
+
+        val prompt = builder.build(request)
+
+        assertFalse(prompt.contains("Search strategy"))
+    }
+
+    @Test
+    fun build_invalidNationalityCode_excludesSearchHint() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes = mapOf("Nationality" to "Unknown"),
+            )
+
+        val prompt = builder.build(request)
+
+        assertFalse(prompt.contains("Search strategy"))
+    }
+
+    @Test
+    fun build_allEnhancements_correctOrder() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes =
+                    mapOf(
+                        "Nationality" to "BR",
+                        "Instagram" to "https://instagram.com/user",
+                    ),
+            )
+
+        val prompt = builder.build(request)
+
+        val refIdx = prompt.indexOf("Reference sites")
+        val disIdx = prompt.indexOf("Disambiguation")
+        val searchIdx = prompt.indexOf("Search strategy")
+        val targetIdx = prompt.indexOf("Target attribute")
+
+        assertTrue(refIdx < disIdx)
+        assertTrue(disIdx < searchIdx)
+        assertTrue(searchIdx < targetIdx)
+    }
 }

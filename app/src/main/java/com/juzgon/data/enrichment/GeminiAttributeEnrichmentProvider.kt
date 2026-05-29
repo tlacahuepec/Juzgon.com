@@ -33,7 +33,9 @@ class GeminiAttributeEnrichmentProvider
             val startTime = System.currentTimeMillis()
             return try {
                 val prompt = promptBuilder.build(request)
+                EnrichmentLogger.promptSent(PROVIDER_NAME, prompt)
                 val responseText = apiClient.generateContent(apiKey, prompt)
+                EnrichmentLogger.responseReceived(PROVIDER_NAME, responseText)
                 val result = responseParser.parse(responseText)
                 logResult(result, request.targetAttributeKey, startTime)
                 result

@@ -34,6 +34,7 @@ class ItemFormViewModel
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemFormUiState())
         private var loadedCategory: Category? = null
+        private var lastEnrichmentRequest: AttributeEnrichmentRequest? = null
 
         val state: StateFlow<ItemFormUiState> = mutableState
 
@@ -398,7 +399,7 @@ class ItemFormViewModel
             val targetAttribute =
                 current.values.firstOrNull { it.attribute.id == attributeId }?.attribute ?: return
 
-            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading) }
+            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading, retryAttemptsUsed = 0) }
             viewModelScope.launch {
                 val request =
                     AttributeEnrichmentRequest(
@@ -415,6 +416,7 @@ class ItemFormViewModel
                         targetAttributeLabel = targetAttribute.displayName,
                         targetAttributeType = targetAttribute.type,
                     )
+                lastEnrichmentRequest = request
                 val result = suggestAttributeValueUseCase(request)
                 mutableState.update {
                     it.copy(
@@ -446,7 +448,29 @@ class ItemFormViewModel
                     itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
                 )
             }
-            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
+            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden, retryAttemptsUsed = 0) }
+        }
+
+        fun onSuggestionRetry() {
+            val request = lastEnrichmentRequest ?: return
+            val current = mutableState.value
+            val currentSheet = current.enrichmentSheet
+
+            if (!currentSheet.canRetry(current.retryAttemptsUsed, current.maxRetryAttempts)) {
+                return
+            }
+
+            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading) }
+            viewModelScope.launch {
+                val result = suggestAttributeValueUseCase(request, bypassCache = true)
+                mutableState.update { state ->
+                    state.copy(
+                        enrichmentSheet =
+                            result.toSheetState(request.targetAttributeKey, request.targetAttributeLabel),
+                        retryAttemptsUsed = state.retryAttemptsUsed + 1,
+                    )
+                }
+            }
         }
 
         private fun AttributeEnrichmentResult.toSheetState(

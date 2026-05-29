@@ -18,6 +18,28 @@ object EnrichmentLogger {
         )
     }
 
+    fun promptSent(
+        provider: String,
+        prompt: String,
+    ) {
+        Timber.tag(TAG).d(
+            "Enrichment prompt provider=%s\n---\n%s\n---",
+            provider,
+            prompt,
+        )
+    }
+
+    fun responseReceived(
+        provider: String,
+        responseText: String,
+    ) {
+        Timber.tag(TAG).d(
+            "Enrichment response provider=%s\n---\n%s\n---",
+            provider,
+            responseText,
+        )
+    }
+
     fun succeeded(
         provider: String,
         attributeKey: String,

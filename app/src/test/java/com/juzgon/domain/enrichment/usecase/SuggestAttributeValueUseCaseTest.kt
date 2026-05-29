@@ -10,7 +10,10 @@ import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeAttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.FakeEnrichmentEventLogger
+import com.juzgon.domain.enrichment.FakeEnrichmentSuggestionCacheRepository
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
+import com.juzgon.domain.enrichment.toCacheKey
+import com.juzgon.domain.enrichment.toCachedResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,6 +24,7 @@ class SuggestAttributeValueUseCaseTest {
     private lateinit var fakeKeyStore: FakeSecureApiKeyStore
     private lateinit var fakeProvider: FakeAttributeEnrichmentProvider
     private lateinit var fakeEventLogger: FakeEnrichmentEventLogger
+    private lateinit var fakeCache: FakeEnrichmentSuggestionCacheRepository
     private lateinit var useCase: SuggestAttributeValueUseCase
 
     @Before
@@ -28,12 +32,14 @@ class SuggestAttributeValueUseCaseTest {
         fakeKeyStore = FakeSecureApiKeyStore()
         fakeProvider = FakeAttributeEnrichmentProvider()
         fakeEventLogger = FakeEnrichmentEventLogger()
+        fakeCache = FakeEnrichmentSuggestionCacheRepository()
         useCase =
             SuggestAttributeValueUseCase(
                 apiKeyStore = fakeKeyStore,
                 provider = fakeProvider,
                 validator = ValidateEnrichmentResultUseCase(),
                 eventLogger = fakeEventLogger,
+                cacheRepository = fakeCache,
             )
     }
 
@@ -186,4 +192,146 @@ class SuggestAttributeValueUseCaseTest {
             targetAttributeLabel = "Birth Date",
             targetAttributeType = AttributeType.DATE,
         )
+
+    // --- Cache behavior tests (RED first per issue #218) ---
+
+    @Test
+    fun identicalRequestReturnsCachedResultWithoutInvokingProvider() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            val request = testRequest()
+            val cacheKey = request.toCacheKey()
+
+            val cached =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1980-05-15",
+                    displayValue = "May 15, 1980",
+                    confidence = EnrichmentConfidence.HIGH,
+                    sources = listOf(EnrichmentSource(title = "Public Record")),
+                ).toCachedResult(cacheKey)
+            fakeCache.store[cacheKey] = cached
+
+            val result = useCase(request)
+
+            assertEquals(EnrichmentStatus.FOUND, result.status)
+            assertEquals("1980-05-15", result.suggestedValue)
+            assertEquals("May 15, 1980", result.displayValue)
+            // Provider should not have been called
+            assertEquals(null, fakeProvider.lastRequest)
+        }
+
+    @Test
+    fun changedKnownAttributesFingerprintCausesCacheMiss() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            val request1 =
+                testRequest().copy(
+                    existingAttributes = mapOf("Nationality" to "Argentina"),
+                )
+            val request2 =
+                testRequest().copy(
+                    existingAttributes = mapOf("Nationality" to "Brazil"),
+                )
+
+            val key1 = request1.toCacheKey()
+            val key2 = request2.toCacheKey()
+
+            assertEquals(key1.catalogId, key2.catalogId)
+            assertEquals(key1.itemIdentity, key2.itemIdentity)
+            assertEquals(key1.targetAttributeKey, key2.targetAttributeKey)
+            assertTrue(key1.knownAttributesFingerprint != key2.knownAttributesFingerprint)
+        }
+
+    @Test
+    fun acceptedSuggestionIsWrittenToCache() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                    sources = listOf(EnrichmentSource(title = "Wikipedia")),
+                )
+
+            val result = useCase(testRequest())
+
+            assertEquals(EnrichmentStatus.FOUND, result.status)
+            assertEquals(1, fakeCache.store.size)
+            val stored = fakeCache.lastPutResult
+            assertEquals(EnrichmentStatus.FOUND, stored?.status)
+            assertEquals("1987-06-24", stored?.suggestedValue)
+        }
+
+    @Test
+    fun retryWithBypassCacheIgnoresAndOverwritesCache() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            val request = testRequest()
+            val cacheKey = request.toCacheKey()
+
+            // Seed a stale cache entry
+            fakeCache.store[cacheKey] =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1990-01-01",
+                ).toCachedResult(cacheKey)
+
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+
+            val result = useCase(request, bypassCache = true)
+
+            assertEquals("1987-06-24", result.suggestedValue)
+            // The fresh result should have overwritten the cache
+            assertEquals("1987-06-24", fakeCache.store[cacheKey]?.suggestedValue)
+        }
+
+    @Test
+    fun notFoundAndConflictResultsAreCachedForReuse() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.NOT_FOUND,
+                    reason = "No reliable source",
+                )
+
+            val first = useCase(testRequest())
+            assertEquals(EnrichmentStatus.NOT_FOUND, first.status)
+            assertEquals(1, fakeCache.store.size)
+
+            // Second call with identical request should hit cache (no new provider call)
+            fakeProvider.lastRequest = null
+            val second = useCase(testRequest())
+            assertEquals(EnrichmentStatus.NOT_FOUND, second.status)
+            assertEquals(null, fakeProvider.lastRequest)
+        }
+
+    @Test
+    fun cachePayloadContainsOnlySafeFields() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1987-06-24",
+                    displayValue = "June 24, 1987",
+                    confidence = EnrichmentConfidence.HIGH,
+                )
+
+            useCase(testRequest())
+
+            val stored = fakeCache.lastPutResult
+            assertEquals("1987-06-24", stored?.suggestedValue)
+            // Sanity: we never store raw prompt/response material in the cached result
+            assertEquals(false, stored?.suggestedValue?.contains("prompt", ignoreCase = true) ?: false)
+        }
 }

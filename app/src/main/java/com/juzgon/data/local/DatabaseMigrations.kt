@@ -19,6 +19,7 @@ private const val DATABASE_VERSION_13 = 13
 private const val DATABASE_VERSION_14 = 14
 private const val DATABASE_VERSION_15 = 15
 private const val DATABASE_VERSION_16 = 16
+private const val DATABASE_VERSION_17 = 17
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -294,6 +295,36 @@ object DatabaseMigrations {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE categories ADD COLUMN description TEXT DEFAULT NULL")
                 db.execSQL("ALTER TABLE categories ADD COLUMN type TEXT DEFAULT NULL")
+            }
+        }
+
+    val MIGRATION_16_17: Migration =
+        object : Migration(DATABASE_VERSION_16, DATABASE_VERSION_17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE enrichment_suggestion_cache (
+                        cacheKeyHash TEXT NOT NULL PRIMARY KEY,
+                        catalogId TEXT NOT NULL,
+                        itemIdentity TEXT NOT NULL,
+                        targetAttributeKey TEXT NOT NULL,
+                        knownAttributesFingerprint TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        suggestedValue TEXT,
+                        displayValue TEXT,
+                        confidence TEXT,
+                        sources TEXT,
+                        reason TEXT,
+                        failureCode TEXT,
+                        cachedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX index_enrichment_suggestion_cache_lookup " +
+                        "ON enrichment_suggestion_cache(" +
+                        "catalogId, itemIdentity, targetAttributeKey, knownAttributesFingerprint)",
+                )
             }
         }
 }

@@ -65,6 +65,8 @@ data class ItemFormUiState(
     val deleteCompleted: Boolean = false,
     val errorMessage: String? = null,
     val enrichmentSheet: EnrichmentSheetState = EnrichmentSheetState.Hidden,
+    val retryAttemptsUsed: Int = 0,
+    val maxRetryAttempts: Int = 2,
 ) {
     val titleEditable: Boolean
         get() = true
@@ -123,6 +125,16 @@ data class ItemFormUiState(
                                         )
                                     }
                             }
+                            valueInput.attribute.type == AttributeType.DATE && valueInput.valueText.isNotBlank() -> {
+                                if (isValidDateFormat(valueInput.valueText)) {
+                                    ItemAttributeValue(
+                                        attribute = valueInput.attribute,
+                                        value = valueInput.valueText.trim(),
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
                             valueInput.valueText.isNotBlank() ->
                                 ItemAttributeValue(
                                     attribute = valueInput.attribute,
@@ -145,15 +157,38 @@ private fun ItemScoreInput.scoreError(): String? {
     }
 }
 
+@Suppress("ReturnCount")
 private fun ItemValueInput.valueError(): String? {
     if (attribute.type == AttributeType.IMAGE) {
         return imageListError()
+    }
+    if (attribute.type == AttributeType.DATE) {
+        return dateError()
     }
     return if (attribute.isRequired && valueText.isBlank()) {
         "${attribute.displayName} is required"
     } else {
         null
     }
+}
+
+@Suppress("ReturnCount")
+private fun ItemValueInput.dateError(): String? {
+    if (attribute.type != AttributeType.DATE) return null
+    if (!attribute.isRequired && valueText.isBlank()) return null
+    if (attribute.isRequired && valueText.isBlank()) {
+        return "${attribute.displayName} is required"
+    }
+    return if (valueText.isNotBlank() && !isValidDateFormat(valueText)) {
+        "${attribute.displayName} must be YYYY-MM-DD format"
+    } else {
+        null
+    }
+}
+
+private fun isValidDateFormat(dateText: String): Boolean {
+    val dateRegex = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+    return dateRegex.matches(dateText)
 }
 
 @Suppress("ReturnCount")
