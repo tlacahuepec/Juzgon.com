@@ -56,6 +56,7 @@ data class CategoryDetailUiState(
     val profiles: List<ProfileOption> = emptyList(),
     val activeProfileId: String? = null,
     val activeProfileLabel: String? = null,
+    val searchQuery: String = "",
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -78,6 +79,7 @@ object CategoryDetailReducer {
         profiles: List<ScoreProfile> = emptyList(),
         activeProfileId: String? = null,
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase? = null,
+        searchQuery: String = "",
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -118,6 +120,16 @@ object CategoryDetailReducer {
                     )
             }
 
+        val trimmedQuery = searchQuery.trim()
+        val filteredItems =
+            if (trimmedQuery.isEmpty()) {
+                sortedItems
+            } else {
+                sortedItems.filter { rankedItem ->
+                    rankedItem.item.id.contains(trimmedQuery, ignoreCase = true)
+                }
+            }
+
         val activeProfile =
             activeProfileId?.let { id ->
                 profiles.firstOrNull { it.id == id }
@@ -127,7 +139,7 @@ object CategoryDetailReducer {
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
-                sortedItems.mapIndexed { index, rankedItem ->
+                filteredItems.mapIndexed { index, rankedItem ->
                     val cardMetric =
                         rankedItem.toCardMetric(
                             category = category,
@@ -149,6 +161,7 @@ object CategoryDetailReducer {
             profiles = buildProfileOptions(profiles),
             activeProfileId = activeProfile?.id,
             activeProfileLabel = activeProfile?.let { "Ranking: ${it.name}" },
+            searchQuery = searchQuery,
         )
     }
 
