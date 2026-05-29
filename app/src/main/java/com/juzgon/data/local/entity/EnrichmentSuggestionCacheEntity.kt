@@ -3,6 +3,7 @@
 package com.juzgon.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.juzgon.domain.enrichment.EnrichmentCachedResult
 import com.juzgon.domain.enrichment.EnrichmentConfidence
@@ -10,7 +11,15 @@ import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 
-@Entity(tableName = "enrichment_suggestion_cache")
+@Entity(
+    tableName = "enrichment_suggestion_cache",
+    indices = [
+        Index(
+            value = ["catalogId", "itemIdentity", "targetAttributeKey", "knownAttributesFingerprint"],
+            name = "index_enrichment_suggestion_cache_lookup",
+        ),
+    ],
+)
 data class EnrichmentSuggestionCacheEntity(
     @PrimaryKey val cacheKeyHash: String,
     val catalogId: String,

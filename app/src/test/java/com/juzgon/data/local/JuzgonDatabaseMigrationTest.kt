@@ -567,6 +567,47 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(16, listOf(DatabaseMigrations.MIGRATION_15_16)).close()
     }
 
+    @Test
+    fun migrate16To17_createsEnrichmentSuggestionCache() {
+        val connection = helper.createDatabase(16)
+        connection.close()
+
+        helper.runMigrationsAndValidate(17, listOf(DatabaseMigrations.MIGRATION_16_17)).use { conn ->
+            conn
+                .prepare(
+                    """
+                    INSERT INTO enrichment_suggestion_cache (
+                        cacheKeyHash,
+                        catalogId,
+                        itemIdentity,
+                        targetAttributeKey,
+                        knownAttributesFingerprint,
+                        status,
+                        cachedAt
+                    ) VALUES (
+                        'cache-key',
+                        'restaurants',
+                        'Sample bistro',
+                        'Restaurants/taste',
+                        'known',
+                        'HIT',
+                        1000
+                    )
+                    """.trimIndent(),
+                ).use { it.step() }
+            conn.prepare("SELECT catalogId FROM enrichment_suggestion_cache").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("restaurants", stmt.getText(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate16To17_validatesLatestSchema() {
+        helper.createDatabase(16).close()
+        helper.runMigrationsAndValidate(17, listOf(DatabaseMigrations.MIGRATION_16_17)).close()
+    }
+
     private fun insertV14Category(
         connection: androidx.sqlite.SQLiteConnection,
         name: String,

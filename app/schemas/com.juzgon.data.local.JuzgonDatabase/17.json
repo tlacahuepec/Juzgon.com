@@ -609,7 +609,21 @@
           "columnNames": [
             "cacheKeyHash"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_enrichment_suggestion_cache_lookup",
+            "unique": false,
+            "columnNames": [
+              "catalogId",
+              "itemIdentity",
+              "targetAttributeKey",
+              "knownAttributesFingerprint"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_enrichment_suggestion_cache_lookup` ON `${TABLE_NAME}` (`catalogId`, `itemIdentity`, `targetAttributeKey`, `knownAttributesFingerprint`)"
+          }
+        ]
       }
     ],
     "setupQueries": [

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 private const val SUBSCRIPTION_STOP_TIMEOUT_MILLIS = 5_000L
@@ -49,7 +50,10 @@ class HomeViewModel
                             searchQuery = query,
                             sortOption = sort,
                         )
-                    }.catch { emit(HomeUiState(isLoading = false, errorMessage = "Failed to load categories")) }
+                    }.catch { throwable ->
+                        Timber.e(throwable, "Failed to load categories")
+                        emit(HomeUiState(isLoading = false, errorMessage = "Failed to load categories"))
+                    }
                 }.stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(SUBSCRIPTION_STOP_TIMEOUT_MILLIS),
