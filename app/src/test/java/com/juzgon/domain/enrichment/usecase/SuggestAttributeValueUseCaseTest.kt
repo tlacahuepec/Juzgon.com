@@ -370,7 +370,7 @@ class SuggestAttributeValueUseCaseTest {
                 AttributeEnrichmentRequest(
                     catalogId = "Cars",
                     catalogDescription = null,
-                    catalogType = CatalogType.OBJECT,
+                    catalogType = CatalogType.OTHER,
                     itemId = "Test",
                     itemName = "Test",
                     existingAttributes = emptyMap(),
@@ -418,7 +418,7 @@ class SuggestAttributeValueUseCaseTest {
             val providerCalls =
                 fakeEventLogger.logs.count {
                     it.type == "provider_call" ||
-                        it.message.contains("provider", ignoreCase = true)
+                        it.type.contains("provider", ignoreCase = true)
                 }
             // We mainly care that no crash and flow completes
             assertTrue(true)

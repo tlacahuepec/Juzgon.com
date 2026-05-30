@@ -116,9 +116,9 @@ class ItemDetailModelsTest {
     fun latestPreviousAttributeRankSnapshotsReturnsOnlyTheLatestBeforeCurrent() {
         val snapshots =
             listOf(
-                AttributeRankSnapshot("a", 1, 8, 100L),
-                AttributeRankSnapshot("a", 2, 7, 200L),
-                AttributeRankSnapshot("a", 1, 9, 300L),
+                AttributeRankSnapshot(itemId = "a", capturedAt = 100L, attributeId = "attr", value = 8, rank = 1),
+                AttributeRankSnapshot(itemId = "a", capturedAt = 200L, attributeId = "attr", value = 7, rank = 2),
+                AttributeRankSnapshot(itemId = "a", capturedAt = 300L, attributeId = "attr", value = 9, rank = 1),
             )
 
         val previous = latestPreviousAttributeRankSnapshots(snapshots, currentUpdatedAt = 250L)

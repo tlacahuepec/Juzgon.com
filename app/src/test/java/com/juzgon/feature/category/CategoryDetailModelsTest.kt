@@ -16,8 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CategoryDetailModelsTest {
-    private val speed = Attribute("Speed", isRankable = true)
-    private val brakes = Attribute("Brakes", isRankable = true)
+    private val speed = Attribute("Speed")
+    private val brakes = Attribute("Brakes")
     private val photo = Attribute("Photo", type = AttributeType.IMAGE)
     private val nationality = Attribute("Nationality", type = AttributeType.NATIONALITY)
 
@@ -130,6 +130,7 @@ class CategoryDetailModelsTest {
                 item =
                     RatedItem(
                         id = "Roadster",
+                        scores = emptyList(),
                         values =
                             listOf(
                                 ItemAttributeValue(
@@ -165,6 +166,7 @@ class CategoryDetailModelsTest {
                 item =
                     RatedItem(
                         id = "GermanCar",
+                        scores = emptyList(),
                         values = listOf(ItemAttributeValue(nationality, "DE")),
                     ),
                 aggregateScore = 8.5,
@@ -189,7 +191,7 @@ class CategoryDetailModelsTest {
                 id = "p1",
                 name = "Speed Focused",
                 categoryName = "Cars",
-                weights = mapOf(speed.id to 1.0, brakes.id to 0.2),
+                includedAttributeIds = listOf(speed.id, brakes.id),
             )
         val useCase = CalculateProfileRankedItemsUseCase()
 

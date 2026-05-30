@@ -1,6 +1,8 @@
 package com.juzgon.data.repository
 
 import com.juzgon.data.local.JuzgonDatabase
+import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
+import com.juzgon.data.local.entity.ScoreProfileEntity
 import com.juzgon.data.local.mapper.toAttributeEntities
 import com.juzgon.data.local.mapper.toDomain
 import com.juzgon.data.local.mapper.toEntity

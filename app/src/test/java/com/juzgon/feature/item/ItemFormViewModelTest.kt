@@ -33,6 +33,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -1151,7 +1152,7 @@ class ItemFormViewModelTest {
             advanceUntilIdle()
 
             assertFalse(currentState.saveCompleted)
-            assertNotNull(currentState.formError)
+            assertNotNull(currentState.errorMessage)
         }
 
     @Test
@@ -1365,7 +1366,7 @@ class ItemFormViewModelTest {
             advanceUntilIdle()
 
             assertFalse(currentState.saveCompleted)
-            assertNotNull(currentState.formError)
+            assertNotNull(currentState.errorMessage)
             assertNull(ratedItemRepository.savedItem)
         }
 

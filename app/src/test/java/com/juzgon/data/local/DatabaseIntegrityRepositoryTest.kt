@@ -35,7 +35,10 @@ class DatabaseIntegrityRepositoryTest {
                 .build()
         diagnostics =
             DatabaseIntegrityRepository(
-                dao = database.databaseIntegrityDao(),
+                ratingIntegrityDao = database.ratingIntegrityDao(),
+                itemValueIntegrityDao = database.itemValueIntegrityDao(),
+                scoreProfileIntegrityDao = database.scoreProfileIntegrityDao(),
+                categoryIntegrityDao = database.categoryIntegrityDao(),
                 sampleLimit = 2,
             )
     }
@@ -149,16 +152,17 @@ class DatabaseIntegrityRepositoryTest {
     fun diagnose_reportsScoreProfileAttributesMissingAttributes() =
         runTest {
             seedCategoryWithAttribute()
+            val brokenProfile =
+                ScoreProfileEntity(
+                    id = "profile-a",
+                    categoryName = CATEGORY_NAME,
+                    name = "Broken",
+                )
+            database.scoreProfileDao().upsertProfile(brokenProfile)
             database
-                .scoreProfileDao()
-                .saveProfileWithAttributes(
-                    profile =
-                        ScoreProfileEntity(
-                            id = "profile-a",
-                            categoryName = CATEGORY_NAME,
-                            name = "Broken",
-                        ),
-                    attributes = listOf(ScoreProfileAttributeEntity("profile-a", ATTRIBUTE_ID)),
+                .scoreProfileAttributeDao()
+                .upsertProfileAttributes(
+                    listOf(ScoreProfileAttributeEntity("profile-a", ATTRIBUTE_ID)),
                 )
             insertScoreProfileAttributeWithForeignKeysDisabled("profile-a", "missing")
 

@@ -19,11 +19,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -502,12 +504,12 @@ class CategoryFormViewModelTest {
         runTest {
             repository.categories.value =
                 listOf(
-                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Speed", type = AttributeType.NUMBER))),
+                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Birthday", type = AttributeType.DATE))),
                 )
             viewModel.loadCategory("Cars")
 
             val key = currentState.attributes.first().key
-            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.HIGHER_IS_BETTER)
+            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.OLDER_IS_BETTER)
 
             // For NUMBER it should be ignored (no change)
             assertEquals(null, currentState.attributes.first().scoringDirection)
@@ -716,7 +718,7 @@ class CategoryFormViewModelTest {
     fun onAttributeDisplayInDiamondChanged_onlyAffectsNumberTypes() =
         runTest {
             val key = currentState.attributes.single().key
-            viewModel.onAttributeTypeChanged(key, AttributeType.TEXT)
+            viewModel.onAttributeTypeChanged(key, AttributeType.NOTES)
             viewModel.onAttributeDisplayInDiamondChanged(key, true)
             assertFalse(currentState.attributes.single().displayInDiamond)
         }
@@ -756,12 +758,12 @@ class CategoryFormViewModelTest {
         runTest {
             viewModel.onNameChanged("Vehicles")
             viewModel.onDescriptionChanged("All my cars")
-            viewModel.onCatalogTypeChanged(CatalogType.OBJECT)
+            viewModel.onCatalogTypeChanged(CatalogType.OTHER)
             viewModel.onSaveClick()
             advanceUntilIdle()
 
             assertEquals("All my cars", repository.savedCategory?.description)
-            assertEquals(CatalogType.OBJECT, repository.savedCategory?.type)
+            assertEquals(CatalogType.OTHER, repository.savedCategory?.type)
         }
 }
 

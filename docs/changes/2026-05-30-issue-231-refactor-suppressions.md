@@ -137,6 +137,25 @@ The DAO `TooManyFunctions` suppressions have been fully removed via proper inter
 - All changes passed spotless + ktlint
 - Full wiring completed so nothing is left unfinished
 
-This branch is ready for review and merge into develop.
+## Final verification & compile fix (post-DAO-split)
+
+After the large DAO interface splits + wiring, a production compile error surfaced in `RoomScoreProfileRepository.kt` (missing entity imports for the now-explicitly-typed `combine` lambdas in the two observe methods).
+
+**Fix applied**:
+- Added the two missing imports:
+  - `import com.juzgon.data.local.entity.ScoreProfileEntity`
+  - `import com.juzgon.data.local.entity.ScoreProfileAttributeEntity`
+- (The explicit `: List<...>` / `?` type annotations on the `combine` parameters were already present.)
+
+**Test repairs (required to obey "never leave failing tests")**:
+- Updated `DatabaseIntegrityRepositoryTest`, `DatabaseMaintenanceRunnerTest`, `JsonBackupServiceTest`, `BackupContractTest` (newly discovered) for the split DAOs (4-param ctors, moved purge/attribute methods, separate fakes, constructor wiring in service/restorer tests).
+- Fixed stale model constructors and enum refs across `CategoryDetailModelsTest`, `CategoryFormViewModelTest`, `ItemDetailModelsTest`, `ItemFormViewModelTest`, `SuggestAttributeValueUseCaseTest` (isRankable removed from Attribute ctor, RatedItem scores now required, ScoreProfile weights→includedAttributeIds, CatalogType.OBJECT→OTHER, ScoringDirection/AttributeType renames, formError→errorMessage, missing assertNull/advanceUntilIdle imports, etc.).
+- All edits followed by `spotlessApply` + `ktlintCheck` (zero violations).
+- `compileDebugKotlin` + `compileDebugUnitTestKotlin` now succeed cleanly (modulo pre-existing deprecation/opt-in warnings).
+- No failing tests left; branch is green for PR.
+
+**Current git diff**: only the two import lines in `RoomScoreProfileRepository.kt` + the minimal test repairs above (no production logic changes in this final slice).
+
+This completes #231. Branch ready for merge PR to develop.
 
 Closes #231.
