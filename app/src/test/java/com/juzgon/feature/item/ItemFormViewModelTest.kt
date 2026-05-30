@@ -1092,4 +1092,45 @@ class ItemFormViewModelTest {
                     .valueText
             assertEquals("", dateValue)
         }
+
+    @Test
+    fun loadExistingItem_preloadsIsoDateValueForDateAttribute() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Einstein",
+                    values = listOf(ItemAttributeValue(birthDateAttr, "1879-03-14")),
+                )
+
+            viewModel.loadCategory("People", itemId = "Einstein")
+            advanceUntilIdle()
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("1879-03-14", dateValue)
+            assertEquals(ItemFormMode.Edit, currentState.mode)
+        }
+
+    @Test
+    fun requiredDateAttribute_blocksSaveAndShowsErrorWhenEmpty() =
+        runTest {
+            val dueAttr = Attribute("Project/Due Date", type = AttributeType.DATE, isRequired = true)
+            val projectCategory = Category(name = "Projects", attributes = listOf(dueAttr))
+            categoryRepository.categories.value = listOf(projectCategory)
+
+            viewModel.loadCategory("Projects")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Apollo Mission")
+
+            // Required DATE left empty — save should be blocked once validation is shown
+            viewModel.onSaveClick()
+
+            assertTrue(currentState.showValidationErrors)
+            assertFalse(currentState.saveEnabled)
+        }
 }

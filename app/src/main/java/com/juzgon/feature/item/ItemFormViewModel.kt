@@ -191,6 +191,13 @@ class ItemFormViewModel
             }
         }
 
+        fun onDateSelected(
+            attributeId: String,
+            isoDate: String,
+        ) {
+            onValueChanged(attributeId, isoDate)
+        }
+
         fun onImagesSelected(
             attributeId: String,
             selectedImages: List<SelectedImageMetadata>,
