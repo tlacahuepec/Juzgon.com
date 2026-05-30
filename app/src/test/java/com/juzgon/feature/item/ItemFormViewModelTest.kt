@@ -1033,6 +1033,110 @@ class ItemFormViewModelTest {
             assertTrue(dismissedLogs.isEmpty())
         }
 
+    // --- RED tests for #214 (Date picker) ---
+
+    @Test
+    fun onDateSelected_storesIsoDateForDateAttribute() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+
+            // This method does not exist yet → RED
+            viewModel.onDateSelected(birthDateAttr.id, "1995-03-17")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("1995-03-17", dateValue)
+        }
+
+    @Test
+    fun onDateSelected_overwritesPreviousDateValue() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onValueChanged(birthDateAttr.id, "1990-01-01")
+
+            viewModel.onDateSelected(birthDateAttr.id, "2005-07-22")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("2005-07-22", dateValue)
+        }
+
+    @Test
+    fun onDateSelected_allowsClearingOptionalDate() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+            viewModel.onValueChanged(birthDateAttr.id, "1985-12-01")
+
+            viewModel.onDateSelected(birthDateAttr.id, "")
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("", dateValue)
+        }
+
+    @Test
+    fun loadExistingItem_preloadsIsoDateValueForDateAttribute() =
+        runTest {
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val peopleCategory = Category(name = "People", attributes = listOf(birthDateAttr))
+            categoryRepository.categories.value = listOf(peopleCategory)
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Einstein",
+                    scores = emptyList(),
+                    values = listOf(ItemAttributeValue(birthDateAttr, "1879-03-14")),
+                )
+
+            viewModel.loadCategory("People", itemId = "Einstein")
+            advanceUntilIdle()
+
+            val dateValue =
+                currentState.values
+                    .first { it.attribute.id == birthDateAttr.id }
+                    .valueText
+            assertEquals("1879-03-14", dateValue)
+            assertEquals(ItemFormMode.Edit, currentState.mode)
+        }
+
+    @Test
+    fun requiredDateAttribute_blocksSaveAndShowsErrorWhenEmpty() =
+        runTest {
+            val dueAttr = Attribute("Project/Due Date", type = AttributeType.DATE, isRequired = true)
+            val projectCategory = Category(name = "Projects", attributes = listOf(dueAttr))
+            categoryRepository.categories.value = listOf(projectCategory)
+
+            viewModel.loadCategory("Projects")
+            advanceUntilIdle()
+            viewModel.onTitleChanged("Apollo Mission")
+
+            // Required DATE left empty — save should be blocked once validation is shown
+            viewModel.onSaveClick()
+
+            assertTrue(currentState.showValidationErrors)
+            assertFalse(currentState.saveEnabled)
+        }
+
     @Test
     fun onImageSelectionFailed_setsErrorMessage() =
         runTest {

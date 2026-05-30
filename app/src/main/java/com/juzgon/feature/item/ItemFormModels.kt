@@ -5,6 +5,10 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private const val MIN_SCORE = 1
@@ -187,6 +191,24 @@ private fun isValidDateFormat(dateText: String): Boolean {
     val dateRegex = Regex("^\\d{4}-\\d{2}-\\d{2}$")
     return dateRegex.matches(dateText)
 }
+
+/** Converts ISO yyyy-MM-dd to epoch millis (UTC start-of-day) suitable for Material DatePicker. */
+internal fun isoToDatePickerMillis(iso: String): Long? =
+    runCatching {
+        LocalDate
+            .parse(iso)
+            .atStartOfDay(ZoneOffset.UTC)
+            .toInstant()
+            .toEpochMilli()
+    }.getOrNull()
+
+/** Converts DatePicker-selected millis (UTC) to ISO yyyy-MM-dd. */
+internal fun millisToIsoDate(millis: Long): String =
+    Instant
+        .ofEpochMilli(millis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
+        .format(DateTimeFormatter.ISO_LOCAL_DATE)
 
 private fun ItemValueInput.imageListError(): String? {
     if (attribute.isRequired && imageReferences.isEmpty()) {

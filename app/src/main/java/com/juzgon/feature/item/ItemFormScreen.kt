@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,11 +30,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -139,6 +144,7 @@ fun ItemFormRoute(
         onScoreIncrement = viewModel::onScoreIncrement,
         onScoreDecrement = viewModel::onScoreDecrement,
         onValueChange = viewModel::onValueChanged,
+        onDateSelected = viewModel::onDateSelected,
         onImageSelectClick = { attributeId ->
             pendingImageAttributeId = attributeId
             imagePicker.launch(arrayOf(IMAGE_PICKER_MIME_TYPE))
@@ -166,6 +172,7 @@ fun ItemFormScreen(
     onScoreIncrement: (String) -> Unit = {},
     onScoreDecrement: (String) -> Unit = {},
     onValueChange: (String, String) -> Unit = { _, _ -> },
+    onDateSelected: (String, String) -> Unit = { _, _ -> },
     onImageSelectClick: (String) -> Unit = {},
     onImageRemoveClick: (String, String) -> Unit = { _, _ -> },
     onSaveClick: () -> Unit,
@@ -284,6 +291,7 @@ fun ItemFormScreen(
                     onScoreIncrement = onScoreIncrement,
                     onScoreDecrement = onScoreDecrement,
                     onValueChange = onValueChange,
+                    onDateSelected = onDateSelected,
                     onImageSelectClick = onImageSelectClick,
                     onImageRemoveClick = onImageRemoveClick,
                     onSuggestClick = onSuggestClick,
@@ -307,6 +315,7 @@ private fun ItemFormContent(
     onScoreIncrement: (String) -> Unit,
     onScoreDecrement: (String) -> Unit,
     onValueChange: (String, String) -> Unit,
+    onDateSelected: (String, String) -> Unit,
     onImageSelectClick: (String) -> Unit,
     onImageRemoveClick: (String, String) -> Unit,
     onSuggestClick: (String) -> Unit,
@@ -372,6 +381,7 @@ private fun ItemFormContent(
                 valueInput = valueInput,
                 validationError = valueErrors[index],
                 onValueChange = onValueChange,
+                onDateSelected = onDateSelected,
                 onImageSelectClick = onImageSelectClick,
                 onImageRemoveClick = onImageRemoveClick,
                 onSuggestClick = onSuggestClick,
@@ -478,11 +488,13 @@ private fun ItemScoreField(
     }
 }
 
+@Suppress("UnusedParameter")
 @Composable
 private fun ItemAttributeValueField(
     valueInput: ItemValueInput,
     validationError: ItemValueValidationError,
     onValueChange: (String, String) -> Unit,
+    onDateSelected: (String, String) -> Unit,
     onImageSelectClick: (String) -> Unit,
     onImageRemoveClick: (String, String) -> Unit,
     onSuggestClick: (String) -> Unit,
@@ -526,15 +538,20 @@ private fun ItemAttributeValueField(
         }
         AttributeType.DATE -> {
             val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
+            var showDatePicker by remember { mutableStateOf(false) }
+            val currentIso = valueInput.valueText
+            val initialMillis = isoToDatePickerMillis(currentIso)
+
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 OutlinedTextField(
-                    value = valueInput.valueText,
-                    onValueChange = { onValueChange(attributeId, it) },
+                    value = currentIso,
+                    onValueChange = { /* DATE values are set exclusively via the picker */ },
+                    readOnly = true,
                     label = { Text(valueInput.attribute.displayName) },
-                    placeholder = { Text("YYYY-MM-DD") },
+                    placeholder = { Text("Select date") },
                     isError = validationError.value != null,
                     supportingText = {
                         validationError.value?.let { Text(it) }
@@ -543,7 +560,16 @@ private fun ItemAttributeValueField(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .semantics { contentDescription = cd },
+                            .semantics { contentDescription = cd }
+                            .clickable { showDatePicker = true },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.DateRange,
+                                contentDescription = "Pick ${valueInput.attribute.displayName}",
+                            )
+                        }
+                    },
                 )
                 if (showSuggest) {
                     IconButton(
@@ -561,6 +587,38 @@ private fun ItemAttributeValueField(
                             contentDescription = null,
                         )
                     }
+                }
+                if (!valueInput.attribute.isRequired && currentIso.isNotBlank()) {
+                    IconButton(onClick = { onDateSelected(attributeId, "") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Clear ${valueInput.attribute.displayName}",
+                        )
+                    }
+                }
+            }
+
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                onDateSelected(attributeId, millisToIsoDate(millis))
+                            }
+                            showDatePicker = false
+                        }) {
+                            Text("OK")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text("Cancel")
+                        }
+                    },
+                ) {
+                    DatePicker(state = datePickerState)
                 }
             }
         }
