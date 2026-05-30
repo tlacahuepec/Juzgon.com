@@ -208,6 +208,33 @@ class ItemFormModelsTest {
         assertEquals(0, ratedItem.values.size)
     }
 
+    // --- Tests for date picker conversion helpers (added per requirement to cover previously untested code) ---
+    @Test
+    fun isoToDatePickerMillis_returnsNonNullForValidIso() {
+        assertTrue(isoToDatePickerMillis("2024-06-15") != null)
+    }
+
+    @Test
+    fun isoToDatePickerMillis_returnsNullForInvalidIso() {
+        assertNull(isoToDatePickerMillis("not-a-date"))
+        assertNull(isoToDatePickerMillis("2024/06/15"))
+    }
+
+    @Test
+    fun millisToIsoDate_producesYyyyMmDd() {
+        // 2024-06-15 00:00 UTC millis
+        val millis = 1718409600000L
+        assertEquals("2024-06-15", millisToIsoDate(millis))
+    }
+
+    @Test
+    fun dateConverters_roundtripPreservesDate() {
+        val original = "2023-12-31"
+        val millis = isoToDatePickerMillis(original)
+        assertTrue(millis != null)
+        assertEquals(original, millisToIsoDate(millis!!))
+    }
+
     @Test
     fun notFoundErrorStateShowsRetryWhenAttemptsRemain() {
         val errorState = EnrichmentSheetState.NotFound(reason = "Not found")

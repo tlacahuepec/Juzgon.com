@@ -1102,6 +1102,7 @@ class ItemFormViewModelTest {
             ratedItemRepository.item.value =
                 RatedItem(
                     id = "Einstein",
+                    scores = emptyList(),
                     values = listOf(ItemAttributeValue(birthDateAttr, "1879-03-14")),
                 )
 
