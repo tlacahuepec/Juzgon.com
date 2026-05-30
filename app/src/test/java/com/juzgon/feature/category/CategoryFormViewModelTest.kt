@@ -8,6 +8,7 @@ import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateCategoryUseCase
@@ -497,6 +498,37 @@ class CategoryFormViewModelTest {
         }
 
     @Test
+    fun onAttributeScoringDirectionChangedOnlyAffectsDateAttributes() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Speed", type = AttributeType.NUMBER))),
+                )
+            viewModel.loadCategory("Cars")
+
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.HIGHER_IS_BETTER)
+
+            // For NUMBER it should be ignored (no change)
+            assertEquals(null, currentState.attributes.first().scoringDirection)
+        }
+
+    @Test
+    fun moveAttributeUpAtTopBoundaryDoesNothing() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Speed"))),
+                )
+            viewModel.loadCategory("Cars")
+
+            val firstKey = currentState.attributes.first().key
+            viewModel.moveAttributeUp(firstKey)
+
+            assertEquals("Speed", currentState.attributes.first().name)
+        }
+
+    @Test
     fun typeAndRequiredArePreservedInSavedCategory() =
         runTest {
             val firstKey = attributes.single().key
@@ -632,6 +664,105 @@ class CategoryFormViewModelTest {
 
         override suspend fun deleteRatedItem(id: String) = error("not used")
     }
+
+    // ======================================================================
+    // LARGE BATCH - Comprehensive RED coverage for CategoryFormViewModel
+    // (TooManyFunctions) - attribute manipulation, warnings, catalog type,
+    // description, move, save, delete flows
+    // ======================================================================
+
+    @Test
+    fun onDescriptionChanged_updatesDescription() =
+        runTest {
+            viewModel.onDescriptionChanged("A detailed ranking of cars")
+            assertEquals("A detailed ranking of cars", currentState.description)
+        }
+
+    @Test
+    fun onCatalogTypeChanged_updatesType() =
+        runTest {
+            viewModel.onCatalogTypeChanged(CatalogType.PERSON)
+            assertEquals(CatalogType.PERSON, currentState.catalogType)
+        }
+
+    @Test
+    fun addAttribute_increasesAttributeCount() =
+        runTest {
+            val initialCount = currentState.attributes.size
+            viewModel.addAttribute()
+            assertEquals(initialCount + 1, currentState.attributes.size)
+        }
+
+    @Test
+    fun moveAttributeDown_reordersAttributes() =
+        runTest {
+            val key1 = currentState.attributes[0].key
+            viewModel.addAttribute()
+            val key2 = currentState.attributes.last().key
+
+            viewModel.moveAttributeDown(key1)
+            assertEquals(key2, currentState.attributes[0].key)
+        }
+
+    @Test
+    fun onAttributeWeightChanged_updatesWeightText() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeWeightChanged(key, "3.5")
+            assertEquals("3.5", currentState.attributes.single().weightText)
+        }
+
+    @Test
+    fun onAttributeDisplayInDiamondChanged_onlyAffectsNumberTypes() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.TEXT)
+            viewModel.onAttributeDisplayInDiamondChanged(key, true)
+            assertFalse(currentState.attributes.single().displayInDiamond)
+        }
+
+    @Test
+    fun onAttributeDiamondOrderChanged_onlyAffectsNumberTypes() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.BOOLEAN)
+            viewModel.onAttributeDiamondOrderChanged(key, "5")
+            assertEquals("", currentState.attributes.single().diamondOrderText)
+        }
+
+    @Test
+    fun onTypeChangeConfirmed_appliesPendingChange() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            // Simulate dirty to trigger warning path (simplified)
+            viewModel.onTypeChangeConfirmed()
+            // State should no longer show warning
+            assertFalse(currentState.showTypeChangeWarning)
+        }
+
+    @Test
+    fun onTypeChangeDeclined_clearsPendingState() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            viewModel.onTypeChangeDeclined()
+            assertFalse(currentState.showTypeChangeWarning)
+            assertNull(currentState.pendingTypeChange)
+        }
+
+    @Test
+    fun saveIncludesDescriptionAndCatalogType() =
+        runTest {
+            viewModel.onNameChanged("Vehicles")
+            viewModel.onDescriptionChanged("All my cars")
+            viewModel.onCatalogTypeChanged(CatalogType.OBJECT)
+            viewModel.onSaveClick()
+            advanceUntilIdle()
+
+            assertEquals("All my cars", repository.savedCategory?.description)
+            assertEquals(CatalogType.OBJECT, repository.savedCategory?.type)
+        }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

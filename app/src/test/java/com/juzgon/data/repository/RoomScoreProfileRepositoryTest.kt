@@ -127,6 +127,39 @@ class RoomScoreProfileRepositoryTest {
             assertEquals(listOf("taste", "texture", "service"), observed?.includedAttributeIds)
         }
 
+    @Test
+    fun observeAllProfilesReturnsAllSavedProfiles() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+            scoreProfileRepository.saveProfile(physicalProfile())
+            scoreProfileRepository.saveProfile(
+                ScoreProfile(
+                    id = "p2",
+                    categoryName = "Food",
+                    name = "Full Profile",
+                    includedAttributeIds = listOf("taste", "texture", "service"),
+                ),
+            )
+
+            val all = scoreProfileRepository.observeProfilesForCategory("Food").first()
+            assertEquals(2, all.size)
+        }
+
+    @Test
+    fun saveProfileWithAttributesReplacesAttributesAtomically() =
+        runTest {
+            categoryRepository.saveCategory(foodCategory())
+            scoreProfileRepository.saveProfile(physicalProfile())
+
+            // Replace with completely different set of attributes
+            scoreProfileRepository.saveProfile(
+                physicalProfile().copy(includedAttributeIds = listOf("service")),
+            )
+
+            val observed = scoreProfileRepository.observeProfile("p1").first()
+            assertEquals(listOf("service"), observed?.includedAttributeIds)
+        }
+
     private fun foodCategory(): Category =
         Category(
             name = "Food",

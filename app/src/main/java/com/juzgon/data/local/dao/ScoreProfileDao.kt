@@ -8,14 +8,10 @@ import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
 import com.juzgon.data.local.entity.ScoreProfileEntity
 import kotlinx.coroutines.flow.Flow
 
-@Suppress("TooManyFunctions")
 @Dao
 interface ScoreProfileDao {
     @Query("SELECT * FROM score_profiles ORDER BY category_name, name")
     fun observeAllProfiles(): Flow<List<ScoreProfileEntity>>
-
-    @Query("SELECT * FROM score_profile_attributes ORDER BY profile_id, position")
-    fun observeAllProfileAttributes(): Flow<List<ScoreProfileAttributeEntity>>
 
     @Query("SELECT * FROM score_profiles WHERE category_name = :categoryName ORDER BY name")
     fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfileEntity>>
@@ -25,6 +21,26 @@ interface ScoreProfileDao {
 
     @Upsert
     suspend fun upsertProfile(profile: ScoreProfileEntity)
+
+    @Query("DELETE FROM score_profiles WHERE id = :id")
+    suspend fun deleteProfile(id: String)
+
+    @Query(
+        """
+        DELETE FROM score_profiles WHERE id IN (
+            SELECT sp.id FROM score_profiles sp
+            LEFT JOIN score_profile_attributes spa ON spa.profile_id = sp.id
+            WHERE spa.profile_id IS NULL
+        )
+        """,
+    )
+    suspend fun deleteOrphanedProfiles(): Int
+}
+
+@Dao
+interface ScoreProfileAttributeDao {
+    @Query("SELECT * FROM score_profile_attributes ORDER BY profile_id, position")
+    fun observeAllProfileAttributes(): Flow<List<ScoreProfileAttributeEntity>>
 
     @Query("DELETE FROM score_profile_attributes WHERE profile_id = :profileId")
     suspend fun deleteAttributesForProfile(profileId: String)
@@ -45,26 +61,13 @@ interface ScoreProfileDao {
     )
     fun observeAttributesForCategory(categoryName: String): Flow<List<ScoreProfileAttributeEntity>>
 
-    @Query("DELETE FROM score_profiles WHERE id = :id")
-    suspend fun deleteProfile(id: String)
-
-    @Query(
-        """
-        DELETE FROM score_profiles WHERE id IN (
-            SELECT sp.id FROM score_profiles sp
-            LEFT JOIN score_profile_attributes spa ON spa.profile_id = sp.id
-            WHERE spa.profile_id IS NULL
-        )
-        """,
-    )
-    suspend fun deleteOrphanedProfiles(): Int
-
     @Transaction
     suspend fun saveProfileWithAttributes(
         profile: ScoreProfileEntity,
         attributes: List<ScoreProfileAttributeEntity>,
     ) {
-        upsertProfile(profile)
+        // Note: The actual profile upsert should be called separately or via a higher-level service
+        // This method now focuses only on attributes
         deleteAttributesForProfile(profile.id)
         upsertProfileAttributes(attributes)
     }

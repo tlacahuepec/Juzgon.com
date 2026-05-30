@@ -158,27 +158,73 @@ object DatabaseMigrations {
             }
         }
 
-    @Suppress("MaxLineLength")
     val MIGRATION_11_12: Migration =
         object : Migration(DATABASE_VERSION_11, DATABASE_VERSION_12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
-                    "UPDATE ratings SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = ratings.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = ratings.attribute_id)",
+                    """
+                    UPDATE ratings
+                    SET attribute_id = (
+                        SELECT a.category_name || '/' || a.id
+                        FROM attributes a
+                        WHERE a.id = ratings.attribute_id
+                    )
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM attributes a
+                        WHERE a.id = ratings.attribute_id
+                    )
+                    """.trimIndent(),
                 )
                 db.execSQL(
-                    "UPDATE item_values SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = item_values.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = item_values.attribute_id)",
+                    """
+                    UPDATE item_values
+                    SET attribute_id = (
+                        SELECT a.category_name || '/' || a.id
+                        FROM attributes a
+                        WHERE a.id = item_values.attribute_id
+                    )
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM attributes a
+                        WHERE a.id = item_values.attribute_id
+                    )
+                    """.trimIndent(),
                 )
                 db.execSQL(
-                    "UPDATE attribute_rank_snapshots SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = attribute_rank_snapshots.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = attribute_rank_snapshots.attribute_id)",
+                    """
+                    UPDATE attribute_rank_snapshots
+                    SET attribute_id = (
+                        SELECT a.category_name || '/' || a.id
+                        FROM attributes a
+                        WHERE a.id = attribute_rank_snapshots.attribute_id
+                    )
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM attributes a
+                        WHERE a.id = attribute_rank_snapshots.attribute_id
+                    )
+                    """.trimIndent(),
                 )
                 db.execSQL(
-                    "UPDATE score_profile_attributes SET attribute_id = (SELECT a.category_name || '/' || a.id FROM attributes a WHERE a.id = score_profile_attributes.attribute_id) WHERE EXISTS (SELECT 1 FROM attributes a WHERE a.id = score_profile_attributes.attribute_id)",
+                    """
+                    UPDATE score_profile_attributes
+                    SET attribute_id = (
+                        SELECT a.category_name || '/' || a.id
+                        FROM attributes a
+                        WHERE a.id = score_profile_attributes.attribute_id
+                    )
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM attributes a
+                        WHERE a.id = score_profile_attributes.attribute_id
+                    )
+                    """.trimIndent(),
                 )
                 db.execSQL("UPDATE attributes SET id = category_name || '/' || id")
             }
         }
 
-    @Suppress("MaxLineLength")
     val MIGRATION_12_13: Migration =
         object : Migration(DATABASE_VERSION_12, DATABASE_VERSION_13) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -195,7 +241,11 @@ object DatabaseMigrations {
                     """.trimIndent(),
                 )
                 db.execSQL(
-                    "INSERT INTO item_values_new (item_id, attribute_id, value_text) SELECT item_id, attribute_id, value_text FROM item_values",
+                    """
+                    INSERT INTO item_values_new (item_id, attribute_id, value_text)
+                    SELECT item_id, attribute_id, value_text
+                    FROM item_values
+                    """.trimIndent(),
                 )
                 db.execSQL("DROP TABLE item_values")
                 db.execSQL("ALTER TABLE item_values_new RENAME TO item_values")
@@ -215,7 +265,11 @@ object DatabaseMigrations {
                     """.trimIndent(),
                 )
                 db.execSQL(
-                    "INSERT INTO ratings_new (item_id, attribute_id, score) SELECT item_id, attribute_id, score FROM ratings",
+                    """
+                    INSERT INTO ratings_new (item_id, attribute_id, score)
+                    SELECT item_id, attribute_id, score
+                    FROM ratings
+                    """.trimIndent(),
                 )
                 db.execSQL("DROP TABLE ratings")
                 db.execSQL("ALTER TABLE ratings_new RENAME TO ratings")
@@ -224,7 +278,6 @@ object DatabaseMigrations {
             }
         }
 
-    @Suppress("MaxLineLength")
     val MIGRATION_13_14: Migration =
         object : Migration(DATABASE_VERSION_13, DATABASE_VERSION_14) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -232,7 +285,11 @@ object DatabaseMigrations {
                     """
                     UPDATE item_values
                     SET attribute_id = (
-                        SELECT a.category_name || '/' || SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                        SELECT a.category_name || '/' ||
+                            SUBSTR(
+                                item_values.attribute_id,
+                                INSTR(item_values.attribute_id, '/') + 1,
+                            )
                         FROM ratings r
                         INNER JOIN attributes a ON a.id = r.attribute_id
                         WHERE r.item_id = item_values.item_id
@@ -245,7 +302,6 @@ object DatabaseMigrations {
             }
         }
 
-    @Suppress("MaxLineLength")
     val MIGRATION_14_15: Migration =
         object : Migration(DATABASE_VERSION_14, DATABASE_VERSION_15) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -256,7 +312,8 @@ object DatabaseMigrations {
                         SELECT candidate.id
                         FROM attributes candidate
                         WHERE INSTR(candidate.id, '/') > 0
-                          AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                                                    AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) =
+                                                            SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
                     )
                     WHERE attribute_id NOT IN (SELECT id FROM attributes)
                       AND INSTR(attribute_id, '/') > 0
@@ -264,7 +321,8 @@ object DatabaseMigrations {
                           SELECT COUNT(*)
                           FROM attributes candidate
                           WHERE INSTR(candidate.id, '/') > 0
-                            AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                                                        AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) =
+                                                                SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
                       ) = 1
                       AND (
                           SELECT COUNT(*)
@@ -272,7 +330,8 @@ object DatabaseMigrations {
                           WHERE sibling.item_id = item_values.item_id
                             AND sibling.attribute_id NOT IN (SELECT id FROM attributes)
                             AND INSTR(sibling.attribute_id, '/') > 0
-                            AND SUBSTR(sibling.attribute_id, INSTR(sibling.attribute_id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                                                        AND SUBSTR(sibling.attribute_id, INSTR(sibling.attribute_id, '/') + 1) =
+                                                                SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
                       ) = 1
                       AND NOT EXISTS (
                           SELECT 1
@@ -282,7 +341,8 @@ object DatabaseMigrations {
                                 SELECT candidate.id
                                 FROM attributes candidate
                                 WHERE INSTR(candidate.id, '/') > 0
-                                  AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) = SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
+                                    AND SUBSTR(candidate.id, INSTR(candidate.id, '/') + 1) =
+                                      SUBSTR(item_values.attribute_id, INSTR(item_values.attribute_id, '/') + 1)
                             )
                       )
                     """.trimIndent(),

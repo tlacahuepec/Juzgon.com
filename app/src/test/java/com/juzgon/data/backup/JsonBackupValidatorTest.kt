@@ -383,4 +383,42 @@ class JsonBackupValidatorTest {
             result.errors.any { it.contains(substring, ignoreCase = true) },
         )
     }
+
+    // --- Additional RED coverage for @Suppress in JsonBackupValidator ---
+
+    @Test
+    fun validate_imageAssignmentsReferencesUnknownItem_returnsError() {
+        val json =
+            validPayload(
+                extra = ""","imageAssignments":[{"itemId":"unknown-item","images":[]}]""",
+            )
+
+        val result = validator.validate(json)
+
+        assertFalse(result.isValid)
+        assertContainsError(result, "unknown item")
+    }
+
+    @Test
+    fun validate_itemReferencesUnknownCategory_returnsError() {
+        val json =
+            validPayload(
+                items = """[{"id":"item1","categoryName":"NonExistent","notes":"","createdAt":0,"updatedAt":0,"ratings":[],"values":[]}]""",
+            )
+
+        val result = validator.validate(json)
+
+        assertFalse(result.isValid)
+        assertContainsError(result, "category")
+    }
+
+    @Test
+    fun validate_versionTooHigh_returnsError() {
+        val json = validPayload(version = 99)
+
+        val result = validator.validate(json)
+
+        assertFalse(result.isValid)
+        assertContainsError(result, "version")
+    }
 }

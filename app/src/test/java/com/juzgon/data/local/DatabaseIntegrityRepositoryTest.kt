@@ -220,4 +220,28 @@ class DatabaseIntegrityRepositoryTest {
         const val ATTRIBUTE_ID = "Food/Taste"
         const val CATEGORY_NAME = "Food"
     }
+
+    @Test
+    fun diagnose_reportsCategoriesWithZeroRankableWeight_forNonRankableAttributeTypes() =
+        runTest {
+            // Category with only non-rankable attributes (BOOLEAN has no weight for ranking)
+            database.categoryDao().upsertCategory(CategoryEntity(name = "Survey"))
+            database
+                .categoryDao()
+                .upsertAttributes(
+                    listOf(
+                        AttributeEntity(
+                            id = "Survey/Consent",
+                            categoryName = "Survey",
+                            type = "BOOLEAN",
+                            weight = 1.0,
+                        ),
+                    ),
+                )
+
+            val report = diagnostics.diagnose()
+
+            assertEquals(1, report.categoriesWithZeroRankableWeight.count)
+            assertEquals(listOf("Survey"), report.categoriesWithZeroRankableWeight.sampleIds)
+        }
 }

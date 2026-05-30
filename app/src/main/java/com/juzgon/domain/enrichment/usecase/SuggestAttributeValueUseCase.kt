@@ -21,7 +21,6 @@ class SuggestAttributeValueUseCase
         private val eventLogger: EnrichmentEventLogger,
         private val cacheRepository: EnrichmentSuggestionCacheRepository,
     ) {
-        @Suppress("ReturnCount")
         suspend operator fun invoke(
             request: AttributeEnrichmentRequest,
             bypassCache: Boolean = false,
@@ -36,39 +35,40 @@ class SuggestAttributeValueUseCase
             val cacheKey = request.toCacheKey()
 
             if (!bypassCache) {
-                val cachedResult = cacheRepository.get(cacheKey)
-                if (cachedResult != null) {
+                val cached = cacheRepository.get(cacheKey)
+                if (cached != null) {
                     return AttributeEnrichmentResult(
-                        status = cachedResult.status,
-                        suggestedValue = cachedResult.suggestedValue,
-                        displayValue = cachedResult.displayValue,
-                        confidence = cachedResult.confidence,
-                        sources = cachedResult.sources,
-                        reason = cachedResult.reason,
-                        failureCode = cachedResult.failureCode,
+                        status = cached.status,
+                        suggestedValue = cached.suggestedValue,
+                        displayValue = cached.displayValue,
+                        confidence = cached.confidence,
+                        sources = cached.sources,
+                        reason = cached.reason,
+                        failureCode = cached.failureCode,
                     )
                 }
             }
 
-            val result = provider.enrichAttribute(request)
-            val validated = validator(result, request.targetAttributeType)
+            val enriched = provider.enrichAttribute(request)
+            val validated = validator(enriched, request.targetAttributeType)
 
-            if (result.status == EnrichmentStatus.FOUND &&
+            if (enriched.status == EnrichmentStatus.FOUND &&
                 validated.failureCode == EnrichmentFailureCode.VALIDATION_FAILED
             ) {
                 eventLogger.rejected(
                     attributeKey = request.targetAttributeKey,
                     reason = "VALIDATION_FAILED",
-                    originalStatus = result.status.name,
-                    confidence = result.confidence?.name,
+                    originalStatus = enriched.status.name,
+                    confidence = enriched.confidence?.name,
                 )
             }
 
-            // Cache the result (for accepted suggestions and recent non-error outcomes)
-            if (validated.status != EnrichmentStatus.ERROR ||
-                validated.failureCode == EnrichmentFailureCode.NO_RELIABLE_SOURCE ||
-                validated.failureCode == EnrichmentFailureCode.CONFLICTING_SOURCES
-            ) {
+            val shouldCache =
+                validated.status != EnrichmentStatus.ERROR ||
+                    validated.failureCode == EnrichmentFailureCode.NO_RELIABLE_SOURCE ||
+                    validated.failureCode == EnrichmentFailureCode.CONFLICTING_SOURCES
+
+            if (shouldCache) {
                 cacheRepository.put(validated.toCachedResult(cacheKey))
             }
 

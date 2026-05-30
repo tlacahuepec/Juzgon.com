@@ -15,12 +15,13 @@ class RoomScoreProfileRepository(
     database: JuzgonDatabase,
 ) : ScoreProfileRepository {
     private val scoreProfileDao = database.scoreProfileDao()
+    private val scoreProfileAttributeDao = database.scoreProfileAttributeDao()
 
     override fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfile>> =
         combine(
             scoreProfileDao.observeProfilesForCategory(categoryName),
-            scoreProfileDao.observeAttributesForCategory(categoryName),
-        ) { profiles, allAttributes ->
+            scoreProfileAttributeDao.observeAttributesForCategory(categoryName),
+        ) { profiles: List<ScoreProfileEntity>, allAttributes: List<ScoreProfileAttributeEntity> ->
             val attributesByProfile = allAttributes.groupBy { it.profileId }
             profiles.mapNotNull { profile ->
                 val attributeIds = attributesByProfile[profile.id]?.map { it.attributeId }.orEmpty()
@@ -36,8 +37,8 @@ class RoomScoreProfileRepository(
     override fun observeProfile(id: String): Flow<ScoreProfile?> =
         combine(
             scoreProfileDao.observeProfile(id),
-            scoreProfileDao.observeAttributesForProfile(id),
-        ) { profile, attributes ->
+            scoreProfileAttributeDao.observeAttributesForProfile(id),
+        ) { profile: ScoreProfileEntity?, attributes: List<ScoreProfileAttributeEntity> ->
             val attributeIds = attributes.map { it.attributeId }
             if (profile == null || attributeIds.isEmpty()) {
                 null
@@ -47,8 +48,10 @@ class RoomScoreProfileRepository(
         }.distinctUntilChanged()
 
     override suspend fun saveProfile(profile: ScoreProfile) {
-        scoreProfileDao.saveProfileWithAttributes(
-            profile = profile.toEntity(),
+        val entity = profile.toEntity()
+        scoreProfileDao.upsertProfile(entity)
+        scoreProfileAttributeDao.saveProfileWithAttributes(
+            profile = entity,
             attributes = profile.toAttributeEntities(),
         )
     }

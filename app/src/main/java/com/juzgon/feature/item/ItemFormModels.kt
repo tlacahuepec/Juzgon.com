@@ -157,29 +157,26 @@ private fun ItemScoreInput.scoreError(): String? {
     }
 }
 
-@Suppress("ReturnCount")
-private fun ItemValueInput.valueError(): String? {
-    if (attribute.type == AttributeType.IMAGE) {
-        return imageListError()
+private fun ItemValueInput.valueError(): String? =
+    when (attribute.type) {
+        AttributeType.IMAGE -> imageListError()
+        AttributeType.DATE -> dateError()
+        else ->
+            if (attribute.isRequired && valueText.isBlank()) {
+                "${attribute.displayName} is required"
+            } else {
+                null
+            }
     }
-    if (attribute.type == AttributeType.DATE) {
-        return dateError()
-    }
-    return if (attribute.isRequired && valueText.isBlank()) {
-        "${attribute.displayName} is required"
-    } else {
-        null
-    }
-}
 
-@Suppress("ReturnCount")
 private fun ItemValueInput.dateError(): String? {
     if (attribute.type != AttributeType.DATE) return null
-    if (!attribute.isRequired && valueText.isBlank()) return null
-    if (attribute.isRequired && valueText.isBlank()) {
-        return "${attribute.displayName} is required"
+
+    if (valueText.isBlank()) {
+        return if (attribute.isRequired) "${attribute.displayName} is required" else null
     }
-    return if (valueText.isNotBlank() && !isValidDateFormat(valueText)) {
+
+    return if (!isValidDateFormat(valueText)) {
         "${attribute.displayName} must be YYYY-MM-DD format"
     } else {
         null
@@ -191,19 +188,22 @@ private fun isValidDateFormat(dateText: String): Boolean {
     return dateRegex.matches(dateText)
 }
 
-@Suppress("ReturnCount")
 private fun ItemValueInput.imageListError(): String? {
     if (attribute.isRequired && imageReferences.isEmpty()) {
         return "${attribute.displayName} is required"
     }
-    imageReferences.forEach { imageReference ->
-        when {
-            !imageReference.hasSupportedImageFormat() -> return "Image must be JPG, JPEG, PNG, or WEBP"
-            imageReference.sizeBytes != null && imageReference.sizeBytes > IMAGE_MAX_SIZE_BYTES ->
-                return "Image must be $IMAGE_MAX_SIZE_LABEL or smaller"
-        }
+
+    val firstBad =
+        imageReferences.firstOrNull { ref ->
+            !ref.hasSupportedImageFormat() ||
+                (ref.sizeBytes != null && ref.sizeBytes > IMAGE_MAX_SIZE_BYTES)
+        } ?: return null
+
+    return if (!firstBad.hasSupportedImageFormat()) {
+        "Image must be JPG, JPEG, PNG, or WEBP"
+    } else {
+        "Image must be $IMAGE_MAX_SIZE_LABEL or smaller"
     }
-    return null
 }
 
 private fun ItemImageReference.hasSupportedImageFormat(): Boolean {

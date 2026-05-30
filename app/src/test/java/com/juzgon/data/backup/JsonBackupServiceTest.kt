@@ -657,6 +657,49 @@ class JsonBackupServiceTest {
             assertEquals("OLDER_IS_BETTER", birthday.scoringDirection)
         }
 
+    @Test
+    fun roundTrip_preservesDateAttributeScoringDirection() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity(
+                                id = "People/Birthday",
+                                categoryName = "People",
+                                type = "DATE",
+                                weight = 1.0,
+                                position = 0,
+                                isRequired = true,
+                                scoringDirection = "OLDER_IS_BETTER",
+                            ),
+                        ),
+                    ),
+                )
+
+            val exported = service.export()
+            service.import(exported)
+
+            val birthday = categoryDao.upsertedAttributes.find { it.id == "People/Birthday" }!!
+            assertEquals("DATE", birthday.type)
+            assertEquals("OLDER_IS_BETTER", birthday.scoringDirection)
+        }
+
+    @Test
+    fun export_handlesEmptyScoreProfilesGracefully() =
+        runTest {
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+            scoreProfileDao.profiles.value = emptyList()
+            scoreProfileDao.profileAttributes.value = emptyList()
+
+            val json = service.export()
+            val parsed = JSONObject(json)
+
+            assertTrue(parsed.getJSONArray("scoreProfiles").length() == 0)
+        }
+
     // --- Helpers ---
 
     private fun validImportJson(
