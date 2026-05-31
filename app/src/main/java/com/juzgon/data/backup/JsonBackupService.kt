@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import org.json.JSONException
 import org.json.JSONObject
 
+@Suppress("LongParameterList")
 class JsonBackupService(
     private val validator: BackupValidator,
     private val categoryDao: CategoryDao,
