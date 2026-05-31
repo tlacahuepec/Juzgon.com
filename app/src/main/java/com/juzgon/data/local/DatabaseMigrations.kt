@@ -161,67 +161,11 @@ object DatabaseMigrations {
     val MIGRATION_11_12: Migration =
         object : Migration(DATABASE_VERSION_11, DATABASE_VERSION_12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    UPDATE ratings
-                    SET attribute_id = (
-                        SELECT a.category_name || '/' || a.id
-                        FROM attributes a
-                        WHERE a.id = ratings.attribute_id
-                    )
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM attributes a
-                        WHERE a.id = ratings.attribute_id
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    """
-                    UPDATE item_values
-                    SET attribute_id = (
-                        SELECT a.category_name || '/' || a.id
-                        FROM attributes a
-                        WHERE a.id = item_values.attribute_id
-                    )
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM attributes a
-                        WHERE a.id = item_values.attribute_id
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    """
-                    UPDATE attribute_rank_snapshots
-                    SET attribute_id = (
-                        SELECT a.category_name || '/' || a.id
-                        FROM attributes a
-                        WHERE a.id = attribute_rank_snapshots.attribute_id
-                    )
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM attributes a
-                        WHERE a.id = attribute_rank_snapshots.attribute_id
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    """
-                    UPDATE score_profile_attributes
-                    SET attribute_id = (
-                        SELECT a.category_name || '/' || a.id
-                        FROM attributes a
-                        WHERE a.id = score_profile_attributes.attribute_id
-                    )
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM attributes a
-                        WHERE a.id = score_profile_attributes.attribute_id
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL("UPDATE attributes SET id = category_name || '/' || id")
+                db.scopeAttributeForeignKeysToCategoryNamespace("ratings")
+                db.scopeAttributeForeignKeysToCategoryNamespace("item_values")
+                db.scopeAttributeForeignKeysToCategoryNamespace("attribute_rank_snapshots")
+                db.scopeAttributeForeignKeysToCategoryNamespace("score_profile_attributes")
+                db.scopeAttributePrimaryKeysToCategoryNamespace()
             }
         }
 
@@ -387,4 +331,35 @@ object DatabaseMigrations {
                 )
             }
         }
+}
+
+/**
+ * Rewrites bare attribute_id foreign keys in the given table to the v12+ namespaced form
+ * "categoryName/attributeId". This was required so that the same local attribute name
+ * can exist under different categories.
+ */
+private fun SupportSQLiteDatabase.scopeAttributeForeignKeysToCategoryNamespace(tableName: String) {
+    execSQL(
+        """
+        UPDATE $tableName
+        SET attribute_id = (
+            SELECT a.category_name || '/' || a.id
+            FROM attributes a
+            WHERE a.id = $tableName.attribute_id
+        )
+        WHERE EXISTS (
+            SELECT 1
+            FROM attributes a
+            WHERE a.id = $tableName.attribute_id
+        )
+        """.trimIndent(),
+    )
+}
+
+/**
+ * Rewrites the attributes table primary key from the bare local id to the v12+ namespaced
+ * form "categoryName/attributeId". Must run after all referencing tables have been updated.
+ */
+private fun SupportSQLiteDatabase.scopeAttributePrimaryKeysToCategoryNamespace() {
+    execSQL("UPDATE attributes SET id = category_name || '/' || id")
 }
