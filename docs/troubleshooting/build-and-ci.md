@@ -354,6 +354,68 @@ Follow the Windows setup guide for installation and verification steps:
 
 That guide includes package-manager install options, command verification, and the repository-root `git-town sync` workflow.
 
+## Issue 10: Windows `bundleDebugClassesToCompileJar` file lock when running unit tests from Android Studio
+
+### Symptoms
+
+Running a specific test class via the gutter green play button (or the full `:app:testDebugUnitTest` task delegated from the IDE) fails late in the build:
+
+```
+> Task :app:bundleDebugClassesToCompileJar FAILED
+...
+java.nio.file.FileSystemException: ...\app\build\intermediates\compile_app_classes_jar\debug\bundleDebugClassesToCompileJar\classes.jar:
+The process cannot access the file because it is being used by another process
+```
+
+The log shows many tasks as UP-TO-DATE, then `compileDebugKotlin`, `compileDebugJavaWithJavac`, `hilt*` tasks, then the bundle fails. Multiple `hs_err_pid*.log` JVM crash dumps from prior daemon crashes are often present in the project root and `app/`.
+
+### Root cause
+
+This is a long-standing Windows-specific environmental issue (not caused by source changes). The Android Gradle Plugin's internal `bundleDebugClassesToCompileJar` task (registered by `com.android.internal.application`) creates/overwrites an intermediate `classes.jar` so that unit tests (which run in a host JVM via Robolectric etc.) can load the app's debug classes. Windows file locking + lingering Gradle daemons, the Kotlin compiler daemon, Android Studio's JBR build processes, or real-time antivirus scanners (Windows Defender) frequently hold an exclusive handle on the previous jar from an incremental build or crashed daemon. The large refactors on #231 (many files touched, KSP/Hilt/Room reprocessing) increased how often this window was hit.
+
+### Fix (non-destructive first — try in exact order)
+
+1. From a terminal in the project root, stop all Gradle daemons:
+   ```powershell
+   ./gradlew --stop
+   ```
+   This is the fastest way to release locks held by previous daemons. (We ran this during diagnosis — 2 daemons were terminated and the lock cleared.)
+
+2. Immediately retry the test in Android Studio (green play button for the class, or Run > Run...).
+
+3. If still locked: **File > Invalidate Caches / Restart** → choose "Invalidate and Restart" (optionally also clear file system cache).
+
+4. **Permanent Windows mitigation (highly recommended)** — prevent the OS/AV from scanning build outputs:
+   - Windows Security → Virus & threat protection → Manage settings → Add or remove exclusions.
+   - Add exclusions for:
+     - The full `C:\Users\<you>\Repos\Juzgon.com` folder (or wherever the workspace lives)
+     - `C:\Users\<you>\.gradle`
+     - Your Android SDK (usually `C:\Users\<you>\AppData\Local\Android\Sdk`)
+
+5. Nuclear but targeted (only after closing Android Studio completely, and only with explicit confirmation):
+   Delete just the problematic intermediate directory:
+   ```
+   rm -rf app/build/intermediates/compile_app_classes_jar
+   ```
+   Then re-run. Never do blanket `rm -rf build` or `.gradle` unless you understand the cost.
+
+### Verification (after applying a fix)
+
+```powershell
+./gradlew :app:bundleDebugClassesToCompileJar
+./gradlew :app:testDebugUnitTest --tests "*YourTestClassName"
+```
+
+Both must complete with `BUILD SUCCESSFUL`. The full quality gate used by CI and PR checklist remains:
+
+```powershell
+./gradlew :app:testDebugUnitTest :app:ktlintCheck :app:detekt :app:spotlessCheck
+```
+
+### References
+
+This issue repeatedly blocked local verification during the #231 refactor work (see `docs/changes/2026-05-30-issue-231-refactor-suppressions.md` and the PR #241 body).
+
 ## Verification
 
 Run the same quality command used by CI:

@@ -37,6 +37,7 @@ class RoomCategoryRepository(
 ) : CategoryRepository {
     private val categoryDao = database.categoryDao()
     private val itemDao = database.itemDao()
+    private val itemPurgeDao = database.itemPurgeDao()
     private val scoreProfileDao = database.scoreProfileDao()
 
     override fun observeCategories(): Flow<List<Category>> =
@@ -87,8 +88,8 @@ class RoomCategoryRepository(
                 )
             }
             scoreProfileDao.deleteOrphanedProfiles()
-            itemDao.purgeOrphanedRatings()
-            itemDao.purgeOrphanedSoftDeletedValues()
+            itemPurgeDao.purgeOrphanedRatings()
+            itemPurgeDao.purgeOrphanedSoftDeletedValues()
         }
         val categoriesAfter = categoryDao.observeCategoriesWithAttributes().first()
         categoriesBefore
@@ -136,8 +137,8 @@ class RoomCategoryRepository(
             requireNoOrphanedDependents(attributeIdsBeingRemoved)
             categoryDao.deleteCategoryByName(originalName)
             scoreProfileDao.deleteOrphanedProfiles()
-            itemDao.purgeOrphanedRatings()
-            itemDao.purgeOrphanedSoftDeletedValues()
+            itemPurgeDao.purgeOrphanedRatings()
+            itemPurgeDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
@@ -145,8 +146,8 @@ class RoomCategoryRepository(
         database.withTransaction {
             categoryDao.deleteCategoryByName(name)
             scoreProfileDao.deleteOrphanedProfiles()
-            itemDao.purgeOrphanedRatings()
-            itemDao.purgeOrphanedSoftDeletedValues()
+            itemPurgeDao.purgeOrphanedRatings()
+            itemPurgeDao.purgeOrphanedSoftDeletedValues()
         }
     }
 
@@ -204,6 +205,7 @@ class RoomRatedItemRepository(
 ) : RatedItemRepository {
     private val categoryDao = database.categoryDao()
     private val itemDao = database.itemDao()
+    private val itemPurgeDao = database.itemPurgeDao()
     private val snapshotDao = database.attributeRankSnapshotDao()
     private val rankRatedItemsUseCase = RankRatedItemsUseCase()
 
@@ -311,7 +313,7 @@ class RoomRatedItemRepository(
             }
             val keepAttributeIds = valueEntities.map { it.attributeId }
             if (keepAttributeIds.isNotEmpty()) {
-                itemDao.softDeleteItemValuesNotIn(ratedItem.id, keepAttributeIds, updatedAt)
+                itemPurgeDao.softDeleteItemValuesNotIn(ratedItem.id, keepAttributeIds, updatedAt)
             }
         }
     }

@@ -4,8 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 
 @Dao
-@Suppress("TooManyFunctions")
-interface DatabaseIntegrityDao {
+interface RatingIntegrityDao {
     @Query("SELECT COUNT(*) FROM ratings WHERE attribute_id NOT IN (SELECT id FROM attributes)")
     suspend fun countOrphanRatings(): Int
 
@@ -19,7 +18,10 @@ interface DatabaseIntegrityDao {
         """,
     )
     suspend fun sampleOrphanRatings(limit: Int): List<String>
+}
 
+@Dao
+interface ItemValueIntegrityDao {
     @Query(
         """
         SELECT COUNT(*)
@@ -63,7 +65,10 @@ interface DatabaseIntegrityDao {
         """,
     )
     suspend fun sampleOrphanSoftDeletedItemValues(limit: Int): List<String>
+}
 
+@Dao
+interface ScoreProfileIntegrityDao {
     @Query(
         """
         SELECT COUNT(*)
@@ -105,7 +110,10 @@ interface DatabaseIntegrityDao {
         """,
     )
     suspend fun sampleScoreProfileAttributesMissingAttributes(limit: Int): List<String>
+}
 
+@Dao
+interface CategoryIntegrityDao {
     @Query(
         """
         SELECT COUNT(*)

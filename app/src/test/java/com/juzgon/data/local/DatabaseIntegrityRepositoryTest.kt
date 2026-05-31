@@ -35,7 +35,10 @@ class DatabaseIntegrityRepositoryTest {
                 .build()
         diagnostics =
             DatabaseIntegrityRepository(
-                dao = database.databaseIntegrityDao(),
+                ratingIntegrityDao = database.ratingIntegrityDao(),
+                itemValueIntegrityDao = database.itemValueIntegrityDao(),
+                scoreProfileIntegrityDao = database.scoreProfileIntegrityDao(),
+                categoryIntegrityDao = database.categoryIntegrityDao(),
                 sampleLimit = 2,
             )
     }
@@ -149,16 +152,17 @@ class DatabaseIntegrityRepositoryTest {
     fun diagnose_reportsScoreProfileAttributesMissingAttributes() =
         runTest {
             seedCategoryWithAttribute()
+            val brokenProfile =
+                ScoreProfileEntity(
+                    id = "profile-a",
+                    categoryName = CATEGORY_NAME,
+                    name = "Broken",
+                )
+            database.scoreProfileDao().upsertProfile(brokenProfile)
             database
-                .scoreProfileDao()
-                .saveProfileWithAttributes(
-                    profile =
-                        ScoreProfileEntity(
-                            id = "profile-a",
-                            categoryName = CATEGORY_NAME,
-                            name = "Broken",
-                        ),
-                    attributes = listOf(ScoreProfileAttributeEntity("profile-a", ATTRIBUTE_ID)),
+                .scoreProfileAttributeDao()
+                .upsertProfileAttributes(
+                    listOf(ScoreProfileAttributeEntity("profile-a", ATTRIBUTE_ID)),
                 )
             insertScoreProfileAttributeWithForeignKeysDisabled("profile-a", "missing")
 
@@ -220,4 +224,28 @@ class DatabaseIntegrityRepositoryTest {
         const val ATTRIBUTE_ID = "Food/Taste"
         const val CATEGORY_NAME = "Food"
     }
+
+    @Test
+    fun diagnose_reportsCategoriesWithZeroRankableWeight_forNonRankableAttributeTypes() =
+        runTest {
+            // Category with only non-rankable attributes (BOOLEAN has no weight for ranking)
+            database.categoryDao().upsertCategory(CategoryEntity(name = "Survey"))
+            database
+                .categoryDao()
+                .upsertAttributes(
+                    listOf(
+                        AttributeEntity(
+                            id = "Survey/Consent",
+                            categoryName = "Survey",
+                            type = "BOOLEAN",
+                            weight = 1.0,
+                        ),
+                    ),
+                )
+
+            val report = diagnostics.diagnose()
+
+            // BOOLEAN (and other non-rankable types) are correctly excluded from "zero rankable weight" detection per current integrity query
+            assertEquals(0, report.categoriesWithZeroRankableWeight.count)
+        }
 }

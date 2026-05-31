@@ -113,6 +113,33 @@ class ItemDetailModelsTest {
     }
 
     @Test
+    fun latestPreviousAttributeRankSnapshotsReturnsOnlyTheLatestBeforeCurrent() {
+        val snapshots =
+            listOf(
+                AttributeRankSnapshot(itemId = "a", capturedAt = 100L, attributeId = "attr", value = 8, rank = 1),
+                AttributeRankSnapshot(itemId = "a", capturedAt = 200L, attributeId = "attr", value = 7, rank = 2),
+                AttributeRankSnapshot(itemId = "a", capturedAt = 300L, attributeId = "attr", value = 9, rank = 1),
+            )
+
+        val previous = latestPreviousAttributeRankSnapshots(snapshots, currentUpdatedAt = 250L)
+
+        assertEquals(1, previous.size)
+        assertEquals(200L, previous.single().capturedAt)
+    }
+
+    @Test
+    fun computeWeightedAverageTextReturnsFormattedAverage() {
+        val result = computeWeightedAverageText(listOf(0.5 to 8, 0.5 to 6))
+
+        assertEquals("7.0", result)
+    }
+
+    @Test
+    fun computeWeightedAverageTextReturnsDashForEmpty() {
+        assertEquals("—", computeWeightedAverageText(emptyList()))
+    }
+
+    @Test
     fun rankedAttributeCardsClampsDisplayValuesOutsideTenPointScale() {
         val cards =
             rankedAttributeCards(

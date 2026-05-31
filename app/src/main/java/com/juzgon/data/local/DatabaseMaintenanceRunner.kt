@@ -20,20 +20,24 @@ data class DatabaseMaintenanceResult(
 class DatabaseMaintenanceRunner(
     private val database: JuzgonDatabase,
     private val diagnostics: DatabaseIntegrityRepository =
-        DatabaseIntegrityRepository(database.databaseIntegrityDao()),
+        DatabaseIntegrityRepository(
+            ratingIntegrityDao = database.ratingIntegrityDao(),
+            itemValueIntegrityDao = database.itemValueIntegrityDao(),
+            scoreProfileIntegrityDao = database.scoreProfileIntegrityDao(),
+            categoryIntegrityDao = database.categoryIntegrityDao(),
+        ),
     private val currentTimeMillis: () -> Long = { System.currentTimeMillis() },
 ) {
-    @Suppress("TooGenericExceptionCaught")
-    suspend fun runCleanup(): DatabaseMaintenanceResult? =
-        try {
+    suspend fun runCleanup(): Result<DatabaseMaintenanceResult> =
+        runCatching {
             val diagnosticsBeforeCleanup = diagnostics.diagnose()
             val result =
                 database.withTransaction {
                     val cutoff = currentTimeMillis() - retentionMillis()
                     DatabaseMaintenanceResult(
-                        oldSoftDeletedValuesPurged = database.itemDao().purgeOldSoftDeletedValues(cutoff),
-                        orphanRatingsPurged = database.itemDao().purgeOrphanedRatings(),
-                        orphanSoftDeletedValuesPurged = database.itemDao().purgeOrphanedSoftDeletedValues(),
+                        oldSoftDeletedValuesPurged = database.itemPurgeDao().purgeOldSoftDeletedValues(cutoff),
+                        orphanRatingsPurged = database.itemPurgeDao().purgeOrphanedRatings(),
+                        orphanSoftDeletedValuesPurged = database.itemPurgeDao().purgeOrphanedSoftDeletedValues(),
                         scoreProfilesWithoutAttributesDeleted = database.scoreProfileDao().deleteOrphanedProfiles(),
                         diagnosticsBeforeCleanup = diagnosticsBeforeCleanup,
                     )
@@ -48,9 +52,8 @@ class DatabaseMaintenanceRunner(
                 diagnosticsBeforeCleanup.toLogSummary(),
             )
             result
-        } catch (error: Exception) {
+        }.onFailure { error ->
             Timber.e(error, "Database cleanup failed")
-            null
         }
 
     private fun retentionMillis(): Long =

@@ -4,8 +4,10 @@ import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.CategoryItemCount
 import com.juzgon.data.local.dao.CategoryWithAttributes
 import com.juzgon.data.local.dao.ItemDao
+import com.juzgon.data.local.dao.ItemPurgeDao
 import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.dao.RankedItemWithRatings
+import com.juzgon.data.local.dao.ScoreProfileAttributeDao
 import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
@@ -33,7 +35,9 @@ import org.robolectric.annotation.Config
 class BackupContractTest {
     private lateinit var categoryDao: ContractCategoryDao
     private lateinit var itemDao: ContractItemDao
+    private lateinit var itemPurgeDao: ContractItemPurgeDao
     private lateinit var scoreProfileDao: ContractScoreProfileDao
+    private lateinit var scoreProfileAttributeDao: ContractScoreProfileAttributeDao
     private lateinit var service: JsonBackupService
     private lateinit var validator: JsonBackupValidator
 
@@ -41,14 +45,18 @@ class BackupContractTest {
     fun setUp() {
         categoryDao = ContractCategoryDao()
         itemDao = ContractItemDao()
+        itemPurgeDao = ContractItemPurgeDao()
         scoreProfileDao = ContractScoreProfileDao()
+        scoreProfileAttributeDao = ContractScoreProfileAttributeDao()
         validator = JsonBackupValidator()
         service =
             JsonBackupService(
                 validator = validator,
                 categoryDao = categoryDao,
                 itemDao = itemDao,
+                itemPurgeDao = itemPurgeDao,
                 scoreProfileDao = scoreProfileDao,
+                scoreProfileAttributeDao = scoreProfileAttributeDao,
                 runInTransaction = { block -> block() },
             )
     }
@@ -260,7 +268,7 @@ class BackupContractTest {
                 listOf(
                     ScoreProfileEntity("p1", "Cars", "Default", 0L, 0L),
                 )
-            scoreProfileDao.profileAttributes.value =
+            scoreProfileAttributeDao.profileAttributes.value =
                 listOf(
                     ScoreProfileAttributeEntity("p1", "Speed", 0),
                 )
@@ -419,18 +427,6 @@ class BackupContractTest {
 
         override suspend fun deleteItemValuesForItem(itemId: String) = error("not used")
 
-        override suspend fun softDeleteItemValuesNotIn(
-            itemId: String,
-            keepAttributeIds: List<String>,
-            deletedAt: Long,
-        ) = error("not used")
-
-        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) = error("not used")
-
-        override suspend fun purgeOrphanedRatings() = error("not used")
-
-        override suspend fun purgeOrphanedSoftDeletedValues() = error("not used")
-
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
 
         override fun observeItemWithRatings(id: String): Flow<ItemWithRatings?> = error("not used")
@@ -443,17 +439,39 @@ class BackupContractTest {
     @Suppress("TooManyFunctions")
     private class ContractScoreProfileDao : ScoreProfileDao {
         val profiles = MutableStateFlow<List<ScoreProfileEntity>>(emptyList())
-        val profileAttributes = MutableStateFlow<List<ScoreProfileAttributeEntity>>(emptyList())
 
         override fun observeAllProfiles(): Flow<List<ScoreProfileEntity>> = profiles
-
-        override fun observeAllProfileAttributes(): Flow<List<ScoreProfileAttributeEntity>> = profileAttributes
 
         override fun observeProfilesForCategory(categoryName: String): Flow<List<ScoreProfileEntity>> = error("not used")
 
         override fun observeProfile(id: String): Flow<ScoreProfileEntity?> = error("not used")
 
         override suspend fun upsertProfile(profile: ScoreProfileEntity) = error("not used")
+
+        override suspend fun deleteProfile(id: String) = error("not used")
+
+        override suspend fun deleteOrphanedProfiles() = error("not used")
+    }
+
+    private class ContractItemPurgeDao : ItemPurgeDao {
+        override suspend fun softDeleteItemValuesNotIn(
+            itemId: String,
+            keepAttributeIds: List<String>,
+            deletedAt: Long,
+        ) = error("not used")
+
+        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) = error("not used")
+
+        override suspend fun purgeOrphanedRatings() = error("not used")
+
+        override suspend fun purgeOrphanedSoftDeletedValues() = error("not used")
+    }
+
+    @Suppress("TooManyFunctions")
+    private class ContractScoreProfileAttributeDao : ScoreProfileAttributeDao {
+        val profileAttributes = MutableStateFlow<List<ScoreProfileAttributeEntity>>(emptyList())
+
+        override fun observeAllProfileAttributes(): Flow<List<ScoreProfileAttributeEntity>> = profileAttributes
 
         override suspend fun deleteAttributesForProfile(profileId: String) = error("not used")
 
@@ -462,10 +480,6 @@ class BackupContractTest {
         override fun observeAttributesForProfile(profileId: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
 
         override fun observeAttributesForCategory(categoryName: String): Flow<List<ScoreProfileAttributeEntity>> = error("not used")
-
-        override suspend fun deleteProfile(id: String) = error("not used")
-
-        override suspend fun deleteOrphanedProfiles() = error("not used")
 
         override suspend fun saveProfileWithAttributes(
             profile: ScoreProfileEntity,

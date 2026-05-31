@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.data.local.dao
 
 import androidx.room.ColumnInfo
@@ -67,7 +69,6 @@ data class RankedItemWithRatings(
 )
 
 @Dao
-@Suppress("TooManyFunctions")
 interface CategoryDao {
     @Upsert
     suspend fun upsertCategory(category: CategoryEntity)
@@ -153,7 +154,6 @@ interface CategoryDao {
 }
 
 @Dao
-@Suppress("TooManyFunctions")
 interface ItemDao {
     @Upsert
     suspend fun upsertItem(item: ItemEntity)
@@ -207,6 +207,12 @@ interface ItemDao {
     @Query("DELETE FROM item_values WHERE item_id = :itemId")
     suspend fun deleteItemValuesForItem(itemId: String)
 
+    @Query("DELETE FROM items WHERE id = :id")
+    suspend fun deleteItemById(id: String)
+}
+
+@Dao
+interface ItemPurgeDao {
     @Query(
         """
         UPDATE item_values SET deleted_at = :deletedAt
@@ -220,9 +226,6 @@ interface ItemDao {
         keepAttributeIds: List<String>,
         deletedAt: Long,
     )
-
-    @Query("DELETE FROM items WHERE id = :id")
-    suspend fun deleteItemById(id: String)
 
     @Query("DELETE FROM item_values WHERE deleted_at IS NOT NULL AND deleted_at < :cutoff")
     suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int

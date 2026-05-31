@@ -1,0 +1,22 @@
+# Minimal detekt configuration for Juzgon
+# Excluding test files
+
+complexity:
+  LongMethod:
+    excludes: ['**/*Test.kt']
+
+  LongParameterList:
+    excludes: ['**/*Test.kt']
+
+  TooManyFunctions:
+    excludes:
+      - '**/*Test.kt'   # Large test classes with many test methods + helpers are standard and covered by LargeClass in many cases
+
+  LargeClass:
+    excludes: ['**/*Test.kt']  # Test classes often have many methods; not high value
+
+style:
+  MaxLineLength:
+    excludes: ['**/*Test.kt']  # Test code often has long literals/fixtures; not high value
+
+# All other rules remain at default (strict) for production logic.
