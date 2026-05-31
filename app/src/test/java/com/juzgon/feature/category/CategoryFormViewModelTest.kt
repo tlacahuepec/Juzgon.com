@@ -584,7 +584,7 @@ class CategoryFormViewModelTest {
                             ),
                     ),
                 )
-            viewModel.loadCategory("Cars")
+            viewModel.loadCategory("Player")
 
             val key = currentState.attributes.first().key
             viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.OLDER_IS_BETTER)

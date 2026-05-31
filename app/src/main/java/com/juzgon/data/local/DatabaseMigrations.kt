@@ -232,7 +232,7 @@ object DatabaseMigrations {
                         SELECT a.category_name || '/' ||
                             SUBSTR(
                                 item_values.attribute_id,
-                                INSTR(item_values.attribute_id, '/') + 1,
+                                INSTR(item_values.attribute_id, '/') + 1
                             )
                         FROM ratings r
                         INNER JOIN attributes a ON a.id = r.attribute_id
