@@ -10,10 +10,15 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.unit.dp
+import com.juzgon.ui.theme.JuzgonTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -88,14 +93,75 @@ class HomeScreenTest {
         composeRule.onNodeWithText("Name").assertIsDisplayed()
         composeRule.onNodeWithText("Food").assertIsDisplayed()
         composeRule.onNodeWithText("0 items · 2 attributes").assertIsDisplayed()
+        composeRule.onNodeWithText("Food").performClick()
+        composeRule.onNodeWithTag(HOME_CATEGORY_LIST_TAG).performScrollToIndex(1)
         composeRule.onNodeWithText("Travel").assertIsDisplayed()
-        composeRule.onNodeWithText("0 items · 1 attribute").assertIsDisplayed()
+        composeRule.onNodeWithText("0 items · 1 attribute").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Create category").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Create category").performClick()
 
         assertTrue(createClicked)
-        composeRule.onNodeWithText("Food").performClick()
 
+        assertEquals("Food", openedCategory)
+    }
+
+    @Test
+    fun homeVisualSummaryShowsDerivedStatsAndKeepsActionsReachable() {
+        var createClicked = false
+        var openedCategory = ""
+        var exportClicked = false
+        var aboutClicked = false
+        var settingsClicked = false
+
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 2, itemCount = 3),
+                                    HomeCategoryUiModel(name = "Travel", attributeCount = 1, itemCount = 1),
+                                ),
+                            collectionStats =
+                                HomeCollectionStatsUiModel(
+                                    categoryCount = 2,
+                                    itemCount = 4,
+                                    attributeCount = 3,
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = { createClicked = true },
+                            onCategoryClick = { openedCategory = it },
+                            onRetry = {},
+                            onExportClick = { exportClicked = true },
+                            onAboutClick = { aboutClicked = true },
+                            onAiSettingsClick = { settingsClicked = true },
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Collection overview").assertIsDisplayed()
+        composeRule.onNodeWithText("2 categories").assertIsDisplayed()
+        composeRule.onNodeWithText("4 items").assertIsDisplayed()
+        composeRule.onNodeWithText("3 attributes").assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Home collection summary, 2 categories, 4 items, 3 attributes")
+            .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Export backup").performClick()
+        composeRule.onNodeWithContentDescription("About").performClick()
+        composeRule.onNodeWithContentDescription("AI Settings").performClick()
+        composeRule.onAllNodesWithContentDescription("Create category")[0].performClick()
+        composeRule.onNodeWithText("Food").performScrollTo().performClick()
+
+        assertTrue(exportClicked)
+        assertTrue(aboutClicked)
+        assertTrue(settingsClicked)
+        assertTrue(createClicked)
         assertEquals("Food", openedCategory)
     }
 

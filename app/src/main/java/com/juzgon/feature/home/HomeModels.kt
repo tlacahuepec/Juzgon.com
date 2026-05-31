@@ -22,6 +22,12 @@ data class HomeCategoryUiModel(
     val itemCount: Int = 0,
 )
 
+data class HomeCollectionStatsUiModel(
+    val categoryCount: Int = 0,
+    val itemCount: Int = 0,
+    val attributeCount: Int = 0,
+)
+
 data class HomeScreenActions(
     val onSearchQueryChange: (String) -> Unit,
     val onSortOptionSelected: (HomeSortOption) -> Unit,
@@ -37,6 +43,7 @@ data class HomeUiState(
     val searchQuery: String = "",
     val sortOption: HomeSortOption = HomeSortOption.Recent,
     val categories: List<HomeCategoryUiModel> = emptyList(),
+    val collectionStats: HomeCollectionStatsUiModel = HomeCollectionStatsUiModel(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 ) {
@@ -51,6 +58,12 @@ object HomeStateReducer {
         sortOption: HomeSortOption,
     ): HomeUiState {
         val normalizedQuery = searchQuery.trim()
+        val collectionStats =
+            HomeCollectionStatsUiModel(
+                categoryCount = categories.size,
+                itemCount = categories.sumOf { category -> category.itemCount },
+                attributeCount = categories.sumOf { category -> category.attributes.size },
+            )
         val visibleCategories =
             categories
                 .filter { category ->
@@ -77,6 +90,7 @@ object HomeStateReducer {
             searchQuery = searchQuery,
             sortOption = sortOption,
             categories = visibleCategories,
+            collectionStats = collectionStats,
             isLoading = false,
         )
     }
