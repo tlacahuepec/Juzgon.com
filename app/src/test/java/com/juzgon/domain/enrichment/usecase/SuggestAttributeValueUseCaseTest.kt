@@ -428,7 +428,7 @@ class SuggestAttributeValueUseCaseTest {
             val result = useCase(request)
 
             // TDD extension: explicitly verify catalogType is forwarded (the original test name/intent + #231 coverage comment)
-            assertEquals(CatalogType.PERSON, fakeProvider.lastRequest?.catalogType)
+            assertEquals(CatalogType.CHARACTER, fakeProvider.lastRequest?.catalogType)
 
             assertEquals(EnrichmentStatus.FOUND, result.status)
         }
