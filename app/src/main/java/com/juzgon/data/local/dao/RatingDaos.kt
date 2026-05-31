@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.data.local.dao
 
 import androidx.room.ColumnInfo

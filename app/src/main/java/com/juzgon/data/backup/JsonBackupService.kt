@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.first
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val SCHEMA_VERSION = 5
-
 class JsonBackupService(
     private val validator: BackupValidator,
     private val categoryDao: CategoryDao,

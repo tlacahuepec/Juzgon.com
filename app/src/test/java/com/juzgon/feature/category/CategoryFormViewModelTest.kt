@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -46,7 +47,8 @@ class CategoryFormViewModelTest {
     fun setUp() {
         repository = FakeCategoryRepository()
         ratedItemRepository = FakeRatedItemRepository()
-        viewModel = CategoryFormViewModel(repository, ratedItemRepository, ValidateCategoryUseCase())
+        viewModel =
+            CategoryFormViewModel(repository, ratedItemRepository, ValidateCategoryUseCase())
     }
 
     @Test
@@ -76,7 +78,10 @@ class CategoryFormViewModelTest {
             viewModel.onSaveClick()
 
             assertEquals(
-                Category(name = "Food", attributes = listOf(Attribute(id = "Food/Taste", weight = 1.0))),
+                Category(
+                    name = "Food",
+                    attributes = listOf(Attribute(id = "Food/Taste", weight = 1.0)),
+                ),
                 repository.savedCategory,
             )
             assertTrue(currentState.saveCompleted)
@@ -311,7 +316,10 @@ class CategoryFormViewModelTest {
             viewModel.onAttributeDiamondOrderChanged(key, "0")
 
             assertFalse(currentState.saveEnabled)
-            assertEquals("Diamond order must be greater than 0", attributeErrors.single().diamondOrder)
+            assertEquals(
+                "Diamond order must be greater than 0",
+                attributeErrors.single().diamondOrder,
+            )
         }
 
     @Test
@@ -321,7 +329,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -352,7 +366,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -383,7 +403,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -414,7 +440,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -444,7 +476,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -475,7 +513,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -504,7 +548,16 @@ class CategoryFormViewModelTest {
         runTest {
             repository.categories.value =
                 listOf(
-                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Birthday", type = AttributeType.DATE))),
+                    Category(
+                        name = "Cars",
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Cars/TopSpeed",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
+                    ),
                 )
             viewModel.loadCategory("Cars")
 
@@ -513,6 +566,31 @@ class CategoryFormViewModelTest {
 
             // For NUMBER it should be ignored (no change)
             assertEquals(null, currentState.attributes.first().scoringDirection)
+        }
+
+    @Test
+    fun onAttributeScoringDirectionChangedAffectsDateAttributes() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Player",
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Player/Birthday",
+                                    type = AttributeType.DATE,
+                                ),
+                            ),
+                    ),
+                )
+            viewModel.loadCategory("Cars")
+
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.OLDER_IS_BETTER)
+
+            // For NUMBER it should be ignored (no change) — only DATE attrs accept scoringDirection
+            assertNotNull(currentState.attributes.first().scoringDirection)
         }
 
     @Test
@@ -544,7 +622,14 @@ class CategoryFormViewModelTest {
             assertEquals(
                 Category(
                     name = "Food",
-                    attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.DATE, isRequired = false)),
+                    attributes =
+                        listOf(
+                            Attribute(
+                                id = "Food/Taste",
+                                type = AttributeType.DATE,
+                                isRequired = false,
+                            ),
+                        ),
                 ),
                 repository.savedCategory,
             )
@@ -560,7 +645,10 @@ class CategoryFormViewModelTest {
                         attributes =
                             listOf(
                                 Attribute(id = "People/Score", type = AttributeType.NUMBER),
-                                Attribute(id = "People/Nationality", type = AttributeType.NATIONALITY),
+                                Attribute(
+                                    id = "People/Nationality",
+                                    type = AttributeType.NATIONALITY,
+                                ),
                             ),
                     ),
                 )
@@ -574,7 +662,10 @@ class CategoryFormViewModelTest {
                                 values =
                                     listOf(
                                         ItemAttributeValue(
-                                            Attribute("People/Nationality", type = AttributeType.NATIONALITY),
+                                            Attribute(
+                                                "People/Nationality",
+                                                type = AttributeType.NATIONALITY,
+                                            ),
                                             "US",
                                         ),
                                     ),
@@ -759,6 +850,10 @@ class CategoryFormViewModelTest {
             viewModel.onNameChanged("Vehicles")
             viewModel.onDescriptionChanged("All my cars")
             viewModel.onCatalogTypeChanged(CatalogType.OTHER)
+            // Populate the default seeded attribute (from coordinator init) so saveEnabled passes
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onAttributeWeightChanged(key, "10")
             viewModel.onSaveClick()
             advanceUntilIdle()
 

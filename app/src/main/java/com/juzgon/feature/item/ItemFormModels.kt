@@ -173,19 +173,13 @@ private fun ItemValueInput.valueError(): String? =
             }
     }
 
-private fun ItemValueInput.dateError(): String? {
-    if (attribute.type != AttributeType.DATE) return null
-
-    if (valueText.isBlank()) {
-        return if (attribute.isRequired) "${attribute.displayName} is required" else null
+private fun ItemValueInput.dateError(): String? =
+    when {
+        attribute.type != AttributeType.DATE -> null
+        valueText.isBlank() -> if (attribute.isRequired) "${attribute.displayName} is required" else null
+        !isValidDateFormat(valueText) -> "${attribute.displayName} must be YYYY-MM-DD format"
+        else -> null
     }
-
-    return if (!isValidDateFormat(valueText)) {
-        "${attribute.displayName} must be YYYY-MM-DD format"
-    } else {
-        null
-    }
-}
 
 private fun isValidDateFormat(dateText: String): Boolean {
     val dateRegex = Regex("^\\d{4}-\\d{2}-\\d{2}$")
@@ -210,17 +204,17 @@ internal fun millisToIsoDate(millis: Long): String =
         .toLocalDate()
         .format(DateTimeFormatter.ISO_LOCAL_DATE)
 
+@Suppress("ReturnCount")
 private fun ItemValueInput.imageListError(): String? {
     if (attribute.isRequired && imageReferences.isEmpty()) {
         return "${attribute.displayName} is required"
     }
-
     val firstBad =
         imageReferences.firstOrNull { ref ->
             !ref.hasSupportedImageFormat() ||
                 (ref.sizeBytes != null && ref.sizeBytes > IMAGE_MAX_SIZE_BYTES)
-        } ?: return null
-
+        }
+    if (firstBad == null) return null
     return if (!firstBad.hasSupportedImageFormat()) {
         "Image must be JPG, JPEG, PNG, or WEBP"
     } else {

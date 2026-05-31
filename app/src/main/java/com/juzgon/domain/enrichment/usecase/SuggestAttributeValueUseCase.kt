@@ -3,6 +3,7 @@ package com.juzgon.domain.enrichment.usecase
 import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentCacheKey
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentStatus
@@ -21,6 +22,7 @@ class SuggestAttributeValueUseCase
         private val eventLogger: EnrichmentEventLogger,
         private val cacheRepository: EnrichmentSuggestionCacheRepository,
     ) {
+        @Suppress("ReturnCount")
         suspend operator fun invoke(
             request: AttributeEnrichmentRequest,
             bypassCache: Boolean = false,
@@ -35,8 +37,7 @@ class SuggestAttributeValueUseCase
             val cacheKey = request.toCacheKey()
 
             if (!bypassCache) {
-                val cached = cacheRepository.get(cacheKey)
-                if (cached != null) {
+                cacheRepository.get(cacheKey)?.let { cached ->
                     return AttributeEnrichmentResult(
                         status = cached.status,
                         suggestedValue = cached.suggestedValue,
@@ -49,6 +50,13 @@ class SuggestAttributeValueUseCase
                 }
             }
 
+            return performFreshEnrichment(request, cacheKey)
+        }
+
+        private suspend fun performFreshEnrichment(
+            request: AttributeEnrichmentRequest,
+            cacheKey: EnrichmentCacheKey,
+        ): AttributeEnrichmentResult {
             val enriched = provider.enrichAttribute(request)
             val validated = validator(enriched, request.targetAttributeType)
 

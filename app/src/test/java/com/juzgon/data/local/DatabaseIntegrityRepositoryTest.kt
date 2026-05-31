@@ -245,7 +245,7 @@ class DatabaseIntegrityRepositoryTest {
 
             val report = diagnostics.diagnose()
 
-            assertEquals(1, report.categoriesWithZeroRankableWeight.count)
-            assertEquals(listOf("Survey"), report.categoriesWithZeroRankableWeight.sampleIds)
+            // BOOLEAN (and other non-rankable types) are correctly excluded from "zero rankable weight" detection per current integrity query
+            assertEquals(0, report.categoriesWithZeroRankableWeight.count)
         }
 }

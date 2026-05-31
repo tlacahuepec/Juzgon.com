@@ -70,6 +70,7 @@ data class CategoryDetailSortOptionUiModel(
 object CategoryDetailReducer {
     fun loading(categoryName: String): CategoryDetailUiState = CategoryDetailUiState(categoryName = categoryName)
 
+    @Suppress("LongParameterList")
     fun reduce(
         categoryName: String,
         category: Category?,
@@ -129,14 +130,18 @@ object CategoryDetailReducer {
         activeProfileId: String?,
         profiles: List<ScoreProfile>,
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase?,
-    ): List<RankedRatedItem> {
-        if (activeProfileId == null || calculateProfileRankedItems == null) return rankedItems
-        val profile = profiles.firstOrNull { it.id == activeProfileId } ?: return rankedItems
-
-        val ratingSystem = RatingSystem(category.attributes.filter { it.isRankable })
-        val ratedItems = rankedItems.map { it.item }
-        return calculateProfileRankedItems(profile, ratingSystem, ratedItems)
-    }
+    ): List<RankedRatedItem> =
+        if (activeProfileId == null || calculateProfileRankedItems == null) {
+            rankedItems
+        } else {
+            profiles
+                .firstOrNull { it.id == activeProfileId }
+                ?.let { profile ->
+                    val ratingSystem = RatingSystem(category.attributes.filter { it.isRankable })
+                    val ratedItems = rankedItems.map { it.item }
+                    calculateProfileRankedItems(profile, ratingSystem, ratedItems)
+                } ?: rankedItems
+        }
 
     private fun resolveSelectedSortOption(
         requested: CategoryDetailSortOption,
@@ -298,20 +303,16 @@ private fun RatedItem.textValueForAttribute(attributeId: String): String? =
         ?.trim()
         ?.takeIf { valueText -> valueText.isNotEmpty() }
 
-private fun RatedItem.primaryImageValue(category: Category): String? {
-    val imageAttribute =
-        category.attributes.firstOrNull { it.type == AttributeType.IMAGE }
-            ?: return null
-
-    val rawValue =
-        values
-            .firstOrNull { it.attribute.id == imageAttribute.id }
-            ?.value
-            ?.takeIf { it.isNotBlank() }
-            ?: return null
-
-    return decodeItemImageReferences(rawValue).firstOrNull()?.sourceUri
-}
+private fun RatedItem.primaryImageValue(category: Category): String? =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.IMAGE }
+        ?.let { imgAttr ->
+            values
+                .firstOrNull { it.attribute.id == imgAttr.id }
+                ?.value
+                ?.takeIf { it.isNotBlank() }
+                ?.let { decodeItemImageReferences(it).firstOrNull()?.sourceUri }
+        }
 
 private fun Int.toAttributeSummary(): String =
     if (this == 1) {
@@ -322,18 +323,14 @@ private fun Int.toAttributeSummary(): String =
 
 private fun Double.toAverageScoreText(): String = String.format(Locale.US, "%.1f", this)
 
-private fun RatedItem.resolveNationalityBadge(category: Category): String? {
-    val nationalityAttribute =
-        category.attributes.firstOrNull { it.type == AttributeType.NATIONALITY }
-            ?: return null
-
-    val code =
-        values
-            .firstOrNull { it.attribute.id == nationalityAttribute.id }
-            ?.value
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: return null
-
-    return NationalityDataset.findByCode(code)?.flagEmoji
-}
+private fun RatedItem.resolveNationalityBadge(category: Category): String? =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.NATIONALITY }
+        ?.let { natAttr ->
+            values
+                .firstOrNull { it.attribute.id == natAttr.id }
+                ?.value
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { NationalityDataset.findByCode(it)?.flagEmoji }
+        }

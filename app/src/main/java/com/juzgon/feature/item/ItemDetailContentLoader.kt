@@ -87,6 +87,7 @@ class ItemDetailContentLoader(
                 }
         }
 
+    @Suppress("ReturnCount")
     private suspend fun resolveProfileBreakdown(
         categoryName: String,
         activeProfileId: String?,

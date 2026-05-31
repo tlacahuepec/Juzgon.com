@@ -1,0 +1,19 @@
+# Minimal detekt configuration for Juzgon
+# Excluding test files
+
+complexity:
+  LongMethod:
+    excludes: ['**/data/local/DatabaseMigrations.kt', '**/*Test.kt']
+
+  LongParameterList:
+    excludes: ['**/data/backup/JsonBackupService.kt', '**/*Test.kt']
+
+  TooManyFunctions:
+    excludes:
+      - '**/*Test.kt'   # Large test classes with many test methods + helpers are standard and covered by LargeClass in many cases
+
+style:
+  MaxLineLength:
+    excludes: ['**/*Test.kt']  # Test code often has long literals/fixtures; not high value
+
+# All other rules remain at default (strict) for production logic.

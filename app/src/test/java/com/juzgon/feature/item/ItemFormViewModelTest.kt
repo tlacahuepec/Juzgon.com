@@ -1152,26 +1152,13 @@ class ItemFormViewModelTest {
     @Test
     fun onSaveClick_withMixedScoresAndValues_succeeds() =
         runTest {
-            val photoAttr = Attribute("Photo", type = AttributeType.IMAGE)
-            categoryRepository.categories.value =
-                listOf(
-                    Category(
-                        "Cars",
-                        attributes =
-                            listOf(
-                                speed,
-                                brakes,
-                                photoAttr,
-                            ),
-                    ),
-                )
+            categoryRepository.categories.value = listOf(carsCategory)
             viewModel.loadCategory("Cars")
             advanceUntilIdle()
 
             viewModel.onTitleChanged("Test Car")
             viewModel.onScoreChanged("Speed", "8")
             viewModel.onScoreChanged("Brakes", "9")
-            // Note: Image values are more complex; we test basic save path here
 
             viewModel.onSaveClick()
             advanceUntilIdle()
@@ -1256,7 +1243,9 @@ class ItemFormViewModelTest {
             advanceUntilIdle()
 
             assertFalse(currentState.saveCompleted)
-            assertNotNull(currentState.errorMessage)
+            // errorMessage is only for exceptions; validation errors use titleError/scoreErrors + saveEnabled flag (post-refactor shape)
+            assertTrue(currentState.titleError != null || currentState.scoreErrors.isNotEmpty() || currentState.valueErrors.isNotEmpty())
+            assertNull(ratedItemRepository.savedItem)
         }
 
     @Test
@@ -1363,16 +1352,7 @@ class ItemFormViewModelTest {
             viewModel.loadCategory("Cars")
             advanceUntilIdle()
 
-            val initialRefs =
-                listOf(
-                    ItemImageReference("img1", "content://1"),
-                    ItemImageReference("img2", "content://2"),
-                )
-            // Simulate having images selected
-            // (simplified - in real flow onImagesSelected would be called)
-
-            // Directly manipulate via internal state for test is hard,
-            // so we test the removal logic by checking state after hypothetical selection
+            // Simulate having images selected (test focuses on removal logic via state checks)
             // For now we test that the handler doesn't crash and clears error
             viewModel.onImageSelectionFailed()
             viewModel.onImageRemoved(photoAttr.id, "img1")
@@ -1470,7 +1450,8 @@ class ItemFormViewModelTest {
             advanceUntilIdle()
 
             assertFalse(currentState.saveCompleted)
-            assertNotNull(currentState.errorMessage)
+            // errorMessage is only for exceptions; validation errors use titleError/scoreErrors + saveEnabled flag (post-refactor shape)
+            assertTrue(currentState.titleError != null || currentState.scoreErrors.isNotEmpty() || currentState.valueErrors.isNotEmpty())
             assertNull(ratedItemRepository.savedItem)
         }
 

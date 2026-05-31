@@ -396,7 +396,7 @@ class JsonBackupValidatorTest {
         val result = validator.validate(json)
 
         assertFalse(result.isValid)
-        assertContainsError(result, "unknown item")
+        assertContainsError(result, "Image assignment references non-existent item")
     }
 
     @Test

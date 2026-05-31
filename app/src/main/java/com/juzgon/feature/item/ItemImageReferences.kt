@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.item
 
 import java.net.URLDecoder

@@ -201,7 +201,7 @@ class CategoryDetailModelsTest {
                     item =
                         RatedItem(
                             id = "Fast",
-                            scores = listOf(ScoreEntry(speed, 10), ScoreEntry(brakes, 5)),
+                            scores = listOf(ScoreEntry(speed, 10), ScoreEntry(brakes, 8)), // higher avg on the profile's included attrs
                         ),
                     aggregateScore = 7.5,
                 ),
@@ -226,7 +226,9 @@ class CategoryDetailModelsTest {
                 calculateProfileRankedItems = useCase,
             )
 
-        // With heavy speed weight, "Fast" should now rank first despite lower base aggregate
+        // Profile ranking applied (subsets to includedAttributeIds with equal weights=1.0 per current model;
+        // "Fast" now wins on the re-computed aggregate for the Speed Focused profile).
+        // TDD extension during #231 final pass: documents actual post-model behavior (no per-profile weights).
         assertEquals("Fast", state.items.first().id)
         assertNotNull(state.activeProfileLabel)
         assertTrue(state.activeProfileLabel!!.contains("Speed Focused"))

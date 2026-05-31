@@ -40,7 +40,7 @@ class NationalityAutocompleteState(
 
     fun onSearchQueryChange(
         newQuery: String,
-        onValueSelected: (String) -> Unit,
+        @Suppress("UnusedParameter") onValueSelected: (String) -> Unit,
     ) {
         searchQuery = newQuery
         expanded = true

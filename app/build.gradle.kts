@@ -94,6 +94,7 @@ detekt {
     buildUponDefaultConfig = true
     allRules = false
     autoCorrect = false
+    config.setFrom(files("detekt.yml"))
 }
 
 spotless {

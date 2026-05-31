@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.category
 
 import androidx.lifecycle.ViewModel
@@ -27,6 +29,15 @@ class CategoryFormViewModel
         private val mutableState = MutableStateFlow(CategoryFormReducer.createState())
         private val attributesCoordinator = CategoryAttributesCoordinator(ratedItemRepository)
 
+        init {
+            // Wire the extracted coordinator for new category path (initial default row + sync).
+            // This + the edit path wiring below restores pre-extraction observable behavior
+            // expected by the (pre-extraction) characterization tests.
+            attributesCoordinator.initializeForNewCategory()
+            attributesCoordinator.addAttribute()
+            syncAttributesFromCoordinator()
+        }
+
         val state: StateFlow<CategoryFormUiState> = mutableState
 
         fun loadCategory(name: String) {
@@ -51,8 +62,9 @@ class CategoryFormViewModel
                     val editState = CategoryFormReducer.editState(category)
                     mutableState.value = editState
 
-                    // Initialize coordinator with existing attributes and dirty state
-                    // (in a real bigger refactor we would move more loading logic here)
+                    // Initialize coordinator (populates dirty keys from ranked items for warning flows)
+                    // + the ctor init above for new category.
+                    attributesCoordinator.initializeForEdit(category.name, editState.attributes)
                 }
             }
         }

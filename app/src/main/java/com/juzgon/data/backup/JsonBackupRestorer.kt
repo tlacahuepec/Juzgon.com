@@ -22,8 +22,10 @@ import org.json.JSONArray
 class JsonBackupRestorer(
     private val categoryDao: CategoryDao,
     private val itemDao: ItemDao,
+    @Suppress("UnusedPrivateProperty")
     private val itemPurgeDao: ItemPurgeDao,
     private val scoreProfileDao: ScoreProfileDao,
+    @Suppress("UnusedPrivateProperty")
     private val scoreProfileAttributeDao: ScoreProfileAttributeDao,
 ) {
     suspend fun clearExistingData() {
@@ -63,7 +65,12 @@ class JsonBackupRestorer(
                         isRequired = attr.optBoolean("isRequired", true),
                         displayInDiamond = attr.optBoolean("displayInDiamond", true),
                         diamondOrder = if (attr.has("diamondOrder")) attr.getInt("diamondOrder") else null,
-                        scoringDirection = if (attr.has("scoringDirection")) attr.getString("scoringDirection") else null,
+                        scoringDirection =
+                            if (attr.has("scoringDirection")) {
+                                attr.getString("scoringDirection")
+                            } else {
+                                null
+                            },
                     )
                 }
             if (attrs.isNotEmpty()) categoryDao.upsertAttributes(attrs)

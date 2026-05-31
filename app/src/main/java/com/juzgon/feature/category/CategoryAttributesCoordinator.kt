@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
@@ -54,6 +56,7 @@ class CategoryAttributesCoordinator(
 
     fun removeAttribute(key: Long): RemoveAttributeResult =
         if (key in dirtyAttributeKeys) {
+            pendingDeleteKey = key
             RemoveAttributeResult.RequiresConfirmation(key)
         } else {
             doRemoveAttribute(key)
@@ -114,6 +117,8 @@ class CategoryAttributesCoordinator(
         type: AttributeType,
     ): TypeChangeResult =
         if (key in dirtyAttributeKeys) {
+            pendingTypeChange = type
+            pendingTypeChangeKey = key
             TypeChangeResult.RequiresConfirmation(key, type)
         } else {
             update(key) { it.withType(type) }

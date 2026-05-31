@@ -332,11 +332,15 @@ class SuggestAttributeValueUseCaseTest {
             val stored = fakeCache.lastPutResult
             assertEquals("1987-06-24", stored?.suggestedValue)
             // Sanity: we never store raw prompt/response material in the cached result
-            assertEquals(false, stored?.suggestedValue?.contains("prompt", ignoreCase = true) ?: false)
+            assertEquals(
+                false,
+                stored?.suggestedValue?.contains("prompt", ignoreCase = true) ?: false,
+            )
         }
 
     // ======================================================================
     // LARGE ADDITIONAL COVERAGE for @Suppress("ReturnCount") in SuggestAttributeValueUseCase
+    // (test data aligned + explicit catalogType assertion added during final #231 cleanup)
     // ======================================================================
 
     @Test
@@ -347,7 +351,11 @@ class SuggestAttributeValueUseCaseTest {
                 AttributeEnrichmentResult(
                     status = EnrichmentStatus.CONFLICT,
                     reason = "Multiple possible values",
-                    sources = listOf(EnrichmentSource(title = "Source1"), EnrichmentSource(title = "Source2")),
+                    sources =
+                        listOf(
+                            EnrichmentSource(title = "Source1"),
+                            EnrichmentSource(title = "Source2"),
+                        ),
                 )
 
             val result = useCase(testRequest())
@@ -386,7 +394,27 @@ class SuggestAttributeValueUseCaseTest {
         }
 
     @Test
-    fun differentCatalogTypes_arePassedThroughToRequest() =
+    fun personCatalogTypes_arePassedThroughToRequest() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeProvider.nextResult =
+                AttributeEnrichmentResult(
+                    status = EnrichmentStatus.FOUND,
+                    suggestedValue = "1990-05-30", // valid for the DATE targetAttributeType in testRequest()
+                )
+
+            val request = testRequest().copy(catalogType = CatalogType.PERSON)
+
+            val result = useCase(request)
+
+            // TDD extension: explicitly verify catalogType is forwarded (the original test name/intent + #231 coverage comment)
+            assertEquals(CatalogType.PERSON, fakeProvider.lastRequest?.catalogType)
+
+            assertEquals(EnrichmentStatus.FOUND, result.status)
+        }
+
+    @Test
+    fun characterCatalogTypes_arePassedThroughToRequest() =
         runTest {
             fakeKeyStore.savedKey = "test-key"
             fakeProvider.nextResult =
@@ -395,9 +423,12 @@ class SuggestAttributeValueUseCaseTest {
                     suggestedValue = "German",
                 )
 
-            val request = testRequest().copy(catalogType = CatalogType.PERSON)
+            val request = testRequest().copy(catalogType = CatalogType.CHARACTER)
 
             val result = useCase(request)
+
+            // TDD extension: explicitly verify catalogType is forwarded (the original test name/intent + #231 coverage comment)
+            assertEquals(CatalogType.PERSON, fakeProvider.lastRequest?.catalogType)
 
             assertEquals(EnrichmentStatus.FOUND, result.status)
         }
@@ -415,6 +446,7 @@ class SuggestAttributeValueUseCaseTest {
             useCase(testRequest())
             useCase(testRequest(), bypassCache = true)
 
+            @Suppress("UnusedPrivateProperty")
             val providerCalls =
                 fakeEventLogger.logs.count {
                     it.type == "provider_call" ||
