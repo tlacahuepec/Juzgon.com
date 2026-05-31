@@ -193,6 +193,17 @@ class SuggestAttributeValueUseCaseTest {
             targetAttributeType = AttributeType.DATE,
         )
 
+    /** Dedicated builder for the CHARACTER catalog passthrough test (option 2 per review).
+     *  Uses NOTES type (no special validation) so we don't accidentally trigger DATE validation.
+     */
+    private fun characterTestRequest() =
+        testRequest().copy(
+            catalogType = CatalogType.CHARACTER,
+            targetAttributeType = AttributeType.NOTES,
+            targetAttributeKey = "species",
+            targetAttributeLabel = "Species",
+        )
+
     // --- Cache behavior tests (RED first per issue #218) ---
 
     @Test
@@ -420,10 +431,10 @@ class SuggestAttributeValueUseCaseTest {
             fakeProvider.nextResult =
                 AttributeEnrichmentResult(
                     status = EnrichmentStatus.FOUND,
-                    suggestedValue = "German",
+                    suggestedValue = "Maiar",
                 )
 
-            val request = testRequest().copy(catalogType = CatalogType.CHARACTER)
+            val request = characterTestRequest()
 
             val result = useCase(request)
 

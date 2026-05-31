@@ -1226,7 +1226,9 @@ class ItemFormViewModelTest {
             viewModel.onSuggestClick(birthDateAttr.id)
             advanceUntilIdle()
 
-            assertEquals(EnrichmentStatus.ERROR, currentState.enrichmentSheet?.let { it as? EnrichmentSheetState.Error }?.failureCode)
+            // Updated post-refactor (ItemEnrichmentCoordinator + toSheetState mapping)
+            // Missing key now surfaces as the dedicated NoKey state (not a generic Error)
+            assertEquals(EnrichmentSheetState.NoKey, currentState.enrichmentSheet)
         }
 
     @Test
