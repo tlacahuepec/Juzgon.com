@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,15 +48,16 @@ class DatabaseMaintenanceRunnerTest {
             seedCategoryAndItem()
             seedOrphansAndStaleData()
 
-            val result = maintenanceRunner().runCleanup()
-
+            val outcome = maintenanceRunner().runCleanup()
+            assertTrue(outcome.isSuccess)
+            val result = outcome.getOrNull()
             assertNotNull(result)
-            assertEquals(1, result?.oldSoftDeletedValuesPurged)
-            assertEquals(1, result?.orphanRatingsPurged)
-            assertEquals(1, result?.orphanSoftDeletedValuesPurged)
-            assertEquals(1, result?.scoreProfilesWithoutAttributesDeleted)
-            assertEquals(1, result?.diagnosticsBeforeCleanup?.orphanRatings?.count)
-            assertEquals(1, result?.diagnosticsBeforeCleanup?.orphanActiveItemValues?.count)
+            assertEquals(1, result!!.oldSoftDeletedValuesPurged)
+            assertEquals(1, result.orphanRatingsPurged)
+            assertEquals(1, result.orphanSoftDeletedValuesPurged)
+            assertEquals(1, result.scoreProfilesWithoutAttributesDeleted)
+            assertEquals(1, result.diagnosticsBeforeCleanup.orphanRatings.count)
+            assertEquals(1, result.diagnosticsBeforeCleanup.orphanActiveItemValues.count)
 
             val itemValues =
                 database
@@ -91,10 +93,10 @@ class DatabaseMaintenanceRunnerTest {
             val first = maintenanceRunner().runCleanup()
             val second = maintenanceRunner().runCleanup()
 
-            assertEquals(0, first?.oldSoftDeletedValuesPurged)
-            assertEquals(0, first?.orphanRatingsPurged)
-            assertEquals(0, first?.orphanSoftDeletedValuesPurged)
-            assertEquals(0, first?.scoreProfilesWithoutAttributesDeleted)
+            assertEquals(0, first?.getOrNull()?.oldSoftDeletedValuesPurged)
+            assertEquals(0, first?.getOrNull()?.orphanRatingsPurged)
+            assertEquals(0, first?.getOrNull()?.orphanSoftDeletedValuesPurged)
+            assertEquals(0, first?.getOrNull()?.scoreProfilesWithoutAttributesDeleted)
             assertEquals(first, second)
         }
 

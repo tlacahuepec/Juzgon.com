@@ -3,6 +3,7 @@ package com.juzgon.domain.enrichment.usecase
 import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentCacheKey
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentStatus
@@ -36,39 +37,46 @@ class SuggestAttributeValueUseCase
             val cacheKey = request.toCacheKey()
 
             if (!bypassCache) {
-                val cachedResult = cacheRepository.get(cacheKey)
-                if (cachedResult != null) {
+                cacheRepository.get(cacheKey)?.let { cached ->
                     return AttributeEnrichmentResult(
-                        status = cachedResult.status,
-                        suggestedValue = cachedResult.suggestedValue,
-                        displayValue = cachedResult.displayValue,
-                        confidence = cachedResult.confidence,
-                        sources = cachedResult.sources,
-                        reason = cachedResult.reason,
-                        failureCode = cachedResult.failureCode,
+                        status = cached.status,
+                        suggestedValue = cached.suggestedValue,
+                        displayValue = cached.displayValue,
+                        confidence = cached.confidence,
+                        sources = cached.sources,
+                        reason = cached.reason,
+                        failureCode = cached.failureCode,
                     )
                 }
             }
 
-            val result = provider.enrichAttribute(request)
-            val validated = validator(result, request.targetAttributeType)
+            return performFreshEnrichment(request, cacheKey)
+        }
 
-            if (result.status == EnrichmentStatus.FOUND &&
+        private suspend fun performFreshEnrichment(
+            request: AttributeEnrichmentRequest,
+            cacheKey: EnrichmentCacheKey,
+        ): AttributeEnrichmentResult {
+            val enriched = provider.enrichAttribute(request)
+            val validated = validator(enriched, request.targetAttributeType)
+
+            if (enriched.status == EnrichmentStatus.FOUND &&
                 validated.failureCode == EnrichmentFailureCode.VALIDATION_FAILED
             ) {
                 eventLogger.rejected(
                     attributeKey = request.targetAttributeKey,
                     reason = "VALIDATION_FAILED",
-                    originalStatus = result.status.name,
-                    confidence = result.confidence?.name,
+                    originalStatus = enriched.status.name,
+                    confidence = enriched.confidence?.name,
                 )
             }
 
-            // Cache the result (for accepted suggestions and recent non-error outcomes)
-            if (validated.status != EnrichmentStatus.ERROR ||
-                validated.failureCode == EnrichmentFailureCode.NO_RELIABLE_SOURCE ||
-                validated.failureCode == EnrichmentFailureCode.CONFLICTING_SOURCES
-            ) {
+            val shouldCache =
+                validated.status != EnrichmentStatus.ERROR ||
+                    validated.failureCode == EnrichmentFailureCode.NO_RELIABLE_SOURCE ||
+                    validated.failureCode == EnrichmentFailureCode.CONFLICTING_SOURCES
+
+            if (shouldCache) {
                 cacheRepository.put(validated.toCachedResult(cacheKey))
             }
 

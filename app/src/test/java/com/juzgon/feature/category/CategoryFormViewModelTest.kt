@@ -8,6 +8,7 @@ import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.usecase.ValidateCategoryUseCase
@@ -18,11 +19,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -43,7 +47,8 @@ class CategoryFormViewModelTest {
     fun setUp() {
         repository = FakeCategoryRepository()
         ratedItemRepository = FakeRatedItemRepository()
-        viewModel = CategoryFormViewModel(repository, ratedItemRepository, ValidateCategoryUseCase())
+        viewModel =
+            CategoryFormViewModel(repository, ratedItemRepository, ValidateCategoryUseCase())
     }
 
     @Test
@@ -73,7 +78,10 @@ class CategoryFormViewModelTest {
             viewModel.onSaveClick()
 
             assertEquals(
-                Category(name = "Food", attributes = listOf(Attribute(id = "Food/Taste", weight = 1.0))),
+                Category(
+                    name = "Food",
+                    attributes = listOf(Attribute(id = "Food/Taste", weight = 1.0)),
+                ),
                 repository.savedCategory,
             )
             assertTrue(currentState.saveCompleted)
@@ -308,7 +316,10 @@ class CategoryFormViewModelTest {
             viewModel.onAttributeDiamondOrderChanged(key, "0")
 
             assertFalse(currentState.saveEnabled)
-            assertEquals("Diamond order must be greater than 0", attributeErrors.single().diamondOrder)
+            assertEquals(
+                "Diamond order must be greater than 0",
+                attributeErrors.single().diamondOrder,
+            )
         }
 
     @Test
@@ -318,7 +329,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -349,7 +366,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -380,7 +403,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -411,7 +440,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -441,7 +476,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -472,7 +513,13 @@ class CategoryFormViewModelTest {
                 listOf(
                     Category(
                         name = "Food",
-                        attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.NUMBER)),
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Food/Taste",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
                     ),
                 )
             ratedItemRepository.rankedItems.value =
@@ -497,6 +544,71 @@ class CategoryFormViewModelTest {
         }
 
     @Test
+    fun onAttributeScoringDirectionChangedOnlyAffectsDateAttributes() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Cars",
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Cars/TopSpeed",
+                                    type = AttributeType.NUMBER,
+                                ),
+                            ),
+                    ),
+                )
+            viewModel.loadCategory("Cars")
+
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.OLDER_IS_BETTER)
+
+            // For NUMBER it should be ignored (no change)
+            assertEquals(null, currentState.attributes.first().scoringDirection)
+        }
+
+    @Test
+    fun onAttributeScoringDirectionChangedAffectsDateAttributes() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(
+                        name = "Player",
+                        attributes =
+                            listOf(
+                                Attribute(
+                                    id = "Player/Birthday",
+                                    type = AttributeType.DATE,
+                                ),
+                            ),
+                    ),
+                )
+            viewModel.loadCategory("Player")
+
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeScoringDirectionChanged(key, ScoringDirection.OLDER_IS_BETTER)
+
+            // For NUMBER it should be ignored (no change) — only DATE attrs accept scoringDirection
+            assertNotNull(currentState.attributes.first().scoringDirection)
+        }
+
+    @Test
+    fun moveAttributeUpAtTopBoundaryDoesNothing() =
+        runTest {
+            repository.categories.value =
+                listOf(
+                    Category(name = "Cars", attributes = listOf(Attribute(id = "Cars/Speed"))),
+                )
+            viewModel.loadCategory("Cars")
+
+            val firstKey = currentState.attributes.first().key
+            viewModel.moveAttributeUp(firstKey)
+
+            assertEquals("Speed", currentState.attributes.first().name)
+        }
+
+    @Test
     fun typeAndRequiredArePreservedInSavedCategory() =
         runTest {
             val firstKey = attributes.single().key
@@ -510,7 +622,14 @@ class CategoryFormViewModelTest {
             assertEquals(
                 Category(
                     name = "Food",
-                    attributes = listOf(Attribute(id = "Food/Taste", type = AttributeType.DATE, isRequired = false)),
+                    attributes =
+                        listOf(
+                            Attribute(
+                                id = "Food/Taste",
+                                type = AttributeType.DATE,
+                                isRequired = false,
+                            ),
+                        ),
                 ),
                 repository.savedCategory,
             )
@@ -526,7 +645,10 @@ class CategoryFormViewModelTest {
                         attributes =
                             listOf(
                                 Attribute(id = "People/Score", type = AttributeType.NUMBER),
-                                Attribute(id = "People/Nationality", type = AttributeType.NATIONALITY),
+                                Attribute(
+                                    id = "People/Nationality",
+                                    type = AttributeType.NATIONALITY,
+                                ),
                             ),
                     ),
                 )
@@ -540,7 +662,10 @@ class CategoryFormViewModelTest {
                                 values =
                                     listOf(
                                         ItemAttributeValue(
-                                            Attribute("People/Nationality", type = AttributeType.NATIONALITY),
+                                            Attribute(
+                                                "People/Nationality",
+                                                type = AttributeType.NATIONALITY,
+                                            ),
                                             "US",
                                         ),
                                     ),
@@ -632,6 +757,109 @@ class CategoryFormViewModelTest {
 
         override suspend fun deleteRatedItem(id: String) = error("not used")
     }
+
+    // ======================================================================
+    // LARGE BATCH - Comprehensive RED coverage for CategoryFormViewModel
+    // (TooManyFunctions) - attribute manipulation, warnings, catalog type,
+    // description, move, save, delete flows
+    // ======================================================================
+
+    @Test
+    fun onDescriptionChanged_updatesDescription() =
+        runTest {
+            viewModel.onDescriptionChanged("A detailed ranking of cars")
+            assertEquals("A detailed ranking of cars", currentState.description)
+        }
+
+    @Test
+    fun onCatalogTypeChanged_updatesType() =
+        runTest {
+            viewModel.onCatalogTypeChanged(CatalogType.PERSON)
+            assertEquals(CatalogType.PERSON, currentState.catalogType)
+        }
+
+    @Test
+    fun addAttribute_increasesAttributeCount() =
+        runTest {
+            val initialCount = currentState.attributes.size
+            viewModel.addAttribute()
+            assertEquals(initialCount + 1, currentState.attributes.size)
+        }
+
+    @Test
+    fun moveAttributeDown_reordersAttributes() =
+        runTest {
+            val key1 = currentState.attributes[0].key
+            viewModel.addAttribute()
+            val key2 = currentState.attributes.last().key
+
+            viewModel.moveAttributeDown(key1)
+            assertEquals(key2, currentState.attributes[0].key)
+        }
+
+    @Test
+    fun onAttributeWeightChanged_updatesWeightText() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeWeightChanged(key, "3.5")
+            assertEquals("3.5", currentState.attributes.single().weightText)
+        }
+
+    @Test
+    fun onAttributeDisplayInDiamondChanged_onlyAffectsNumberTypes() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.NOTES)
+            viewModel.onAttributeDisplayInDiamondChanged(key, true)
+            assertFalse(currentState.attributes.single().displayInDiamond)
+        }
+
+    @Test
+    fun onAttributeDiamondOrderChanged_onlyAffectsNumberTypes() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.BOOLEAN)
+            viewModel.onAttributeDiamondOrderChanged(key, "5")
+            assertEquals("", currentState.attributes.single().diamondOrderText)
+        }
+
+    @Test
+    fun onTypeChangeConfirmed_appliesPendingChange() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            // Simulate dirty to trigger warning path (simplified)
+            viewModel.onTypeChangeConfirmed()
+            // State should no longer show warning
+            assertFalse(currentState.showTypeChangeWarning)
+        }
+
+    @Test
+    fun onTypeChangeDeclined_clearsPendingState() =
+        runTest {
+            val key = currentState.attributes.single().key
+            viewModel.onAttributeTypeChanged(key, AttributeType.DATE)
+            viewModel.onTypeChangeDeclined()
+            assertFalse(currentState.showTypeChangeWarning)
+            assertNull(currentState.pendingTypeChange)
+        }
+
+    @Test
+    fun saveIncludesDescriptionAndCatalogType() =
+        runTest {
+            viewModel.onNameChanged("Vehicles")
+            viewModel.onDescriptionChanged("All my cars")
+            viewModel.onCatalogTypeChanged(CatalogType.OTHER)
+            // Populate the default seeded attribute (from coordinator init) so saveEnabled passes
+            val key = currentState.attributes.first().key
+            viewModel.onAttributeNameChanged(key, "Speed")
+            viewModel.onAttributeWeightChanged(key, "10")
+            viewModel.onSaveClick()
+            advanceUntilIdle()
+
+            assertEquals("All my cars", repository.savedCategory?.description)
+            assertEquals(CatalogType.OTHER, repository.savedCategory?.type)
+        }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

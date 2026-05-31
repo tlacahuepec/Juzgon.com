@@ -1,14 +1,12 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
-import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
-import com.juzgon.domain.enrichment.AttributeEnrichmentResult
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
-import com.juzgon.domain.enrichment.EnrichmentFailureCode
-import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
@@ -22,7 +20,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-@Suppress("TooManyFunctions")
 class ItemFormViewModel
     @Inject
     constructor(
@@ -34,7 +31,13 @@ class ItemFormViewModel
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemFormUiState())
         private var loadedCategory: Category? = null
-        private var lastEnrichmentRequest: AttributeEnrichmentRequest? = null
+
+        private val enrichmentCoordinator =
+            ItemEnrichmentCoordinator(
+                suggestAttributeValueUseCase = suggestAttributeValueUseCase,
+                eventLogger = eventLogger,
+                scope = viewModelScope,
+            )
 
         val state: StateFlow<ItemFormUiState> = mutableState
 
@@ -403,105 +406,47 @@ class ItemFormViewModel
         fun onSuggestClick(attributeId: String) {
             val category = loadedCategory ?: return
             val current = mutableState.value
-            val targetAttribute =
-                current.values.firstOrNull { it.attribute.id == attributeId }?.attribute ?: return
 
-            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading, retryAttemptsUsed = 0) }
-            viewModelScope.launch {
-                val request =
-                    AttributeEnrichmentRequest(
-                        catalogId = category.name,
-                        catalogDescription = category.description,
-                        catalogType = category.type,
-                        itemId = current.originalItemId ?: current.title.trim(),
-                        itemName = current.title.trim(),
-                        existingAttributes =
-                            current.values
-                                .filter { it.valueText.isNotBlank() && it.attribute.id != attributeId }
-                                .associate { it.attribute.displayName to it.valueText },
-                        targetAttributeKey = attributeId,
-                        targetAttributeLabel = targetAttribute.displayName,
-                        targetAttributeType = targetAttribute.type,
-                    )
-                lastEnrichmentRequest = request
-                val result = suggestAttributeValueUseCase(request)
-                mutableState.update {
-                    it.copy(
-                        enrichmentSheet =
-                            result.toSheetState(attributeId, targetAttribute.displayName),
-                    )
-                }
+            enrichmentCoordinator.requestSuggestion(
+                category = category,
+                currentState = current,
+                targetAttributeId = attributeId,
+            ) { sheetState ->
+                mutableState.update { it.copy(enrichmentSheet = sheetState) }
             }
         }
 
         fun onSuggestionAccepted() {
-            val sheet = mutableState.value.enrichmentSheet
-            if (sheet is EnrichmentSheetState.Found) {
-                eventLogger.accepted(
-                    attributeKey = sheet.attributeId,
-                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
-                    suggestedValue = sheet.suggestedValue,
-                )
-                onValueChanged(sheet.attributeId, sheet.suggestedValue)
-                mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
-            }
+            val current = mutableState.value
+            enrichmentCoordinator.acceptSuggestion(
+                currentSheet = current.enrichmentSheet,
+                onValueChanged = ::onValueChanged,
+                onSheetHidden = {
+                    mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
+                },
+            )
         }
 
         fun onSuggestionDismissed() {
-            val sheet = mutableState.value.enrichmentSheet
-            if (sheet is EnrichmentSheetState.Found) {
-                eventLogger.dismissed(
-                    attributeKey = sheet.attributeId,
-                    itemId = mutableState.value.originalItemId ?: mutableState.value.title.trim(),
+            val current = mutableState.value
+            enrichmentCoordinator.dismissSuggestion(current.enrichmentSheet)
+            mutableState.update {
+                it.copy(
+                    enrichmentSheet = EnrichmentSheetState.Hidden,
+                    retryAttemptsUsed = 0,
                 )
             }
-            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden, retryAttemptsUsed = 0) }
         }
 
         fun onSuggestionRetry() {
-            val request = lastEnrichmentRequest ?: return
             val current = mutableState.value
-            val currentSheet = current.enrichmentSheet
-
-            if (!currentSheet.canRetry(current.retryAttemptsUsed, current.maxRetryAttempts)) {
-                return
-            }
-
-            mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Loading) }
-            viewModelScope.launch {
-                val result = suggestAttributeValueUseCase(request, bypassCache = true)
-                mutableState.update { state ->
-                    state.copy(
-                        enrichmentSheet =
-                            result.toSheetState(request.targetAttributeKey, request.targetAttributeLabel),
-                        retryAttemptsUsed = state.retryAttemptsUsed + 1,
+            enrichmentCoordinator.retry(current) { sheetState ->
+                mutableState.update {
+                    it.copy(
+                        enrichmentSheet = sheetState,
+                        retryAttemptsUsed = enrichmentCoordinator.retryAttemptsUsed,
                     )
                 }
             }
         }
-
-        private fun AttributeEnrichmentResult.toSheetState(
-            attributeId: String,
-            attributeLabel: String,
-        ): EnrichmentSheetState =
-            when {
-                status == EnrichmentStatus.ERROR &&
-                    failureCode == EnrichmentFailureCode.MISSING_API_KEY ->
-                    EnrichmentSheetState.NoKey
-                status == EnrichmentStatus.FOUND ->
-                    EnrichmentSheetState.Found(
-                        attributeId = attributeId,
-                        attributeLabel = attributeLabel,
-                        suggestedValue = suggestedValue.orEmpty(),
-                        displayValue = displayValue,
-                        confidence = confidence,
-                        sources = sources,
-                    )
-                status == EnrichmentStatus.NOT_FOUND ->
-                    EnrichmentSheetState.NotFound(reason)
-                status == EnrichmentStatus.CONFLICT ->
-                    EnrichmentSheetState.Conflict(reason, sources)
-                else ->
-                    EnrichmentSheetState.Error(failureCode, reason)
-            }
     }

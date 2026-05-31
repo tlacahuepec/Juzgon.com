@@ -387,4 +387,112 @@ class ItemFormModelsTest {
             values = listOf(valueInput),
             isLoading = false,
         )
+
+    // --- Additional RED coverage for suppressed error functions in ItemFormModels ---
+
+    @Test
+    fun nonRequiredImageWithEmptyListAllowsSave() {
+        val state =
+            imageFormState(
+                valueInput =
+                    ItemValueInput(
+                        attribute = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false),
+                        imageReferences = emptyList(),
+                    ),
+            )
+
+        assertTrue(state.saveEnabled)
+        assertNull(state.valueErrors.single().value)
+    }
+
+    @Test
+    fun multipleImagesFailsOnFirstInvalidFormat() {
+        val state =
+            imageFormState(
+                valueInput =
+                    ItemValueInput(
+                        attribute = Attribute("Photos", type = AttributeType.IMAGE),
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "1",
+                                    sourceUri = "content://good",
+                                    mimeType = "image/png",
+                                    displayName = "good.png",
+                                ),
+                                ItemImageReference(
+                                    id = "2",
+                                    sourceUri = "content://bad",
+                                    mimeType = "image/gif",
+                                    displayName = "bad.gif",
+                                ),
+                            ),
+                    ),
+            )
+
+        assertFalse(state.saveEnabled)
+        assertEquals("Image must be JPG, JPEG, PNG, or WEBP", state.valueErrors.single().value)
+    }
+
+    @Test
+    fun imageSizeCheckOnlyAppliesWhenSizeBytesPresent() {
+        val state =
+            imageFormState(
+                valueInput =
+                    ItemValueInput(
+                        attribute = Attribute("Photo", type = AttributeType.IMAGE),
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "1",
+                                    sourceUri = "content://images/photo",
+                                    mimeType = "image/png",
+                                    sizeBytes = null,
+                                    displayName = "photo.png",
+                                ),
+                            ),
+                    ),
+            )
+
+        assertTrue(state.saveEnabled)
+        assertNull(state.valueErrors.single().value)
+    }
+
+    @Test
+    fun regularRequiredTextAttributeShowsErrorWhenBlank() {
+        val state =
+            ItemFormUiState(
+                title = "Item",
+                values =
+                    listOf(
+                        ItemValueInput(
+                            attribute = Attribute("Name", type = AttributeType.NOTES, isRequired = true),
+                            valueText = "",
+                        ),
+                    ),
+                isLoading = false,
+            )
+
+        assertFalse(state.saveEnabled)
+        assertEquals("Name is required", state.valueErrors.single().value)
+    }
+
+    @Test
+    fun regularOptionalTextAttributeAllowsBlank() {
+        val state =
+            ItemFormUiState(
+                title = "Item",
+                values =
+                    listOf(
+                        ItemValueInput(
+                            attribute = Attribute("Notes", type = AttributeType.NOTES, isRequired = false),
+                            valueText = "",
+                        ),
+                    ),
+                isLoading = false,
+            )
+
+        assertTrue(state.saveEnabled)
+        assertNull(state.valueErrors.single().value)
+    }
 }

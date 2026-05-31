@@ -35,10 +35,22 @@ package com.juzgon.domain.backup
  * - Missing optional fields must not break validation or future import.
  * - Import should apply sensible defaults for absent optional fields.
  */
-@Suppress("MagicNumber")
 object BackupSchemaContract {
-    const val CURRENT_VERSION = 5
-    val SUPPORTED_VERSIONS = setOf(1, 2, 3, 4, 5)
+    private const val SCHEMA_VERSION_1 = 1
+    private const val SCHEMA_VERSION_2 = 2
+    private const val SCHEMA_VERSION_3 = 3
+    private const val SCHEMA_VERSION_4 = 4
+    private const val SCHEMA_VERSION_5 = 5
+
+    const val CURRENT_VERSION = SCHEMA_VERSION_5
+    val SUPPORTED_VERSIONS =
+        setOf(
+            SCHEMA_VERSION_1,
+            SCHEMA_VERSION_2,
+            SCHEMA_VERSION_3,
+            SCHEMA_VERSION_4,
+            SCHEMA_VERSION_5,
+        )
 
     val REQUIRED_METADATA_FIELDS = setOf("version", "app", "exportedAt")
     val REQUIRED_ARRAYS = setOf("categories", "items", "scoreProfiles")

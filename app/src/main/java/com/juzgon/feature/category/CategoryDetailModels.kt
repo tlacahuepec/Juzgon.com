@@ -70,7 +70,7 @@ data class CategoryDetailSortOptionUiModel(
 object CategoryDetailReducer {
     fun loading(categoryName: String): CategoryDetailUiState = CategoryDetailUiState(categoryName = categoryName)
 
-    @Suppress("LongParameterList", "LongMethod")
+    @Suppress("LongParameterList")
     fun reduce(
         categoryName: String,
         category: Category?,
@@ -91,7 +91,7 @@ object CategoryDetailReducer {
         }
 
         val effectiveRankedItems =
-            resolveRankedItems(
+            applyProfileRankingIfNeeded(
                 category = category,
                 rankedItems = rankedItems,
                 activeProfileId = activeProfileId,
@@ -100,60 +100,19 @@ object CategoryDetailReducer {
             )
 
         val sortOptions = category.toSortOptions()
-        val selectedSortOption =
-            sortOption.takeIf { option ->
-                sortOptions.any { it.option == option }
-            } ?: CategoryDetailSortOption.Score
-        val sortedItems =
-            when (selectedSortOption) {
-                CategoryDetailSortOption.Score ->
-                    effectiveRankedItems.sortedWith(
-                        compareByDescending<RankedRatedItem> { it.aggregateScore }
-                            .thenBy { it.item.id },
-                    )
-                CategoryDetailSortOption.Name ->
-                    effectiveRankedItems.sortedBy { it.item.id }
-                is CategoryDetailSortOption.Attribute ->
-                    effectiveRankedItems.sortedByAttribute(
-                        category = category,
-                        attributeId = selectedSortOption.attributeId,
-                    )
-            }
+        val selectedSortOption = resolveSelectedSortOption(sortOption, sortOptions)
 
-        val trimmedQuery = searchQuery.trim()
-        val filteredItems =
-            if (trimmedQuery.isEmpty()) {
-                sortedItems
-            } else {
-                sortedItems.filter { rankedItem ->
-                    rankedItem.item.id.contains(trimmedQuery, ignoreCase = true)
-                }
-            }
+        val sortedItems = sortItems(effectiveRankedItems, selectedSortOption, category)
+        val filteredItems = applySearchFilter(sortedItems, searchQuery)
 
-        val activeProfile =
-            activeProfileId?.let { id ->
-                profiles.firstOrNull { it.id == id }
-            }
+        val activeProfile = activeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
 
         return CategoryDetailUiState(
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
                 filteredItems.mapIndexed { index, rankedItem ->
-                    val cardMetric =
-                        rankedItem.toCardMetric(
-                            category = category,
-                            selectedSortOption = selectedSortOption,
-                        )
-                    CategoryDetailItemUiModel(
-                        rank = index + 1,
-                        id = rankedItem.item.id,
-                        averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
-                        imageValue = rankedItem.item.primaryImageValue(category),
-                        nationalityBadge = rankedItem.item.resolveNationalityBadge(category),
-                        metricLabel = cardMetric.label,
-                        metricValueText = cardMetric.valueText,
-                    )
+                    buildItemUiModel(rankedItem, index, category, selectedSortOption)
                 },
             isLoading = false,
             sortOption = selectedSortOption,
@@ -165,27 +124,75 @@ object CategoryDetailReducer {
         )
     }
 
-    private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
-        listOf(ProfileOption(id = null, name = "All Attributes")) +
-            profiles.map { ProfileOption(id = it.id, name = it.name) }
-
-    @Suppress("ReturnCount")
-    private fun resolveRankedItems(
+    private fun applyProfileRankingIfNeeded(
         category: Category,
         rankedItems: List<RankedRatedItem>,
         activeProfileId: String?,
         profiles: List<ScoreProfile>,
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase?,
+    ): List<RankedRatedItem> =
+        if (activeProfileId == null || calculateProfileRankedItems == null) {
+            rankedItems
+        } else {
+            profiles
+                .firstOrNull { it.id == activeProfileId }
+                ?.let { profile ->
+                    val ratingSystem = RatingSystem(category.attributes.filter { it.isRankable })
+                    val ratedItems = rankedItems.map { it.item }
+                    calculateProfileRankedItems(profile, ratingSystem, ratedItems)
+                } ?: rankedItems
+        }
+
+    private fun resolveSelectedSortOption(
+        requested: CategoryDetailSortOption,
+        available: List<CategoryDetailSortOptionUiModel>,
+    ): CategoryDetailSortOption =
+        requested.takeIf { option -> available.any { it.option == option } }
+            ?: CategoryDetailSortOption.Score
+
+    private fun sortItems(
+        items: List<RankedRatedItem>,
+        sortOption: CategoryDetailSortOption,
+        category: Category,
+    ): List<RankedRatedItem> =
+        when (sortOption) {
+            CategoryDetailSortOption.Score ->
+                items.sortedWith(
+                    compareByDescending<RankedRatedItem> { it.aggregateScore }.thenBy { it.item.id },
+                )
+            CategoryDetailSortOption.Name -> items.sortedBy { it.item.id }
+            is CategoryDetailSortOption.Attribute -> items.sortedByAttribute(category, sortOption.attributeId)
+        }
+
+    private fun applySearchFilter(
+        items: List<RankedRatedItem>,
+        query: String,
     ): List<RankedRatedItem> {
-        if (activeProfileId == null || calculateProfileRankedItems == null) return rankedItems
-        val profile = profiles.firstOrNull { it.id == activeProfileId } ?: return rankedItems
-        val ratingSystem =
-            RatingSystem(
-                category.attributes.filter { it.isRankable },
-            )
-        val ratedItems = rankedItems.map { it.item }
-        return calculateProfileRankedItems(profile, ratingSystem, ratedItems)
+        val trimmed = query.trim()
+        return if (trimmed.isEmpty()) items else items.filter { it.item.id.contains(trimmed, ignoreCase = true) }
     }
+
+    private fun buildItemUiModel(
+        rankedItem: RankedRatedItem,
+        index: Int,
+        category: Category,
+        sortOption: CategoryDetailSortOption,
+    ): CategoryDetailItemUiModel {
+        val metric = rankedItem.toCardMetric(category, sortOption)
+        return CategoryDetailItemUiModel(
+            rank = index + 1,
+            id = rankedItem.item.id,
+            averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
+            imageValue = rankedItem.item.primaryImageValue(category),
+            nationalityBadge = rankedItem.item.resolveNationalityBadge(category),
+            metricLabel = metric.label,
+            metricValueText = metric.valueText,
+        )
+    }
+
+    private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
+        listOf(ProfileOption(id = null, name = "All Attributes")) +
+            profiles.map { ProfileOption(id = it.id, name = it.name) }
 }
 
 private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
@@ -296,20 +303,16 @@ private fun RatedItem.textValueForAttribute(attributeId: String): String? =
         ?.trim()
         ?.takeIf { valueText -> valueText.isNotEmpty() }
 
-@Suppress("ReturnCount")
-private fun RatedItem.primaryImageValue(category: Category): String? {
-    val imageAttribute =
-        category.attributes.firstOrNull { attribute ->
-            attribute.type == AttributeType.IMAGE
-        } ?: return null
-    val rawValue =
-        values
-            .firstOrNull { value -> value.attribute.id == imageAttribute.id }
-            ?.value
-            ?.takeIf { value -> value.isNotBlank() }
-            ?: return null
-    return decodeItemImageReferences(rawValue).firstOrNull()?.sourceUri
-}
+private fun RatedItem.primaryImageValue(category: Category): String? =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.IMAGE }
+        ?.let { imgAttr ->
+            values
+                .firstOrNull { it.attribute.id == imgAttr.id }
+                ?.value
+                ?.takeIf { it.isNotBlank() }
+                ?.let { decodeItemImageReferences(it).firstOrNull()?.sourceUri }
+        }
 
 private fun Int.toAttributeSummary(): String =
     if (this == 1) {
@@ -320,19 +323,14 @@ private fun Int.toAttributeSummary(): String =
 
 private fun Double.toAverageScoreText(): String = String.format(Locale.US, "%.1f", this)
 
-@Suppress("ReturnCount")
-private fun RatedItem.resolveNationalityBadge(category: Category): String? {
-    val nationalityAttribute =
-        category.attributes.firstOrNull { attribute ->
-            attribute.type == AttributeType.NATIONALITY
-        } ?: return null
-    val code =
-        values
-            .firstOrNull { value -> value.attribute.id == nationalityAttribute.id }
-            ?.value
-            ?.trim()
-            ?.takeIf { value -> value.isNotEmpty() }
-            ?: return null
-    val option = NationalityDataset.findByCode(code) ?: return null
-    return option.flagEmoji
-}
+private fun RatedItem.resolveNationalityBadge(category: Category): String? =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.NATIONALITY }
+        ?.let { natAttr ->
+            values
+                .firstOrNull { it.attribute.id == natAttr.id }
+                ?.value
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { NationalityDataset.findByCode(it)?.flagEmoji }
+        }
