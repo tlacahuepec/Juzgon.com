@@ -3,14 +3,17 @@
 
 complexity:
   LongMethod:
-    excludes: ['**/data/local/DatabaseMigrations.kt', '**/*Test.kt']
+    excludes: ['**/*Test.kt']
 
   LongParameterList:
-    excludes: ['**/data/backup/JsonBackupService.kt', '**/*Test.kt']
+    excludes: ['**/*Test.kt']
 
   TooManyFunctions:
     excludes:
       - '**/*Test.kt'   # Large test classes with many test methods + helpers are standard and covered by LargeClass in many cases
+
+  LargeClass:
+    excludes: ['**/*Test.kt']  # Test classes often have many methods; not high value
 
 style:
   MaxLineLength:
