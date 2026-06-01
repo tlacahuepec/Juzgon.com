@@ -464,6 +464,45 @@ class ItemDetailScreenTest {
         composeRule.onNodeWithContentDescription("Delete item").assertMinimumTouchTarget()
     }
 
+    @Test
+    fun birthDateAttributeRendersAgeText() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Birth Date",
+                            value = "1990-05-27",
+                            type = AttributeType.DATE,
+                            displayValue = "May 27, 1990",
+                            ageText = "Age: 36",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Age: 36").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun dateAttributeWithoutAgeTextDoesNotRenderAge() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Release",
+                            value = "2020-01-15",
+                            type = AttributeType.DATE,
+                            displayValue = "Jan 15, 2020",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Age:").assertDoesNotExist()
+    }
+
     private fun setContent(
         state: ItemDetailUiState,
         onBackClick: () -> Unit = {},

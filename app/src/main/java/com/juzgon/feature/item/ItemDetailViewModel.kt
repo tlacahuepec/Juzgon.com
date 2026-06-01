@@ -22,6 +22,7 @@ class ItemDetailViewModel
         private val categoryRepository: CategoryRepository,
         private val scoreProfileRepository: ScoreProfileRepository,
         private val calculateProfileRankedItems: CalculateProfileRankedItemsUseCase,
+        private val dateProcessor: ItemDetailDateProcessor,
     ) : ViewModel() {
         private val mutableState = MutableStateFlow(ItemDetailUiState())
 
@@ -32,6 +33,7 @@ class ItemDetailViewModel
                 categoryRepository,
                 scoreProfileRepository,
                 calculateProfileRankedItems,
+                dateProcessor,
             )
 
         val state: StateFlow<ItemDetailUiState> = mutableState

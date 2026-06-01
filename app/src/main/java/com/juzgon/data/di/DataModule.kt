@@ -21,6 +21,7 @@ import com.juzgon.data.repository.RoomCategoryRepository
 import com.juzgon.data.repository.RoomRatedItemRepository
 import com.juzgon.data.repository.RoomScoreProfileRepository
 import com.juzgon.domain.AppClock
+import com.juzgon.domain.BirthDateAgeCalculator
 import com.juzgon.domain.BuildMetadata
 import com.juzgon.domain.BuildMetadataProvider
 import com.juzgon.domain.DateScoreCalculator
@@ -30,6 +31,7 @@ import com.juzgon.domain.repository.AttributeRankSnapshotRepository
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.repository.ScoreProfileRepository
+import com.juzgon.feature.item.ItemDetailDateProcessor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -137,6 +139,17 @@ object DataModule {
     @Provides
     @Singleton
     fun provideDateScoreCalculator(clock: AppClock): DateScoreCalculator = DateScoreCalculator(clock)
+
+    @Provides
+    @Singleton
+    fun provideBirthDateAgeCalculator(clock: AppClock): BirthDateAgeCalculator = BirthDateAgeCalculator(clock)
+
+    @Provides
+    @Singleton
+    fun provideItemDetailDateProcessor(
+        birthDateAgeCalculator: BirthDateAgeCalculator,
+        dateScoreCalculator: DateScoreCalculator,
+    ): ItemDetailDateProcessor = ItemDetailDateProcessor(birthDateAgeCalculator, dateScoreCalculator)
 
     @Provides
     @Singleton
