@@ -6,7 +6,6 @@ import android.content.ContentResolver
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,9 +62,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.ui.components.JuzgonCollectionCard
+import com.juzgon.ui.components.JuzgonCollectionCardMetadata
+import com.juzgon.ui.components.JuzgonCollectionCardMetric
 
 @Composable
 fun CategoryDetailRoute(
@@ -656,39 +657,33 @@ private fun CategoryDetailItemCard(
     item: CategoryDetailItemUiModel,
     onEditItemClick: (String) -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.small,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(172.dp)
-                .clickable(
-                    role = Role.Button,
-                    onClick = { onEditItemClick(item.id) },
-                ).semantics {
-                    contentDescription =
-                        buildString {
-                            append("Rated item ${item.id}, rank ${item.rank}")
-                            item.nationalityBadge?.let { append(", $it") }
-                            append(", ${item.metricLabel} ${item.metricValueText}")
-                        }
-                    role = Role.Button
-                },
+    JuzgonCollectionCard(
+        metadata =
+            JuzgonCollectionCardMetadata(
+                title = item.id,
+                rankLabel = "#${item.rank}",
+                metric =
+                    JuzgonCollectionCardMetric(
+                        label = item.metricLabel,
+                        value = item.metricValueText,
+                    ),
+                badge = item.nationalityBadge,
+                contentDescription = buildItemCardContentDescription(item),
+            ),
+        onClick = { onEditItemClick(item.id) },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             CategoryDetailItemVisual(item = item)
-            CategoryDetailItemOverlay(
-                item = item,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(),
-            )
         }
     }
 }
+
+private fun buildItemCardContentDescription(item: CategoryDetailItemUiModel): String =
+    buildString {
+        append("Rated item ${item.id}, rank ${item.rank}")
+        item.nationalityBadge?.let { append(", $it") }
+        append(", ${item.metricLabel} ${item.metricValueText}")
+    }
 
 @Composable
 private fun CategoryDetailItemVisual(item: CategoryDetailItemUiModel) {
@@ -742,100 +737,6 @@ private fun CategoryDetailItemImagePlaceholder(
                 text = text,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryDetailItemOverlay(
-    item: CategoryDetailItemUiModel,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
-        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-        modifier = modifier,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    text = "#${item.rank}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-            }
-            CategoryDetailItemTitle(
-                title = item.id,
-                modifier = Modifier.weight(1f),
-            )
-            item.nationalityBadge?.let { badge ->
-                Text(
-                    text = badge,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                )
-            }
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        text = item.metricLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                    Text(
-                        text = item.metricValueText,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryDetailItemTitle(
-    title: String,
-    modifier: Modifier = Modifier,
-) {
-    val parts = CategoryDetailItemCardTitleFormatter.split(title)
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = parts.primaryWord,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (parts.remainingTitle != null) {
-            Text(
-                text = parts.remainingTitle,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
