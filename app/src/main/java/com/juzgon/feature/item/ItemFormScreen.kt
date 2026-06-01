@@ -158,6 +158,7 @@ fun ItemFormRoute(
         onSuggestClick = viewModel::onSuggestClick,
         onSuggestionAccepted = viewModel::onSuggestionAccepted,
         onSuggestionDismissed = viewModel::onSuggestionDismissed,
+        onSuggestionRetry = viewModel::onSuggestionRetry,
         onNavigateToGeminiSettings = onNavigateToGeminiSettings,
     )
 }
@@ -183,6 +184,7 @@ fun ItemFormScreen(
     onSuggestClick: (String) -> Unit = {},
     onSuggestionAccepted: () -> Unit = {},
     onSuggestionDismissed: () -> Unit = {},
+    onSuggestionRetry: () -> Unit = {},
     onNavigateToGeminiSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -217,8 +219,10 @@ fun ItemFormScreen(
     if (state.enrichmentSheet != EnrichmentSheetState.Hidden) {
         EnrichmentSuggestionSheet(
             state = state.enrichmentSheet,
+            canRetry = state.enrichmentSheet.canRetry(state.retryAttemptsUsed, state.maxRetryAttempts),
             onAccept = onSuggestionAccepted,
             onDismiss = onSuggestionDismissed,
+            onRetry = onSuggestionRetry,
             onNavigateToSettings = onNavigateToGeminiSettings,
         )
     }
