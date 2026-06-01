@@ -10,6 +10,10 @@ import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import kotlinx.coroutines.flow.first
 import java.util.Locale
 
+/**
+ * Extracted loader responsible for assembling the rich ItemDetailUiState.
+ * This removes the LongMethod and ReturnCount complexity from ItemDetailViewModel.
+ */
 class ItemDetailContentLoader(
     private val ratedItemRepository: RatedItemRepository,
     private val attributeRankSnapshotRepository: AttributeRankSnapshotRepository,
