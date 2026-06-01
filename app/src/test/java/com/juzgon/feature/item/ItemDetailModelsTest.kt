@@ -299,4 +299,34 @@ class ItemDetailModelsTest {
             formatAttributeValue(AttributeType.NATIONALITY, "us"),
         )
     }
+
+    @Test
+    fun itemDetailAttributeValueDefaultsAgeTextToNull() {
+        val value = ItemDetailAttributeValue(label = "Birth Date", value = "1990-05-27", type = AttributeType.DATE)
+        assertNull(value.ageText)
+    }
+
+    @Test
+    fun itemDetailAttributeValueRetainsExplicitAgeText() {
+        val value =
+            ItemDetailAttributeValue(
+                label = "Birth Date",
+                value = "1990-05-27",
+                type = AttributeType.DATE,
+                ageText = "Age: 36",
+            )
+        assertEquals("Age: 36", value.ageText)
+    }
+
+    @Test
+    fun itemDetailAttributeScoreDefaultsWeightToOne() {
+        val score = ItemDetailAttributeScore(label = "Speed", score = 8)
+        assertEquals(1.0, score.weight, 0.0)
+    }
+
+    @Test
+    fun itemDetailAttributeScoreRetainsExplicitWeight() {
+        val score = ItemDetailAttributeScore(label = "Speed", score = 8, weight = 2.0)
+        assertEquals(2.0, score.weight, 0.0)
+    }
 }

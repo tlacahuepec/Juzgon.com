@@ -1,9 +1,12 @@
 package com.juzgon.feature.item
 
+import com.juzgon.domain.AppClock
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.BirthDateAgeCalculator
 import com.juzgon.domain.Category
+import com.juzgon.domain.DateScoreCalculator
 import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
@@ -26,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
 
 class ItemDetailViewModelTest {
     @get:Rule
@@ -36,6 +40,8 @@ class ItemDetailViewModelTest {
     private lateinit var categoryRepository: FakeDetailCategoryRepository
     private lateinit var scoreProfileRepository: FakeDetailScoreProfileRepository
     private lateinit var viewModel: ItemDetailViewModel
+
+    private val clock = AppClock { LocalDate.of(2026, 6, 1) }
 
     @Before
     fun setUp() {
@@ -50,6 +56,7 @@ class ItemDetailViewModelTest {
                 categoryRepository,
                 scoreProfileRepository,
                 CalculateProfileRankedItemsUseCase(),
+                ItemDetailDateProcessor(BirthDateAgeCalculator(clock), DateScoreCalculator(clock)),
             )
     }
 

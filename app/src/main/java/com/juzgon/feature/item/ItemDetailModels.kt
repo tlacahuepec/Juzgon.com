@@ -24,6 +24,7 @@ data class ItemDetailAttributeScore(
     val attributeId: String = label,
     val displayInDiamond: Boolean = true,
     val diamondOrder: Int? = null,
+    val weight: Double = 1.0,
 )
 
 data class DiamondChartPoint(
@@ -81,6 +82,7 @@ data class ItemDetailAttributeValue(
     val type: AttributeType,
     val displayValue: String = formatAttributeValue(type, value),
     val imageReferences: List<ItemImageReference> = emptyList(),
+    val ageText: String? = null,
 )
 
 data class ItemProfileBreakdown(

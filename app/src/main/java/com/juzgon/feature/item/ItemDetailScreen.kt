@@ -749,6 +749,13 @@ private fun AttributeValueRow(
             UrlAttributeValue(attributeValue)
         } else {
             Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
+            attributeValue.ageText?.let { age ->
+                Text(
+                    text = age,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
