@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.ui.theme.JuzgonVisualTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.PI
@@ -372,16 +376,24 @@ private fun OverallScoreSection(overallScoreText: String) {
 @Composable
 private fun ProfileBreakdownSection(profileBreakdown: ItemProfileBreakdown?) {
     if (profileBreakdown == null) return
+    val tokens = JuzgonVisualTheme.tokens
+    val breakdownDescription =
+        "Profile breakdown, ${profileBreakdown.profileName}, rank ${profileBreakdown.profileRank} " +
+            "of ${profileBreakdown.totalItems}, score ${profileBreakdown.profileScoreText}"
+
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.small,
-        modifier = Modifier.fillMaxWidth(),
+        color = tokens.palette.panelBackground,
+        contentColor = tokens.palette.textStrong,
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = breakdownDescription },
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(tokens.spacing.large),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
@@ -395,9 +407,9 @@ private fun ProfileBreakdownSection(profileBreakdown: ItemProfileBreakdown?) {
                 )
             }
             Surface(
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.small,
+                color = tokens.palette.ratingAccent,
+                contentColor = tokens.palette.baseBackground,
+                shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
             ) {
                 Text(
                     text = profileBreakdown.profileScoreText,
@@ -412,13 +424,14 @@ private fun ProfileBreakdownSection(profileBreakdown: ItemProfileBreakdown?) {
 
 @Composable
 private fun DiamondChartSection(points: List<DiamondChartPoint>) {
+    val tokens = JuzgonVisualTheme.tokens
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(text = "Diamond chart", style = MaterialTheme.typography.titleSmall)
         if (points.size < CHART_MIN_POINTS) {
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                shape = MaterialTheme.shapes.small,
+                color = tokens.palette.panelBackground,
+                contentColor = tokens.palette.textSoft,
+                shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -434,20 +447,38 @@ private fun DiamondChartSection(points: List<DiamondChartPoint>) {
             return
         }
 
-        ItemAttributeDiamondChart(points = points)
-        points.forEach { point ->
-            Text(
-                text = "${point.label}: ${point.value} / ${point.maxValue}",
-                style = MaterialTheme.typography.bodySmall,
-            )
+        Surface(
+            color = tokens.palette.panelBackground,
+            contentColor = tokens.palette.textStrong,
+            shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Diamond chart surface, ${points.size} attributes" },
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(tokens.spacing.small),
+                modifier = Modifier.padding(tokens.spacing.large),
+            ) {
+                ItemAttributeDiamondChart(points = points)
+                points.forEach { point ->
+                    Text(
+                        text = "${point.label}: ${point.value} / ${point.maxValue}",
+                        color = tokens.palette.textSoft,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun ItemAttributeDiamondChart(points: List<DiamondChartPoint>) {
-    val primary = MaterialTheme.colorScheme.primary
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val tokens = JuzgonVisualTheme.tokens
+    val gridColor = tokens.palette.contrastAccentSoft.copy(alpha = 0.38f)
+    val polygonFill = tokens.palette.ratingAccent.copy(alpha = 0.36f)
+    val polygonStroke = tokens.palette.contrastAccent
     Canvas(
         modifier =
             Modifier
@@ -476,14 +507,14 @@ private fun ItemAttributeDiamondChart(points: List<DiamondChartPoint>) {
         }
         drawPath(
             path = points.valuePolygonPath(center, radius),
-            color = primary.copy(alpha = 0.32f),
+            color = polygonFill,
         )
         drawPath(
             path = points.valuePolygonPath(center, radius),
-            color = primary,
+            color = polygonStroke,
             style =
                 androidx.compose.ui.graphics.drawscope
-                    .Stroke(width = 2.dp.toPx()),
+                    .Stroke(width = 3.dp.toPx()),
         )
     }
 }
@@ -564,7 +595,18 @@ private fun PrimaryImageSection(
 
 @Composable
 private fun RankedAttributeProgressCards(rankedAttributes: List<RankedAttributeCardUiModel>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val tokens = JuzgonVisualTheme.tokens
+    Column(
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(tokens.gradients.heroSurface),
+                    shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+                ).semantics { contentDescription = "Ranked attribute score list" }
+                .padding(tokens.spacing.large),
+    ) {
         Text(text = "Ranked attributes", style = MaterialTheme.typography.titleSmall)
         rankedAttributes.forEach { rankedAttribute ->
             RankedAttributeCard(rankedAttribute)
@@ -575,10 +617,11 @@ private fun RankedAttributeProgressCards(rankedAttributes: List<RankedAttributeC
 @Composable
 private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
     val sizeStyle = rankedAttribute.sizeVariant.cardSizeStyle()
+    val tokens = JuzgonVisualTheme.tokens
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.small,
+        color = tokens.palette.baseBackground.copy(alpha = 0.72f),
+        contentColor = tokens.palette.textStrong,
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -621,6 +664,8 @@ private fun RankedAttributeCard(rankedAttribute: RankedAttributeCardUiModel) {
             }
             LinearProgressIndicator(
                 progress = { rankedAttribute.progressFraction },
+                color = tokens.palette.ratingAccent,
+                trackColor = tokens.palette.elevatedBackground,
                 modifier =
                     Modifier
                         .fillMaxWidth()
