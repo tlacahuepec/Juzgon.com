@@ -78,6 +78,28 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun collectionStatsAreDerivedFromAllLoadedCategories() =
+        runTest {
+            val foodWithItems = foodCategory.copy(itemCount = 3)
+            val travelWithItems = travelCategory.copy(itemCount = 1)
+            fakeRepository.categories.value = listOf(travelWithItems, foodWithItems)
+
+            viewModel.state.test {
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(
+                    HomeCollectionStatsUiModel(
+                        categoryCount = 2,
+                        itemCount = 4,
+                        attributeCount = 3,
+                    ),
+                    state.collectionStats,
+                )
+            }
+        }
+
+    @Test
     fun searchFiltersCategoriesByName() =
         runTest {
             fakeRepository.categories.value = listOf(travelCategory, foodCategory, musicCategory)

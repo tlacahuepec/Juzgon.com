@@ -4,6 +4,7 @@ package com.juzgon.feature.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
@@ -41,7 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -52,6 +56,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.feature.about.AboutDialog
 import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
+import com.juzgon.ui.theme.JuzgonVisualTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -207,7 +212,9 @@ private fun HomeCategoriesState(
                 .padding(24.dp),
     ) {
         HomeHeader(actions = actions)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        HomeCollectionSummary(stats = state.collectionStats)
+        Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = actions.onSearchQueryChange,
@@ -225,11 +232,12 @@ private fun HomeCategoriesState(
             selectedOption = state.sortOption,
             onSortOptionSelected = actions.onSortOptionSelected,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         HomeCategoryContent(
             state = state,
             onCreateCategoryClick = actions.onCreateCategoryClick,
             onCategoryClick = actions.onCategoryClick,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -288,6 +296,83 @@ private fun HomeHeader(actions: HomeScreenActions) {
 }
 
 @Composable
+private fun HomeCollectionSummary(
+    stats: HomeCollectionStatsUiModel,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+    val shape = RoundedCornerShape(tokens.shapes.cardCornerRadius)
+    val summaryDescription =
+        "Home collection summary, ${formatCategoryCount(stats.categoryCount)}, " +
+            "${formatItemCount(stats.itemCount)}, ${formatAttributeCount(stats.attributeCount)}"
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(tokens.gradients.heroSurface),
+                    shape = shape,
+                ).semantics(mergeDescendants = true) {
+                    contentDescription = summaryDescription
+                }.padding(tokens.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.small),
+    ) {
+        Text(
+            text = "Collection overview",
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spacing.small),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            HomeStatChip(
+                label = formatCategoryCount(stats.categoryCount),
+                modifier = Modifier.weight(1f),
+            )
+            HomeStatChip(
+                label = formatItemCount(stats.itemCount),
+                modifier = Modifier.weight(1f),
+            )
+            HomeStatChip(
+                label = formatAttributeCount(stats.attributeCount),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeStatChip(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .background(
+                    color = tokens.palette.baseBackground.copy(alpha = 0.58f),
+                    shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+                ).padding(
+                    horizontal = tokens.spacing.small,
+                    vertical = tokens.spacing.small,
+                ),
+    ) {
+        Text(
+            text = label,
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
 private fun HomeSortControls(
     selectedOption: HomeSortOption,
     onSortOptionSelected: (HomeSortOption) -> Unit,
@@ -330,16 +415,21 @@ private fun HomeCategoryContent(
     state: HomeUiState,
     onCreateCategoryClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (state.isEmpty) {
         HomeEmptyState(
             hasSearchQuery = state.hasSearchQuery,
             onCreateCategoryClick = onCreateCategoryClick,
+            modifier = modifier,
         )
     } else {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .testTag(HOME_CATEGORY_LIST_TAG),
         ) {
             items(
                 items = state.categories,
@@ -361,8 +451,11 @@ private fun HomeEmptyState(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(top = 16.dp),
     ) {
         if (hasSearchQuery) {
             Text(
@@ -425,7 +518,15 @@ private fun buildCategorySummary(
     itemCount: Int,
     attributeCount: Int,
 ): String {
-    val items = if (itemCount == 1) "1 item" else "$itemCount items"
-    val attrs = if (attributeCount == 1) "1 attribute" else "$attributeCount attributes"
+    val items = formatItemCount(itemCount)
+    val attrs = formatAttributeCount(attributeCount)
     return "$items · $attrs"
 }
+
+private fun formatCategoryCount(count: Int): String = if (count == 1) "1 category" else "$count categories"
+
+private fun formatItemCount(count: Int): String = if (count == 1) "1 item" else "$count items"
+
+private fun formatAttributeCount(count: Int): String = if (count == 1) "1 attribute" else "$count attributes"
+
+internal const val HOME_CATEGORY_LIST_TAG = "Home category list"
