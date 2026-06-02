@@ -164,12 +164,29 @@ object CategoryDetailReducer {
             is CategoryDetailSortOption.Attribute -> items.sortedByAttribute(category, sortOption.attributeId)
         }
 
+    private val TEXT_SEARCHABLE_TYPES =
+        setOf(
+            AttributeType.NATIONALITY,
+            AttributeType.NOTES,
+            AttributeType.DROPDOWN,
+            AttributeType.URL,
+            AttributeType.BOOLEAN,
+        )
+
     private fun applySearchFilter(
         items: List<RankedRatedItem>,
         query: String,
     ): List<RankedRatedItem> {
         val trimmed = query.trim()
-        return if (trimmed.isEmpty()) items else items.filter { it.item.id.contains(trimmed, ignoreCase = true) }
+        if (trimmed.isEmpty()) return items
+        return items.filter { ranked ->
+            ranked.item.id.contains(trimmed, ignoreCase = true) ||
+                ranked.item.notes.contains(trimmed, ignoreCase = true) ||
+                ranked.item.values.any { value ->
+                    value.attribute.type in TEXT_SEARCHABLE_TYPES &&
+                        value.value.contains(trimmed, ignoreCase = true)
+                }
+        }
     }
 
     private fun buildItemUiModel(

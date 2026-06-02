@@ -25,9 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -98,6 +100,7 @@ fun CategoryDetailRoute(
         onBackClick = onBackClick,
         onRetry = viewModel::onRetry,
         onSortOptionSelected = viewModel::onSortOptionSelected,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onAddItemClick = onAddItemClick,
         onEditItemClick = { itemId -> onEditItemClick(itemId, state.activeProfileId) },
         onDeleteClick = viewModel::onDeleteClick,
@@ -116,6 +119,7 @@ fun CategoryDetailScreen(
     onBackClick: () -> Unit,
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit = {},
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onDeleteClick: () -> Unit = {},
@@ -233,6 +237,7 @@ fun CategoryDetailScreen(
             state = state,
             onRetry = onRetry,
             onSortOptionSelected = onSortOptionSelected,
+            onSearchQueryChanged = onSearchQueryChanged,
             onAddItemClick = onAddItemClick,
             onEditItemClick = onEditItemClick,
             onProfileSelected = onProfileSelected,
@@ -285,6 +290,7 @@ private fun CategoryDetailContent(
     state: CategoryDetailUiState,
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
@@ -294,7 +300,15 @@ private fun CategoryDetailContent(
         state.isLoading -> CenteredContent(modifier = modifier) { CircularProgressIndicator() }
         state.errorMessage != null -> CategoryDetailErrorState(state.errorMessage, onRetry, modifier)
         !state.hasItems -> CategoryDetailEmptyState(state.attributeSummary, onAddItemClick, modifier)
-        else -> CategoryDetailItemList(state, onSortOptionSelected, onEditItemClick, onProfileSelected, modifier)
+        else ->
+            CategoryDetailItemList(
+                state = state,
+                onSortOptionSelected = onSortOptionSelected,
+                onSearchQueryChanged = onSearchQueryChanged,
+                onEditItemClick = onEditItemClick,
+                onProfileSelected = onProfileSelected,
+                modifier = modifier,
+            )
     }
 }
 
@@ -353,6 +367,7 @@ private fun CategoryDetailEmptyState(
 private fun CategoryDetailItemList(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
     modifier: Modifier = Modifier,
@@ -385,6 +400,12 @@ private fun CategoryDetailItemList(
                 onSortOptionSelected = onSortOptionSelected,
             )
         }
+        item {
+            CategoryDetailSearchBar(
+                query = state.searchQuery,
+                onQueryChanged = onSearchQueryChanged,
+            )
+        }
         items(
             items = state.items,
             key = { item -> item.id },
@@ -395,6 +416,28 @@ private fun CategoryDetailItemList(
             )
         }
     }
+}
+
+@Composable
+private fun CategoryDetailSearchBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        placeholder = { Text("Search items…") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChanged("") }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                }
+            }
+        },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 private const val INLINE_SORT_OPTIONS_THRESHOLD = 6
