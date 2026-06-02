@@ -254,6 +254,31 @@ class ItemDetailContentLoaderTest {
             assertEquals(7, numberScores.first { it.label == "Style" }.score)
         }
 
+    @Test
+    fun `date score with displayInDiamond appears in diamond chart points`() =
+        runTest {
+            val dateAttr =
+                Attribute(
+                    "People/Birth Date",
+                    type = AttributeType.DATE,
+                    scoringDirection = ScoringDirection.OLDER_IS_BETTER,
+                    displayInDiamond = true,
+                    diamondOrder = 2,
+                )
+            repository.item.value =
+                RatedItem(
+                    id = "person-1",
+                    scores = listOf(ScoreEntry(Attribute("People/Looks", displayInDiamond = true, diamondOrder = 1), 8)),
+                    values = listOf(ItemAttributeValue(dateAttr, "1990-05-27")),
+                )
+
+            val state = loader.loadContent("person-1", "", null)
+
+            val diamondLabels = state.diamondChartPoints.map { it.label }
+            assert("Looks" in diamondLabels)
+            assert("Birth Date" in diamondLabels)
+        }
+
     private class FakeRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
 

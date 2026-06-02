@@ -90,8 +90,8 @@ class ItemDetailContentLoader(
                         label = valueEntry.attribute.displayName,
                         score = score,
                         attributeId = valueEntry.attribute.id,
-                        displayInDiamond = false,
-                        diamondOrder = null,
+                        displayInDiamond = valueEntry.attribute.displayInDiamond,
+                        diamondOrder = valueEntry.attribute.diamondOrder,
                         weight = valueEntry.attribute.weight,
                     )
                 }

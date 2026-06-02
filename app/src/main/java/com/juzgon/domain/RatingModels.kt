@@ -20,8 +20,8 @@ data class Attribute(
     init {
         require(id.isNotBlank()) { "Attribute id cannot be blank" }
         require(weight > 0.0) { "Attribute weight must be greater than 0" }
-        require(type == AttributeType.NUMBER || !displayInDiamond) {
-            "Only numeric attributes can be displayed in the diamond chart"
+        require(isRankable || !displayInDiamond) {
+            "Only rankable attributes can be displayed in the diamond chart"
         }
         require(diamondOrder == null || diamondOrder > 0) {
             "Diamond order must be greater than 0"

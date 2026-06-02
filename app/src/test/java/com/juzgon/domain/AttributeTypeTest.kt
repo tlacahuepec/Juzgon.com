@@ -71,4 +71,26 @@ class AttributeTypeTest {
         val attribute = Attribute(id = "nationality", type = AttributeType.NATIONALITY)
         assertFalse(attribute.isRankable)
     }
+
+    @Test
+    fun `rankable DATE with displayInDiamond true does not throw`() {
+        val attribute =
+            Attribute(
+                id = "released",
+                type = AttributeType.DATE,
+                scoringDirection = ScoringDirection.NEWER_IS_BETTER,
+                displayInDiamond = true,
+                diamondOrder = 1,
+            )
+        assertTrue(attribute.displayInDiamond)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `non-rankable DATE with displayInDiamond true throws`() {
+        Attribute(
+            id = "released",
+            type = AttributeType.DATE,
+            displayInDiamond = true,
+        )
+    }
 }
