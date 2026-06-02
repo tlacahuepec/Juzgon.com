@@ -1,4 +1,4 @@
-@file:Suppress("LongMethod", "FunctionNaming", "FunctionName")
+@file:Suppress("LongMethod", "FunctionNaming", "FunctionName", "LongParameterList")
 
 package com.juzgon.feature.item
 
@@ -43,8 +43,10 @@ import com.juzgon.domain.enrichment.EnrichmentSource
 @Composable
 fun EnrichmentSuggestionSheet(
     state: EnrichmentSheetState,
+    canRetry: Boolean,
     onAccept: () -> Unit,
     onDismiss: () -> Unit,
+    onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -64,9 +66,9 @@ fun EnrichmentSuggestionSheet(
                 is EnrichmentSheetState.Loading -> LoadingContent()
                 is EnrichmentSheetState.NoKey -> NoKeyContent(onNavigateToSettings, onDismiss)
                 is EnrichmentSheetState.Found -> FoundContent(state, onAccept, onDismiss)
-                is EnrichmentSheetState.NotFound -> NotFoundContent(onDismiss)
-                is EnrichmentSheetState.Conflict -> ConflictContent(onDismiss)
-                is EnrichmentSheetState.Error -> ErrorContent(state, onDismiss)
+                is EnrichmentSheetState.NotFound -> NotFoundContent(canRetry, onRetry, onDismiss)
+                is EnrichmentSheetState.Conflict -> ConflictContent(canRetry, onRetry, onDismiss)
+                is EnrichmentSheetState.Error -> ErrorContent(state, canRetry, onRetry, onDismiss)
                 is EnrichmentSheetState.Hidden -> {}
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -216,7 +218,11 @@ private fun SourceListSection(
 }
 
 @Composable
-private fun NotFoundContent(onDismiss: () -> Unit) {
+private fun NotFoundContent(
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     Text(
         text = "Couldn't find this reliably.",
         style = MaterialTheme.typography.titleMedium,
@@ -227,13 +233,23 @@ private fun NotFoundContent(onDismiss: () -> Unit) {
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(modifier = Modifier.height(16.dp))
+    if (canRetry) {
+        OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+            Text("Retry")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
         Text("OK")
     }
 }
 
 @Composable
-private fun ConflictContent(onDismiss: () -> Unit) {
+private fun ConflictContent(
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     Text(
         text = "Conflicting information found.",
         style = MaterialTheme.typography.titleMedium,
@@ -244,6 +260,12 @@ private fun ConflictContent(onDismiss: () -> Unit) {
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(modifier = Modifier.height(16.dp))
+    if (canRetry) {
+        OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+            Text("Retry")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
         Text("OK")
     }
@@ -252,6 +274,8 @@ private fun ConflictContent(onDismiss: () -> Unit) {
 @Composable
 private fun ErrorContent(
     state: EnrichmentSheetState.Error,
+    canRetry: Boolean,
+    onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     Text(
@@ -264,6 +288,12 @@ private fun ErrorContent(
         style = MaterialTheme.typography.bodyMedium,
     )
     Spacer(modifier = Modifier.height(16.dp))
+    if (canRetry) {
+        OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+            Text("Retry")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
         Text("OK")
     }

@@ -4,8 +4,8 @@ package com.juzgon.feature.item
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.juzgon.domain.enrichment.EnrichmentConfidence
@@ -95,7 +95,7 @@ class EnrichmentSuggestionSheetTest {
 
         composeRule.onNodeWithText("Sources: 1", substring = true).performClick()
         composeRule.onNodeWithText("Wikipedia").assertIsDisplayed()
-        assertEquals(0, composeRule.onAllNodes(hasText("Open link")).fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithText("Open link").fetchSemanticsNodes().size)
     }
 
     @Test
@@ -115,6 +115,81 @@ class EnrichmentSuggestionSheetTest {
         composeRule.onNodeWithText("Born June 24, 1987 in Rosario").assertIsDisplayed()
     }
 
+    @Test
+    fun notFound_showsRetryButton_whenCanRetry() {
+        var retryClicked = false
+        composeRule.setContent {
+            MaterialTheme {
+                EnrichmentSuggestionSheet(
+                    state = EnrichmentSheetState.NotFound(reason = "Not found"),
+                    canRetry = true,
+                    onAccept = {},
+                    onDismiss = {},
+                    onRetry = { retryClicked = true },
+                    onNavigateToSettings = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+        composeRule.onNodeWithText("Retry").performClick()
+        assertEquals(true, retryClicked)
+    }
+
+    @Test
+    fun notFound_hidesRetryButton_whenCannotRetry() {
+        composeRule.setContent {
+            MaterialTheme {
+                EnrichmentSuggestionSheet(
+                    state = EnrichmentSheetState.NotFound(reason = "Not found"),
+                    canRetry = false,
+                    onAccept = {},
+                    onDismiss = {},
+                    onRetry = {},
+                    onNavigateToSettings = {},
+                )
+            }
+        }
+
+        assertEquals(0, composeRule.onAllNodesWithText("Retry").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun error_showsRetryButton_whenCanRetry() {
+        composeRule.setContent {
+            MaterialTheme {
+                EnrichmentSuggestionSheet(
+                    state = EnrichmentSheetState.Error(failureCode = null, reason = null),
+                    canRetry = true,
+                    onAccept = {},
+                    onDismiss = {},
+                    onRetry = {},
+                    onNavigateToSettings = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    @Test
+    fun conflict_showsRetryButton_whenCanRetry() {
+        composeRule.setContent {
+            MaterialTheme {
+                EnrichmentSuggestionSheet(
+                    state = EnrichmentSheetState.Conflict(reason = null, sources = emptyList()),
+                    canRetry = true,
+                    onAccept = {},
+                    onDismiss = {},
+                    onRetry = {},
+                    onNavigateToSettings = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
     private fun setFoundContent(sources: List<EnrichmentSource>) {
         val state =
             EnrichmentSheetState.Found(
@@ -129,8 +204,10 @@ class EnrichmentSuggestionSheetTest {
             MaterialTheme {
                 EnrichmentSuggestionSheet(
                     state = state,
+                    canRetry = false,
                     onAccept = {},
                     onDismiss = {},
+                    onRetry = {},
                     onNavigateToSettings = {},
                 )
             }
