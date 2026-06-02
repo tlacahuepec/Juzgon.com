@@ -20,6 +20,7 @@ class ItemDetailContentLoader(
     private val categoryRepository: CategoryRepository,
     private val scoreProfileRepository: ScoreProfileRepository,
     private val calculateProfileRankedItems: CalculateProfileRankedItemsUseCase,
+    private val dateProcessor: ItemDetailDateProcessor,
 ) {
     suspend fun loadContent(
         itemId: String,
@@ -45,7 +46,7 @@ class ItemDetailContentLoader(
             primaryImage = imageReferencesByAttributeId.values.firstNotNullOfOrNull { it.firstOrNull() },
             overallScoreText =
                 computeWeightedAverageText(
-                    item.scores.map { it.attribute.weight to it.score },
+                    attributeScores.map { it.weight to it.score },
                 ),
             attributeScores = attributeScores,
             rankedAttributes = rankedAttributeCards(attributeScores, previousSnapshots),
@@ -58,6 +59,7 @@ class ItemDetailContentLoader(
                         type = valueEntry.attribute.type,
                         displayValue = formatAttributeValue(valueEntry.attribute.type, valueEntry.value),
                         imageReferences = imageReferencesByAttributeId[valueEntry.attribute.id].orEmpty(),
+                        ageText = dateProcessor.computeAgeText(valueEntry),
                     )
                 },
             notes = item.notes,
@@ -66,16 +68,35 @@ class ItemDetailContentLoader(
         )
     }
 
-    private fun buildAttributeScores(item: com.juzgon.domain.RatedItem): List<ItemDetailAttributeScore> =
-        item.scores.map { scoreEntry ->
-            ItemDetailAttributeScore(
-                label = scoreEntry.attribute.displayName,
-                score = scoreEntry.score,
-                attributeId = scoreEntry.attribute.id,
-                displayInDiamond = scoreEntry.attribute.displayInDiamond,
-                diamondOrder = scoreEntry.attribute.diamondOrder,
-            )
-        }
+    private fun buildAttributeScores(item: com.juzgon.domain.RatedItem): List<ItemDetailAttributeScore> {
+        val numberScores =
+            item.scores.map { scoreEntry ->
+                ItemDetailAttributeScore(
+                    label = scoreEntry.attribute.displayName,
+                    score = scoreEntry.score,
+                    attributeId = scoreEntry.attribute.id,
+                    displayInDiamond = scoreEntry.attribute.displayInDiamond,
+                    diamondOrder = scoreEntry.attribute.diamondOrder,
+                    weight = scoreEntry.attribute.weight,
+                )
+            }
+        val dateScores =
+            item.values
+                .filter { it.attribute.type == AttributeType.DATE && it.attribute.scoringDirection != null }
+                .mapNotNull { valueEntry ->
+                    val direction = valueEntry.attribute.scoringDirection ?: return@mapNotNull null
+                    val score = dateProcessor.computeDateScore(valueEntry.value, direction) ?: return@mapNotNull null
+                    ItemDetailAttributeScore(
+                        label = valueEntry.attribute.displayName,
+                        score = score,
+                        attributeId = valueEntry.attribute.id,
+                        displayInDiamond = valueEntry.attribute.displayInDiamond,
+                        diamondOrder = valueEntry.attribute.diamondOrder,
+                        weight = valueEntry.attribute.weight,
+                    )
+                }
+        return numberScores + dateScores
+    }
 
     private fun buildImageReferences(item: com.juzgon.domain.RatedItem): Map<String, List<ItemImageReference>> =
         item.values.associate { valueEntry ->

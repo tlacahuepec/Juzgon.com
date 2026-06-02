@@ -24,7 +24,10 @@ data class CategoryAttributeInput(
     val displayInDiamond: Boolean = type == AttributeType.NUMBER,
     val diamondOrderText: String = "",
     val scoringDirection: ScoringDirection? = null,
-)
+) {
+    val isRankable: Boolean
+        get() = type == AttributeType.NUMBER || (type == AttributeType.DATE && scoringDirection != null)
+}
 
 data class CategoryAttributeValidationError(
     val name: String? = null,
@@ -75,7 +78,7 @@ data class CategoryFormUiState(
                         weight = attribute.parsedWeight(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,
-                        displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
+                        displayInDiamond = attribute.isRankable && attribute.displayInDiamond,
                         diamondOrder = attribute.parsedDiamondOrder(),
                         scoringDirection =
                             if (attribute.type == AttributeType.DATE) attribute.scoringDirection else null,
@@ -105,7 +108,7 @@ object CategoryFormReducer {
                         weightText = attribute.weight.toString(),
                         type = attribute.type,
                         isRequired = attribute.isRequired,
-                        displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
+                        displayInDiamond = attribute.isRankable && attribute.displayInDiamond,
                         diamondOrderText = attribute.diamondOrder?.toString().orEmpty(),
                         scoringDirection = attribute.scoringDirection,
                     )

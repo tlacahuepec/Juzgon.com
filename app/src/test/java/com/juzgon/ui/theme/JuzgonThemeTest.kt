@@ -35,6 +35,16 @@ class JuzgonThemeSelectorTest {
         assertEquals(JuzgonDarkColorScheme, JuzgonThemeSelector.fallbackColorScheme(darkTheme = true))
         assertEquals(JuzgonLightColorScheme, JuzgonThemeSelector.fallbackColorScheme(darkTheme = false))
     }
+
+    @Test
+    fun refreshVisualTokensAreAvailableWithoutDynamicColor() {
+        val tokens = JuzgonVisualTokenSelector.refreshTokens()
+
+        assertEquals(Color(0xFF05040A), tokens.palette.baseBackground)
+        assertEquals(Color(0xFFC026D3), tokens.palette.primaryGlow)
+        assertEquals(Color(0xFF22D3EE), tokens.palette.contrastAccent)
+        assertEquals(listOf(Color(0xFF7C3AED), Color(0xFFD946EF), Color(0xFFFDBA74)), tokens.gradients.scoreBar)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -77,5 +87,26 @@ class JuzgonThemeSmokeTest {
 
         composeRule.onNodeWithText("Dark theme").assertIsDisplayed()
         assertEquals(JuzgonDarkColorScheme.primary, primary)
+    }
+
+    @Test
+    fun themeProvidesRefreshVisualTokensWithoutChangingFallbackScheme() {
+        var primary = Color.Unspecified
+        var primaryGlow = Color.Unspecified
+
+        composeRule.setContent {
+            JuzgonTheme(
+                darkTheme = true,
+                dynamicColor = false,
+            ) {
+                primary = MaterialTheme.colorScheme.primary
+                primaryGlow = JuzgonVisualTheme.tokens.palette.primaryGlow
+                Text("Visual tokens")
+            }
+        }
+
+        composeRule.onNodeWithText("Visual tokens").assertIsDisplayed()
+        assertEquals(JuzgonDarkColorScheme.primary, primary)
+        assertEquals(Color(0xFFC026D3), primaryGlow)
     }
 }

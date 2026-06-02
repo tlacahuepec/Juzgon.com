@@ -192,6 +192,28 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun loadedScreenRendersRefreshedDiamondChartSurfaceWithLabels() {
+        setContent(
+            loadedState().copy(
+                diamondChartPoints =
+                    listOf(
+                        DiamondChartPoint(label = "Speed", value = 10),
+                        DiamondChartPoint(label = "Brakes", value = 5),
+                        DiamondChartPoint(label = "Control", value = 1),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Diamond chart surface, 3 attributes")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Speed: 10 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Brakes: 5 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Control: 1 / 10").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun loadedScreenRendersDiamondChartEmptyStateWithTooFewPoints() {
         setContent(
             loadedState().copy(
@@ -244,6 +266,52 @@ class ItemDetailScreenTest {
         composeRule.onNodeWithText("Value ↓").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Rank =").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Value =").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun loadedScreenRendersGroupedScoreBarsForHighMidAndLowValues() {
+        setContent(
+            loadedState().copy(
+                rankedAttributes =
+                    listOf(
+                        RankedAttributeCardUiModel(
+                            rank = 1,
+                            label = "Top Speed",
+                            valueText = "10",
+                            maxText = "10",
+                            progressPercent = 100,
+                            progressFraction = 1f,
+                            sizeVariant = AttributeRankSizeVariant.Rank1,
+                        ),
+                        RankedAttributeCardUiModel(
+                            rank = 2,
+                            label = "Comfort",
+                            valueText = "5",
+                            maxText = "10",
+                            progressPercent = 50,
+                            progressFraction = 0.5f,
+                            sizeVariant = AttributeRankSizeVariant.Rank2,
+                        ),
+                        RankedAttributeCardUiModel(
+                            rank = 3,
+                            label = "Storage",
+                            valueText = "1",
+                            maxText = "10",
+                            progressPercent = 10,
+                            progressFraction = 0.1f,
+                            sizeVariant = AttributeRankSizeVariant.Rank3,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("Ranked attribute score list").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Top Speed").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("10 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Comfort").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("5 / 10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Storage").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("1 / 10").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -358,6 +426,29 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun profileBreakdownKeepsDataInRefreshedSurface() {
+        setContent(
+            loadedState().copy(
+                profileBreakdown =
+                    ItemProfileBreakdown(
+                        profileName = "Speed Focus",
+                        profileScoreText = "8.0",
+                        profileRank = 1,
+                        totalItems = 3,
+                        includedAttributeIds = setOf("Speed"),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Profile breakdown, Speed Focus, rank 1 of 3, score 8.0")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Speed Focus").assertIsDisplayed()
+        composeRule.onNodeWithText("8.0").assertIsDisplayed()
+        composeRule.onNodeWithText("#1 of 3").assertIsDisplayed()
+    }
+
+    @Test
     fun noBannerWhenBreakdownNull() {
         setContent(loadedState())
 
@@ -371,6 +462,45 @@ class ItemDetailScreenTest {
         composeRule.onNodeWithContentDescription("Back").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Edit item").assertMinimumTouchTarget()
         composeRule.onNodeWithContentDescription("Delete item").assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun birthDateAttributeRendersAgeText() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Birth Date",
+                            value = "1990-05-27",
+                            type = AttributeType.DATE,
+                            displayValue = "May 27, 1990",
+                            ageText = "Age: 36",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Age: 36").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun dateAttributeWithoutAgeTextDoesNotRenderAge() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Release",
+                            value = "2020-01-15",
+                            type = AttributeType.DATE,
+                            displayValue = "Jan 15, 2020",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Age:").assertDoesNotExist()
     }
 
     private fun setContent(
