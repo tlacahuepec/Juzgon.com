@@ -430,7 +430,7 @@ private fun CategoryAttributeRow(
             )
         }
 
-        if (attribute.type == AttributeType.NUMBER) {
+        if (attribute.isRankable) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,

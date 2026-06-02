@@ -146,7 +146,7 @@ class CategoryAttributesCoordinator(
         display: Boolean,
     ) {
         update(key) { attr ->
-            if (attr.type == AttributeType.NUMBER) attr.copy(displayInDiamond = display) else attr
+            if (attr.isRankable) attr.copy(displayInDiamond = display) else attr
         }
     }
 
@@ -155,7 +155,7 @@ class CategoryAttributesCoordinator(
         orderText: String,
     ) {
         update(key) { attr ->
-            if (attr.type == AttributeType.NUMBER) attr.copy(diamondOrderText = orderText) else attr
+            if (attr.isRankable) attr.copy(diamondOrderText = orderText) else attr
         }
     }
 
@@ -184,13 +184,16 @@ class CategoryAttributesCoordinator(
         pendingTypeChangeKey = null
     }
 
-    private fun CategoryAttributeInput.withType(type: AttributeType): CategoryAttributeInput =
-        copy(
+    private fun CategoryAttributeInput.withType(type: AttributeType): CategoryAttributeInput {
+        val newDirection = if (type == AttributeType.DATE) scoringDirection else null
+        val rankable = type == AttributeType.NUMBER || (type == AttributeType.DATE && newDirection != null)
+        return copy(
             type = type,
-            displayInDiamond = type == AttributeType.NUMBER && displayInDiamond,
-            diamondOrderText = if (type == AttributeType.NUMBER) diamondOrderText else "",
-            scoringDirection = if (type == AttributeType.DATE) scoringDirection else null,
+            displayInDiamond = rankable && displayInDiamond,
+            diamondOrderText = if (rankable) diamondOrderText else "",
+            scoringDirection = newDirection,
         )
+    }
 
     // Result types for warning flows
     sealed interface RemoveAttributeResult {
