@@ -1044,6 +1044,159 @@ class CategoryDetailViewModelTest {
             }
         }
 
+    @Test
+    fun searchMatchesItemByNationalityValue() =
+        runTest {
+            val nationalityAttr = Attribute("Cars/Nationality", type = AttributeType.NATIONALITY)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, brakes, nationalityAttr))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(speed, 8)),
+                                values = listOf(ItemAttributeValue(nationalityAttr, "MX")),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores = listOf(ScoreEntry(speed, 7)),
+                                values = listOf(ItemAttributeValue(nationalityAttr, "US")),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("MX")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("sedan", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun searchMatchesItemByNotesContent() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(speed, 8)),
+                                notes = "Great fuel economy",
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "truck",
+                                scores = listOf(ScoreEntry(speed, 6)),
+                                notes = "Good for hauling",
+                            ),
+                        aggregateScore = 6.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("fuel")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("sedan", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun searchMatchesItemByDropdownValue() =
+        runTest {
+            val colorAttr = Attribute("Cars/Color", type = AttributeType.DROPDOWN)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, colorAttr))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(speed, 8)),
+                                values = listOf(ItemAttributeValue(colorAttr, "Red")),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "coupe",
+                                scores = listOf(ScoreEntry(speed, 7)),
+                                values = listOf(ItemAttributeValue(colorAttr, "Blue")),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("Red")
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("sedan", state.items.single().id)
+            }
+        }
+
+    @Test
+    fun searchDoesNotMatchNumberScoreAsText() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "sedan",
+                                scores = listOf(ScoreEntry(speed, 8)),
+                            ),
+                        aggregateScore = 8.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onSearchQueryChanged("8")
+                state = awaitItem()
+
+                assertEquals(0, state.items.size)
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val category = MutableStateFlow<Category?>(null)
 
