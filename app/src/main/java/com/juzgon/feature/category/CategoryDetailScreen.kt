@@ -25,9 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -39,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,6 +67,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.domain.AttributeType
 import com.juzgon.ui.components.JuzgonCollectionCard
 import com.juzgon.ui.components.JuzgonCollectionCardMetadata
 import com.juzgon.ui.components.JuzgonCollectionCardMetric
@@ -98,6 +102,7 @@ fun CategoryDetailRoute(
         onBackClick = onBackClick,
         onRetry = viewModel::onRetry,
         onSortOptionSelected = viewModel::onSortOptionSelected,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onAddItemClick = onAddItemClick,
         onEditItemClick = { itemId -> onEditItemClick(itemId, state.activeProfileId) },
         onDeleteClick = viewModel::onDeleteClick,
@@ -106,6 +111,8 @@ fun CategoryDetailRoute(
         onEditCategoryClick = viewModel::onEditCategoryClick,
         onScoreProfilesClick = onScoreProfilesClick,
         onProfileSelected = viewModel::onProfileSelected,
+        onFilterSelected = viewModel::onFilterSelected,
+        onFilterCleared = viewModel::onFilterCleared,
     )
 }
 
@@ -116,6 +123,7 @@ fun CategoryDetailScreen(
     onBackClick: () -> Unit,
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit = {},
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onDeleteClick: () -> Unit = {},
@@ -124,6 +132,8 @@ fun CategoryDetailScreen(
     onEditCategoryClick: () -> Unit = {},
     onScoreProfilesClick: () -> Unit = {},
     onProfileSelected: (String?) -> Unit = {},
+    onFilterSelected: (AttributeFilter) -> Unit = {},
+    onFilterCleared: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
@@ -233,9 +243,12 @@ fun CategoryDetailScreen(
             state = state,
             onRetry = onRetry,
             onSortOptionSelected = onSortOptionSelected,
+            onSearchQueryChanged = onSearchQueryChanged,
             onAddItemClick = onAddItemClick,
             onEditItemClick = onEditItemClick,
             onProfileSelected = onProfileSelected,
+            onFilterSelected = onFilterSelected,
+            onFilterCleared = onFilterCleared,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -285,16 +298,29 @@ private fun CategoryDetailContent(
     state: CategoryDetailUiState,
     onRetry: () -> Unit,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
+    onFilterSelected: (AttributeFilter) -> Unit,
+    onFilterCleared: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
         state.isLoading -> CenteredContent(modifier = modifier) { CircularProgressIndicator() }
         state.errorMessage != null -> CategoryDetailErrorState(state.errorMessage, onRetry, modifier)
         !state.hasItems -> CategoryDetailEmptyState(state.attributeSummary, onAddItemClick, modifier)
-        else -> CategoryDetailItemList(state, onSortOptionSelected, onEditItemClick, onProfileSelected, modifier)
+        else ->
+            CategoryDetailItemList(
+                state = state,
+                onSortOptionSelected = onSortOptionSelected,
+                onSearchQueryChanged = onSearchQueryChanged,
+                onEditItemClick = onEditItemClick,
+                onProfileSelected = onProfileSelected,
+                onFilterSelected = onFilterSelected,
+                onFilterCleared = onFilterCleared,
+                modifier = modifier,
+            )
     }
 }
 
@@ -353,8 +379,11 @@ private fun CategoryDetailEmptyState(
 private fun CategoryDetailItemList(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
+    onFilterSelected: (AttributeFilter) -> Unit,
+    onFilterCleared: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -385,6 +414,21 @@ private fun CategoryDetailItemList(
                 onSortOptionSelected = onSortOptionSelected,
             )
         }
+        item {
+            CategoryDetailSearchBar(
+                query = state.searchQuery,
+                onQueryChanged = onSearchQueryChanged,
+            )
+        }
+        if (state.filterChips.isNotEmpty()) {
+            item {
+                AttributeFilterChipRow(
+                    chips = state.filterChips,
+                    onFilterSelected = onFilterSelected,
+                    onFilterCleared = onFilterCleared,
+                )
+            }
+        }
         items(
             items = state.items,
             key = { item -> item.id },
@@ -397,8 +441,350 @@ private fun CategoryDetailItemList(
     }
 }
 
+@Composable
+private fun CategoryDetailSearchBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        placeholder = { Text("Search items…") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChanged("") }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                }
+            }
+        },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AttributeFilterChipRow(
+    chips: List<FilterChipUiModel>,
+    onFilterSelected: (AttributeFilter) -> Unit,
+    onFilterCleared: (String) -> Unit,
+) {
+    var activeSheet by remember { mutableStateOf<FilterChipUiModel?>(null) }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+    ) {
+        chips.forEach { chip ->
+            FilterChip(
+                selected = chip.isActive,
+                onClick = {
+                    if (chip.isActive) {
+                        onFilterCleared(chip.attributeId)
+                    } else {
+                        activeSheet = chip
+                    }
+                },
+                label = { Text(chip.activeLabel ?: chip.label) },
+                trailingIcon = {
+                    if (chip.isActive) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Clear filter: ${chip.label}",
+                            modifier = Modifier.sizeIn(maxWidth = 18.dp, maxHeight = 18.dp),
+                        )
+                    }
+                },
+                modifier =
+                    Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "Filter: ${chip.label}"
+                        },
+            )
+        }
+    }
+
+    activeSheet?.let { chip ->
+        AttributeFilterSheet(
+            chip = chip,
+            onApply = { filter ->
+                onFilterSelected(filter)
+                activeSheet = null
+            },
+            onDismiss = { activeSheet = null },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AttributeFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    when (chip.type) {
+        AttributeType.NATIONALITY -> NationalityFilterSheet(chip, onApply, onDismiss)
+        AttributeType.DROPDOWN -> DropdownFilterSheet(chip, onApply, onDismiss)
+        AttributeType.BOOLEAN -> BooleanFilterSheet(chip, onApply, onDismiss)
+        AttributeType.NUMBER -> NumberRangeFilterSheet(chip, onApply, onDismiss)
+        AttributeType.DATE -> DateRangeFilterSheet(chip, onApply, onDismiss)
+        else -> onDismiss()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NationalityFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                items(items = chip.availableValues, key = { it }) { value ->
+                    FilterOptionRow(
+                        label = value,
+                        isSelected = value in selected,
+                        onClick = {
+                            selected = if (value in selected) selected - value else selected + value
+                        },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    if (selected.isNotEmpty()) {
+                        onApply(AttributeFilter.Nationality(chip.attributeId, selected))
+                    }
+                },
+                enabled = selected.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply") }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DropdownFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                items(items = chip.availableValues, key = { it }) { value ->
+                    FilterOptionRow(
+                        label = value,
+                        isSelected = value in selected,
+                        onClick = {
+                            selected = if (value in selected) selected - value else selected + value
+                        },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    if (selected.isNotEmpty()) {
+                        onApply(AttributeFilter.Dropdown(chip.attributeId, selected))
+                    }
+                },
+                enabled = selected.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply") }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BooleanFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            FilterOptionRow(
+                label = "Yes",
+                isSelected = false,
+                onClick = { onApply(AttributeFilter.BooleanFilter(chip.attributeId, true)) },
+            )
+            FilterOptionRow(
+                label = "No",
+                isSelected = false,
+                onClick = { onApply(AttributeFilter.BooleanFilter(chip.attributeId, false)) },
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NumberRangeFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var range by remember { mutableStateOf(SCORE_RANGE_MIN..SCORE_RANGE_MAX) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            Text(
+                text = "${range.start.toInt()} – ${range.endInclusive.toInt()}",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            RangeSlider(
+                value = range,
+                onValueChange = { range = it },
+                valueRange = SCORE_RANGE_MIN..SCORE_RANGE_MAX,
+                steps = SCORE_RANGE_STEPS,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    onApply(
+                        AttributeFilter.NumberRange(
+                            chip.attributeId,
+                            min = range.start.toInt(),
+                            max = range.endInclusive.toInt(),
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply") }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateRangeFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var startDate by remember { mutableStateOf("") }
+    var endDate by remember { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            OutlinedTextField(
+                value = startDate,
+                onValueChange = { startDate = it },
+                label = { Text("From (yyyy-MM-dd)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            )
+            OutlinedTextField(
+                value = endDate,
+                onValueChange = { endDate = it },
+                label = { Text("To (yyyy-MM-dd)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            )
+            Button(
+                onClick = {
+                    onApply(
+                        AttributeFilter.DateRange(
+                            chip.attributeId,
+                            startDate = startDate.takeIf { it.isNotBlank() },
+                            endDate = endDate.takeIf { it.isNotBlank() },
+                        ),
+                    )
+                },
+                enabled = startDate.isNotBlank() || endDate.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply") }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun FilterOptionRow(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .sizeIn(minHeight = 48.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+        ) {
+            Text(text = label, modifier = Modifier.weight(1f))
+            if (isSelected) {
+                Icon(Icons.Filled.Check, contentDescription = "Selected")
+            }
+        }
+    }
+}
+
 private const val INLINE_SORT_OPTIONS_THRESHOLD = 6
 private const val SORT_SHEET_SEARCH_THRESHOLD = 10
+private const val SCORE_RANGE_MIN = 1f
+private const val SCORE_RANGE_MAX = 10f
+private const val SCORE_RANGE_STEPS = 8
 
 @Composable
 private fun ProfileSelector(

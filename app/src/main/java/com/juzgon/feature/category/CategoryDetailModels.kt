@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
@@ -27,6 +29,37 @@ sealed interface CategoryDetailNavigationEvent {
     data object NavigateBack : CategoryDetailNavigationEvent
 }
 
+sealed interface AttributeFilter {
+    val attributeId: String
+
+    data class Nationality(
+        override val attributeId: String,
+        val selectedCodes: Set<String>,
+    ) : AttributeFilter
+
+    data class NumberRange(
+        override val attributeId: String,
+        val min: Int,
+        val max: Int,
+    ) : AttributeFilter
+
+    data class DateRange(
+        override val attributeId: String,
+        val startDate: String?,
+        val endDate: String?,
+    ) : AttributeFilter
+
+    data class Dropdown(
+        override val attributeId: String,
+        val selectedValues: Set<String>,
+    ) : AttributeFilter
+
+    data class BooleanFilter(
+        override val attributeId: String,
+        val value: Boolean,
+    ) : AttributeFilter
+}
+
 data class CategoryDetailItemUiModel(
     val rank: Int,
     val id: String,
@@ -40,6 +73,15 @@ data class CategoryDetailItemUiModel(
 data class ProfileOption(
     val id: String?,
     val name: String,
+)
+
+data class FilterChipUiModel(
+    val attributeId: String,
+    val label: String,
+    val type: AttributeType,
+    val isActive: Boolean,
+    val activeLabel: String? = null,
+    val availableValues: List<String> = emptyList(),
 )
 
 data class CategoryDetailUiState(
@@ -57,6 +99,8 @@ data class CategoryDetailUiState(
     val activeProfileId: String? = null,
     val activeProfileLabel: String? = null,
     val searchQuery: String = "",
+    val filterChips: List<FilterChipUiModel> = emptyList(),
+    val activeFilters: List<AttributeFilter> = emptyList(),
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -80,6 +124,7 @@ object CategoryDetailReducer {
         activeProfileId: String? = null,
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase? = null,
         searchQuery: String = "",
+        activeFilters: List<AttributeFilter> = emptyList(),
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -103,7 +148,8 @@ object CategoryDetailReducer {
         val selectedSortOption = resolveSelectedSortOption(sortOption, sortOptions)
 
         val sortedItems = sortItems(effectiveRankedItems, selectedSortOption, category)
-        val filteredItems = applySearchFilter(sortedItems, searchQuery)
+        val searchedItems = applySearchFilter(sortedItems, searchQuery)
+        val filteredItems = applyAttributeFilters(searchedItems, activeFilters)
 
         val activeProfile = activeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
 
@@ -121,6 +167,8 @@ object CategoryDetailReducer {
             activeProfileId = activeProfile?.id,
             activeProfileLabel = activeProfile?.let { "Ranking: ${it.name}" },
             searchQuery = searchQuery,
+            filterChips = buildFilterChips(category, effectiveRankedItems, activeFilters),
+            activeFilters = activeFilters,
         )
     }
 
@@ -164,12 +212,29 @@ object CategoryDetailReducer {
             is CategoryDetailSortOption.Attribute -> items.sortedByAttribute(category, sortOption.attributeId)
         }
 
+    private val TEXT_SEARCHABLE_TYPES =
+        setOf(
+            AttributeType.NATIONALITY,
+            AttributeType.NOTES,
+            AttributeType.DROPDOWN,
+            AttributeType.URL,
+            AttributeType.BOOLEAN,
+        )
+
     private fun applySearchFilter(
         items: List<RankedRatedItem>,
         query: String,
     ): List<RankedRatedItem> {
         val trimmed = query.trim()
-        return if (trimmed.isEmpty()) items else items.filter { it.item.id.contains(trimmed, ignoreCase = true) }
+        if (trimmed.isEmpty()) return items
+        return items.filter { ranked ->
+            ranked.item.id.contains(trimmed, ignoreCase = true) ||
+                ranked.item.notes.contains(trimmed, ignoreCase = true) ||
+                ranked.item.values.any { value ->
+                    value.attribute.type in TEXT_SEARCHABLE_TYPES &&
+                        value.value.contains(trimmed, ignoreCase = true)
+                }
+        }
     }
 
     private fun buildItemUiModel(
@@ -193,6 +258,108 @@ object CategoryDetailReducer {
     private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
         listOf(ProfileOption(id = null, name = "All Attributes")) +
             profiles.map { ProfileOption(id = it.id, name = it.name) }
+
+    private fun applyAttributeFilters(
+        items: List<RankedRatedItem>,
+        filters: List<AttributeFilter>,
+    ): List<RankedRatedItem> {
+        if (filters.isEmpty()) return items
+        return items.filter { ranked -> filters.all { filter -> matchesFilter(ranked, filter) } }
+    }
+
+    @Suppress("CyclomaticComplexMethod")
+    private fun matchesFilter(
+        ranked: RankedRatedItem,
+        filter: AttributeFilter,
+    ): Boolean =
+        when (filter) {
+            is AttributeFilter.Nationality ->
+                ranked.item
+                    .textValueForAttribute(filter.attributeId)
+                    ?.let { it in filter.selectedCodes } ?: false
+            is AttributeFilter.NumberRange ->
+                ranked.item
+                    .scoreForAttribute(filter.attributeId)
+                    ?.let { it in filter.min..filter.max } ?: false
+            is AttributeFilter.DateRange ->
+                ranked.item
+                    .textValueForAttribute(filter.attributeId)
+                    ?.let { matchesDateRange(it, filter.startDate, filter.endDate) } ?: false
+            is AttributeFilter.Dropdown ->
+                ranked.item
+                    .textValueForAttribute(filter.attributeId)
+                    ?.let { it in filter.selectedValues } ?: false
+            is AttributeFilter.BooleanFilter ->
+                ranked.item
+                    .textValueForAttribute(filter.attributeId)
+                    ?.let { it.equals(filter.value.toString(), ignoreCase = true) } ?: false
+        }
+
+    @Suppress("ReturnCount")
+    private fun matchesDateRange(
+        value: String,
+        startDate: String?,
+        endDate: String?,
+    ): Boolean {
+        if (startDate != null && value < startDate) return false
+        if (endDate != null && value > endDate) return false
+        return true
+    }
+
+    private val FILTERABLE_TYPES =
+        setOf(
+            AttributeType.NUMBER,
+            AttributeType.NATIONALITY,
+            AttributeType.DROPDOWN,
+            AttributeType.DATE,
+            AttributeType.BOOLEAN,
+        )
+
+    private fun buildFilterChips(
+        category: Category,
+        items: List<RankedRatedItem>,
+        activeFilters: List<AttributeFilter>,
+    ): List<FilterChipUiModel> =
+        category.attributes
+            .filter { it.type in FILTERABLE_TYPES }
+            .map { attribute ->
+                val activeFilter = activeFilters.firstOrNull { it.attributeId == attribute.id }
+                FilterChipUiModel(
+                    attributeId = attribute.id,
+                    label = attribute.displayName,
+                    type = attribute.type,
+                    isActive = activeFilter != null,
+                    activeLabel = activeFilter?.toActiveLabel(),
+                    availableValues = collectAvailableValues(attribute, items),
+                )
+            }
+
+    private fun AttributeFilter.toActiveLabel(): String =
+        when (this) {
+            is AttributeFilter.Nationality -> selectedCodes.joinToString(", ")
+            is AttributeFilter.NumberRange -> "$min–$max"
+            is AttributeFilter.DateRange -> listOfNotNull(startDate, endDate).joinToString(" – ")
+            is AttributeFilter.Dropdown -> selectedValues.joinToString(", ")
+            is AttributeFilter.BooleanFilter -> if (value) "Yes" else "No"
+        }
+
+    private fun collectAvailableValues(
+        attribute: com.juzgon.domain.Attribute,
+        items: List<RankedRatedItem>,
+    ): List<String> =
+        if (attribute.type == AttributeType.NUMBER) {
+            emptyList()
+        } else {
+            items
+                .mapNotNull { ranked ->
+                    ranked.item.values
+                        .firstOrNull { it.attribute.id == attribute.id }
+                        ?.value
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                }.distinct()
+                .sorted()
+        }
 }
 
 private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
