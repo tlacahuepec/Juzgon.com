@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class CategoryDetailViewModel
     @Inject
@@ -33,6 +34,7 @@ class CategoryDetailViewModel
         private val sortOption = MutableStateFlow<CategoryDetailSortOption>(CategoryDetailSortOption.Score)
         private val activeProfileId = MutableStateFlow<String?>(null)
         private val searchQuery = MutableStateFlow<String>("")
+        private val activeFilters = MutableStateFlow<List<AttributeFilter>>(emptyList())
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
@@ -54,6 +56,7 @@ class CategoryDetailViewModel
                         sortOption,
                         activeProfileId,
                         searchQuery,
+                        activeFilters,
                     ) { flows ->
                         @Suppress("UNCHECKED_CAST")
                         CategoryDetailReducer.reduce(
@@ -65,6 +68,7 @@ class CategoryDetailViewModel
                             activeProfileId = flows[4] as String?,
                             calculateProfileRankedItems = calculateProfileRankedItems,
                             searchQuery = flows[5] as String,
+                            activeFilters = flows[6] as List<AttributeFilter>,
                         )
                     }.collect { detailState ->
                         mutableState.value =
@@ -87,6 +91,17 @@ class CategoryDetailViewModel
 
         fun onSearchQueryChanged(query: String) {
             searchQuery.value = query
+        }
+
+        fun onFilterSelected(filter: AttributeFilter) {
+            val current = activeFilters.value.toMutableList()
+            val index = current.indexOfFirst { it.attributeId == filter.attributeId }
+            if (index >= 0) current[index] = filter else current.add(filter)
+            activeFilters.value = current
+        }
+
+        fun onFilterCleared(attributeId: String) {
+            activeFilters.value = activeFilters.value.filter { it.attributeId != attributeId }
         }
 
         fun onRetry() {
