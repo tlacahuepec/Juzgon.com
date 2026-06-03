@@ -105,7 +105,10 @@ class GeminiPromptBuilder
             appendLine("- Use reliable public internet sources.")
             appendLine("- Do not guess.")
             appendLine("- If no reliable source is found, return NOT_FOUND.")
-            appendLine("- If sources conflict, return CONFLICT.")
+            appendLine(
+                "- If sources conflict, return CONFLICT and populate candidateValues " +
+                    "with each distinct value found, linking each to its source title.",
+            )
             if (request.targetAttributeType == AttributeType.DATE) {
                 appendLine("- Return dates in ISO-8601 format (YYYY-MM-DD).")
             }
@@ -123,7 +126,8 @@ class GeminiPromptBuilder
                   "displayValue": "human-readable value or null",
                   "confidence": "HIGH | MEDIUM | LOW",
                   "reason": "brief explanation",
-                  "sources": [{"title": "...", "url": "...", "snippet": "..."}]
+                  "sources": [{"title": "...", "url": "...", "snippet": "..."}],
+                  "candidateValues": [{"value": "...", "displayValue": "...", "source": "source title"}]
                 }
                 """.trimIndent(),
             )

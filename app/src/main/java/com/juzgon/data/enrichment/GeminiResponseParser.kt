@@ -3,6 +3,7 @@
 package com.juzgon.data.enrichment
 
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentCandidateValue
 import com.juzgon.domain.enrichment.EnrichmentConfidence
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
@@ -45,6 +46,16 @@ class GeminiResponseParser
                         snippet = source.snippet,
                     )
                 } ?: emptyList()
+            val mappedCandidates =
+                candidateValues?.mapNotNull { candidate ->
+                    candidate.value?.let { v ->
+                        EnrichmentCandidateValue(
+                            value = v,
+                            displayValue = candidate.displayValue,
+                            sourceLabel = candidate.source,
+                        )
+                    }
+                } ?: emptyList()
 
             return AttributeEnrichmentResult(
                 status = mappedStatus,
@@ -53,6 +64,7 @@ class GeminiResponseParser
                 confidence = mappedConfidence,
                 sources = mappedSources,
                 reason = reason,
+                candidateValues = mappedCandidates,
             )
         }
 
@@ -87,6 +99,7 @@ internal data class GeminiWireResponse(
     val confidence: String? = null,
     val reason: String? = null,
     val sources: List<GeminiWireSource>? = null,
+    val candidateValues: List<GeminiWireCandidateValue>? = null,
 )
 
 @Serializable
@@ -94,4 +107,11 @@ internal data class GeminiWireSource(
     val title: String? = null,
     val url: String? = null,
     val snippet: String? = null,
+)
+
+@Serializable
+internal data class GeminiWireCandidateValue(
+    val value: String? = null,
+    val displayValue: String? = null,
+    val source: String? = null,
 )

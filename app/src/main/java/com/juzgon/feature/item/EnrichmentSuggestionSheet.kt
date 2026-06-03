@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.juzgon.domain.enrichment.EnrichmentCandidateValue
 import com.juzgon.domain.enrichment.EnrichmentConfidence
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
@@ -45,6 +46,7 @@ fun EnrichmentSuggestionSheet(
     state: EnrichmentSheetState,
     canRetry: Boolean,
     onAccept: () -> Unit,
+    onConflictResolved: (EnrichmentCandidateValue) -> Unit,
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -67,7 +69,8 @@ fun EnrichmentSuggestionSheet(
                 is EnrichmentSheetState.NoKey -> NoKeyContent(onNavigateToSettings, onDismiss)
                 is EnrichmentSheetState.Found -> FoundContent(state, onAccept, onDismiss)
                 is EnrichmentSheetState.NotFound -> NotFoundContent(canRetry, onRetry, onDismiss)
-                is EnrichmentSheetState.Conflict -> ConflictContent(canRetry, onRetry, onDismiss)
+                is EnrichmentSheetState.Conflict ->
+                    ConflictContent(state, canRetry, onConflictResolved, onRetry, onDismiss)
                 is EnrichmentSheetState.Error -> ErrorContent(state, canRetry, onRetry, onDismiss)
                 is EnrichmentSheetState.Hidden -> {}
             }
@@ -246,28 +249,77 @@ private fun NotFoundContent(
 
 @Composable
 private fun ConflictContent(
+    state: EnrichmentSheetState.Conflict,
     canRetry: Boolean,
+    onConflictResolved: (EnrichmentCandidateValue) -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
+
     Text(
         text = "Conflicting information found.",
         style = MaterialTheme.typography.titleMedium,
     )
     Spacer(modifier = Modifier.height(8.dp))
-    Text(
-        text = "No value was suggested.",
-        style = MaterialTheme.typography.bodyMedium,
-    )
+    if (state.candidateValues.isEmpty()) {
+        Text(
+            text = "No value was suggested.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    } else {
+        Text(
+            text = "Pick the value you trust:",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        state.candidateValues.forEachIndexed { index, candidate ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.RadioButton(
+                    selected = selectedIndex == index,
+                    onClick = { selectedIndex = index },
+                )
+                Column(modifier = Modifier.padding(start = 8.dp)) {
+                    Text(
+                        text = candidate.displayValue ?: candidate.value,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    candidate.sourceLabel?.let { source ->
+                        Text(
+                            text = source,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
     Spacer(modifier = Modifier.height(16.dp))
+    if (state.candidateValues.isNotEmpty()) {
+        Button(
+            onClick = { selectedIndex?.let { onConflictResolved(state.candidateValues[it]) } },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = selectedIndex != null,
+        ) {
+            Text("Use selected")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     if (canRetry) {
         OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
             Text("Retry")
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
-    Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-        Text("OK")
+    OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+        Text("Dismiss")
     }
 }
 
