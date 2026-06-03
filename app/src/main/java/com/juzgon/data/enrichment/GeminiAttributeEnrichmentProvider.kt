@@ -34,7 +34,7 @@ class GeminiAttributeEnrichmentProvider
             return try {
                 val prompt = promptBuilder.build(request)
                 EnrichmentLogger.promptSent(PROVIDER_NAME, prompt)
-                val responseText = apiClient.generateContent(apiKey, prompt)
+                val responseText = apiClient.generateContent(apiKey, prompt, useGrounding = true)
                 EnrichmentLogger.responseReceived(PROVIDER_NAME, responseText)
                 val result = responseParser.parse(responseText)
                 logResult(result, request.targetAttributeKey, startTime)

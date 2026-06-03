@@ -9,6 +9,7 @@ import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.FakeSecureApiKeyStore
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
@@ -129,6 +130,18 @@ class GeminiAttributeEnrichmentProviderTest {
 
             assertEquals(EnrichmentStatus.ERROR, result.status)
             assertEquals(EnrichmentFailureCode.PROVIDER_ERROR, result.failureCode)
+        }
+
+    @Test
+    fun enrichAttribute_usesGroundingByDefault() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeApiClient.nextResponse =
+                """{"status":"FOUND","value":"1987-06-24","confidence":"HIGH","sources":[]}"""
+
+            provider.enrichAttribute(testRequest())
+
+            assertTrue(fakeApiClient.lastUseGrounding)
         }
 
     private fun testRequest() =
