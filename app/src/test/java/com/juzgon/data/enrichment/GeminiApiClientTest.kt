@@ -19,8 +19,8 @@ class GeminiApiClientTest {
     }
 
     @Test
-    fun buildRequestBody_requestsJsonMimeType() {
-        val body = client.buildRequestBody("test")
+    fun buildRequestBody_withoutGrounding_requestsJsonMimeType() {
+        val body = client.buildRequestBody("test", useGrounding = false)
 
         assertTrue(body.contains("application/json"))
         assertTrue(body.contains("responseMimeType"))
@@ -115,6 +115,7 @@ class GeminiApiClientTest {
 
         assertTrue(body.contains("\"tools\""))
         assertTrue(body.contains("\"googleSearch\""))
+        assertFalse(body.contains("responseMimeType"))
     }
 
     @Test
@@ -123,6 +124,7 @@ class GeminiApiClientTest {
 
         assertFalse(body.contains("\"tools\""))
         assertFalse(body.contains("\"googleSearch\""))
+        assertTrue(body.contains("responseMimeType"))
     }
 
     @Test

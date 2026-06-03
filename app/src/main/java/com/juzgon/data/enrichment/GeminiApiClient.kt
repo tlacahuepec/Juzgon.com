@@ -51,9 +51,13 @@ open class GeminiApiClient
                     .replace("\n", "\\n")
                     .replace("\r", "\\r")
                     .replace("\t", "\\t")
-            val toolsSection = if (useGrounding) ""","tools":[{"googleSearch":{}}]""" else ""
-            return """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}]$toolsSection,""" +
-                """"generationConfig":{"responseMimeType":"application/json"}}"""
+            return if (useGrounding) {
+                """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
+                    """"tools":[{"googleSearch":{}}]}"""
+            } else {
+                """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
+                    """"generationConfig":{"responseMimeType":"application/json"}}"""
+            }
         }
 
         fun extractTextFromResponse(responseJson: String): String {
