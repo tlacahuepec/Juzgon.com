@@ -427,6 +427,21 @@ class ItemFormViewModel
             )
         }
 
+        fun onConflictValueSelected(candidate: com.juzgon.domain.enrichment.EnrichmentCandidateValue) {
+            val current = mutableState.value
+            val sheet = current.enrichmentSheet
+            if (sheet is EnrichmentSheetState.Conflict) {
+                enrichmentCoordinator.acceptConflictResolution(
+                    currentSheet = sheet,
+                    selectedCandidate = candidate,
+                    onValueChanged = ::onValueChanged,
+                    onSheetHidden = {
+                        mutableState.update { it.copy(enrichmentSheet = EnrichmentSheetState.Hidden) }
+                    },
+                )
+            }
+        }
+
         fun onSuggestionDismissed() {
             val current = mutableState.value
             enrichmentCoordinator.dismissSuggestion(current.enrichmentSheet)

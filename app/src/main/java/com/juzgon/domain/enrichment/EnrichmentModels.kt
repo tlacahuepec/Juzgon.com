@@ -23,12 +23,19 @@ data class AttributeEnrichmentResult(
     val sources: List<EnrichmentSource> = emptyList(),
     val reason: String? = null,
     val failureCode: EnrichmentFailureCode? = null,
+    val candidateValues: List<EnrichmentCandidateValue> = emptyList(),
 )
 
 data class EnrichmentSource(
     val title: String? = null,
     val url: String? = null,
     val snippet: String? = null,
+)
+
+data class EnrichmentCandidateValue(
+    val value: String,
+    val displayValue: String? = null,
+    val sourceLabel: String? = null,
 )
 
 enum class EnrichmentStatus { FOUND, NOT_FOUND, CONFLICT, ERROR }

@@ -255,4 +255,19 @@ class GeminiPromptBuilderTest {
         assertTrue(disIdx < searchIdx)
         assertTrue(searchIdx < targetIdx)
     }
+
+    @Test
+    fun build_includesCandidateValuesInResponseFormat() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertTrue(prompt.contains("\"candidateValues\""))
+        assertTrue(prompt.contains("candidateValues"))
+    }
+
+    @Test
+    fun build_conflictRuleIncludesCandidateValuesInstruction() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertTrue(prompt.contains("populate candidateValues"))
+    }
 }

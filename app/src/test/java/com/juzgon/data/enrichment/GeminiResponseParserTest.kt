@@ -182,4 +182,73 @@ class GeminiResponseParserTest {
         assertNull(result.sources[0].url)
         assertNull(result.sources[0].snippet)
     }
+
+    @Test
+    fun parse_conflictWithCandidateValues_mapsCandidatesCorrectly() {
+        val json =
+            """
+            {
+              "status": "CONFLICT",
+              "value": null,
+              "confidence": "MEDIUM",
+              "reason": "Sources disagree",
+              "sources": [
+                {"title": "Source A", "url": "https://a.com"},
+                {"title": "Source B", "url": "https://b.com"}
+              ],
+              "candidateValues": [
+                {"value": "1997-06-20", "displayValue": "June 20, 1997", "source": "Source A"},
+                {"value": "1997-06-21", "displayValue": "June 21, 1997", "source": "Source B"}
+              ]
+            }
+            """.trimIndent()
+
+        val result = parser.parse(json)
+
+        assertEquals(EnrichmentStatus.CONFLICT, result.status)
+        assertEquals(2, result.candidateValues.size)
+        assertEquals("1997-06-20", result.candidateValues[0].value)
+        assertEquals("June 20, 1997", result.candidateValues[0].displayValue)
+        assertEquals("Source A", result.candidateValues[0].sourceLabel)
+        assertEquals("1997-06-21", result.candidateValues[1].value)
+        assertEquals("Source B", result.candidateValues[1].sourceLabel)
+    }
+
+    @Test
+    fun parse_conflictWithoutCandidateValues_returnsEmptyCandidateList() {
+        val json =
+            """
+            {
+              "status": "CONFLICT",
+              "value": null,
+              "reason": "Sources disagree",
+              "sources": []
+            }
+            """.trimIndent()
+
+        val result = parser.parse(json)
+
+        assertEquals(EnrichmentStatus.CONFLICT, result.status)
+        assertEquals(0, result.candidateValues.size)
+    }
+
+    @Test
+    fun parse_candidateWithNullValue_isFilteredOut() {
+        val json =
+            """
+            {
+              "status": "CONFLICT",
+              "value": null,
+              "candidateValues": [
+                {"value": "1997-06-20", "displayValue": "June 20, 1997", "source": "Source A"},
+                {"value": null, "displayValue": null, "source": "Bad Source"}
+              ]
+            }
+            """.trimIndent()
+
+        val result = parser.parse(json)
+
+        assertEquals(1, result.candidateValues.size)
+        assertEquals("1997-06-20", result.candidateValues[0].value)
+    }
 }

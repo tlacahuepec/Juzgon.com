@@ -1,5 +1,6 @@
 package com.juzgon.feature.item
 
+import com.juzgon.domain.enrichment.EnrichmentCandidateValue
 import com.juzgon.domain.enrichment.EnrichmentConfidence
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentSource
@@ -25,8 +26,11 @@ sealed interface EnrichmentSheetState {
     ) : EnrichmentSheetState
 
     data class Conflict(
+        val attributeId: String,
+        val attributeLabel: String,
         val reason: String?,
         val sources: List<EnrichmentSource>,
+        val candidateValues: List<EnrichmentCandidateValue>,
     ) : EnrichmentSheetState
 
     data class Error(

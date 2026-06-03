@@ -124,6 +124,7 @@ class EnrichmentSuggestionSheetTest {
                     state = EnrichmentSheetState.NotFound(reason = "Not found"),
                     canRetry = true,
                     onAccept = {},
+                    onConflictResolved = {},
                     onDismiss = {},
                     onRetry = { retryClicked = true },
                     onNavigateToSettings = {},
@@ -144,6 +145,7 @@ class EnrichmentSuggestionSheetTest {
                     state = EnrichmentSheetState.NotFound(reason = "Not found"),
                     canRetry = false,
                     onAccept = {},
+                    onConflictResolved = {},
                     onDismiss = {},
                     onRetry = {},
                     onNavigateToSettings = {},
@@ -162,6 +164,7 @@ class EnrichmentSuggestionSheetTest {
                     state = EnrichmentSheetState.Error(failureCode = null, reason = null),
                     canRetry = true,
                     onAccept = {},
+                    onConflictResolved = {},
                     onDismiss = {},
                     onRetry = {},
                     onNavigateToSettings = {},
@@ -177,9 +180,17 @@ class EnrichmentSuggestionSheetTest {
         composeRule.setContent {
             MaterialTheme {
                 EnrichmentSuggestionSheet(
-                    state = EnrichmentSheetState.Conflict(reason = null, sources = emptyList()),
+                    state =
+                        EnrichmentSheetState.Conflict(
+                            attributeId = "birthDate",
+                            attributeLabel = "Birth Date",
+                            reason = null,
+                            sources = emptyList(),
+                            candidateValues = emptyList(),
+                        ),
                     canRetry = true,
                     onAccept = {},
+                    onConflictResolved = {},
                     onDismiss = {},
                     onRetry = {},
                     onNavigateToSettings = {},
@@ -206,6 +217,7 @@ class EnrichmentSuggestionSheetTest {
                     state = state,
                     canRetry = false,
                     onAccept = {},
+                    onConflictResolved = {},
                     onDismiss = {},
                     onRetry = {},
                     onNavigateToSettings = {},
