@@ -53,7 +53,7 @@ open class GeminiApiClient
                     .replace("\t", "\\t")
             return if (useGrounding) {
                 """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
-                    """"tools":[{"googleSearch":{}}]}"""
+                    """"tools":[{"google_search":{}}]}"""
             } else {
                 """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
                     """"generationConfig":{"responseMimeType":"application/json"}}"""

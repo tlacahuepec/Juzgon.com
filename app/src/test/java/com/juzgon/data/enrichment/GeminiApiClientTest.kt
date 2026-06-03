@@ -114,7 +114,7 @@ class GeminiApiClientTest {
         val body = client.buildRequestBody("test prompt", useGrounding = true)
 
         assertTrue(body.contains("\"tools\""))
-        assertTrue(body.contains("\"googleSearch\""))
+        assertTrue(body.contains("\"google_search\""))
         assertFalse(body.contains("responseMimeType"))
     }
 
@@ -123,7 +123,7 @@ class GeminiApiClientTest {
         val body = client.buildRequestBody("test prompt", useGrounding = false)
 
         assertFalse(body.contains("\"tools\""))
-        assertFalse(body.contains("\"googleSearch\""))
+        assertFalse(body.contains("\"google_search\""))
         assertTrue(body.contains("responseMimeType"))
     }
 
@@ -131,7 +131,7 @@ class GeminiApiClientTest {
     fun buildRequestBody_defaultGrounding_includesGoogleSearchTool() {
         val body = client.buildRequestBody("test prompt")
 
-        assertTrue(body.contains("\"googleSearch\""))
+        assertTrue(body.contains("\"google_search\""))
     }
 
     @Test
