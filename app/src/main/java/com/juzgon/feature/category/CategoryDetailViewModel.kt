@@ -35,6 +35,8 @@ class CategoryDetailViewModel
         private val activeProfileId = MutableStateFlow<String?>(null)
         private val searchQuery = MutableStateFlow<String>("")
         private val activeFilters = MutableStateFlow<List<AttributeFilter>>(emptyList())
+        private val visibleRange =
+            MutableStateFlow<CategoryDetailVisibleRange>(CategoryDetailVisibleRange.Top10)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
@@ -57,6 +59,7 @@ class CategoryDetailViewModel
                         activeProfileId,
                         searchQuery,
                         activeFilters,
+                        visibleRange,
                     ) { flows ->
                         @Suppress("UNCHECKED_CAST")
                         CategoryDetailReducer.reduce(
@@ -69,6 +72,7 @@ class CategoryDetailViewModel
                             calculateProfileRankedItems = calculateProfileRankedItems,
                             searchQuery = flows[5] as String,
                             activeFilters = flows[6] as List<AttributeFilter>,
+                            visibleRange = flows[7] as CategoryDetailVisibleRange,
                         )
                     }.collect { detailState ->
                         mutableState.value =
@@ -83,6 +87,10 @@ class CategoryDetailViewModel
 
         fun onSortOptionSelected(option: CategoryDetailSortOption) {
             sortOption.value = option
+        }
+
+        fun onVisibleRangeSelected(range: CategoryDetailVisibleRange) {
+            visibleRange.value = range
         }
 
         fun onProfileSelected(profileId: String?) {

@@ -113,6 +113,7 @@ fun CategoryDetailRoute(
         onProfileSelected = viewModel::onProfileSelected,
         onFilterSelected = viewModel::onFilterSelected,
         onFilterCleared = viewModel::onFilterCleared,
+        onVisibleRangeSelected = viewModel::onVisibleRangeSelected,
     )
 }
 
@@ -134,6 +135,7 @@ fun CategoryDetailScreen(
     onProfileSelected: (String?) -> Unit = {},
     onFilterSelected: (AttributeFilter) -> Unit = {},
     onFilterCleared: (String) -> Unit = {},
+    onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
@@ -249,6 +251,7 @@ fun CategoryDetailScreen(
             onProfileSelected = onProfileSelected,
             onFilterSelected = onFilterSelected,
             onFilterCleared = onFilterCleared,
+            onVisibleRangeSelected = onVisibleRangeSelected,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -304,6 +307,7 @@ private fun CategoryDetailContent(
     onProfileSelected: (String?) -> Unit,
     onFilterSelected: (AttributeFilter) -> Unit,
     onFilterCleared: (String) -> Unit,
+    onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -319,6 +323,7 @@ private fun CategoryDetailContent(
                 onProfileSelected = onProfileSelected,
                 onFilterSelected = onFilterSelected,
                 onFilterCleared = onFilterCleared,
+                onVisibleRangeSelected = onVisibleRangeSelected,
                 modifier = modifier,
             )
     }
@@ -384,6 +389,7 @@ private fun CategoryDetailItemList(
     onProfileSelected: (String?) -> Unit,
     onFilterSelected: (AttributeFilter) -> Unit,
     onFilterCleared: (String) -> Unit,
+    onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -413,6 +419,15 @@ private fun CategoryDetailItemList(
                 sortOptions = state.sortOptions,
                 onSortOptionSelected = onSortOptionSelected,
             )
+        }
+        if (state.visibleRangeOptions.isNotEmpty()) {
+            item {
+                VisibleRangeChips(
+                    selectedRange = state.visibleRange,
+                    options = state.visibleRangeOptions,
+                    onRangeSelected = onVisibleRangeSelected,
+                )
+            }
         }
         item {
             CategoryDetailSearchBar(
@@ -822,6 +837,36 @@ private fun ProfileSelector(
         }
     }
 }
+
+@Composable
+private fun VisibleRangeChips(
+    selectedRange: CategoryDetailVisibleRange,
+    options: List<CategoryDetailVisibleRange>,
+    onRangeSelected: (CategoryDetailVisibleRange) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+    ) {
+        options.forEach { range ->
+            FilterChip(
+                selected = selectedRange == range,
+                onClick = { onRangeSelected(range) },
+                label = { Text(range.label()) },
+                modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+            )
+        }
+    }
+}
+
+private fun CategoryDetailVisibleRange.label(): String =
+    when (this) {
+        CategoryDetailVisibleRange.Top10 -> "Top 10"
+        CategoryDetailVisibleRange.Top20 -> "Top 20"
+        CategoryDetailVisibleRange.Top50 -> "Top 50"
+        CategoryDetailVisibleRange.All -> "All"
+    }
 
 @Composable
 private fun CategoryDetailSortControls(

@@ -1828,5 +1828,96 @@ class CategoryDetailViewModelTest {
                 id = id,
                 scores = listOf(ScoreEntry(attribute = speed, score = 8)),
             )
+
+        fun rankedItems(count: Int): List<RankedRatedItem> =
+            (1..count).map { i ->
+                RankedRatedItem(
+                    item = ratedItem("Item$i"),
+                    aggregateScore = (count - i + 1).toDouble(),
+                )
+            }
     }
+
+    // region Visible Range Tests
+
+    @Test
+    fun visibleRangeDefaultsToTop10ForLargeCatalogs() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value = rankedItems(15)
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(10, state.items.size)
+                assertEquals(CategoryDetailVisibleRange.Top10, state.visibleRange)
+            }
+        }
+
+    @Test
+    fun onVisibleRangeSelected_updatesVisibleItems() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value = rankedItems(15)
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onVisibleRangeSelected(CategoryDetailVisibleRange.All)
+                state = awaitItem()
+
+                assertEquals(15, state.items.size)
+                assertEquals(CategoryDetailVisibleRange.All, state.visibleRange)
+            }
+        }
+
+    @Test
+    fun changingSortOption_recalculatesVisibleRange() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value = rankedItems(15)
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                val itemsByScore = state.items.map { it.id }
+
+                viewModel.onSortOptionSelected(CategoryDetailSortOption.Name)
+                state = awaitItem()
+
+                val itemsByName = state.items.map { it.id }
+                assertEquals(10, state.items.size)
+                // Different sort produces different top 10
+                assert(itemsByScore != itemsByName)
+            }
+        }
+
+    @Test
+    fun visibleRangeHiddenForSmallCatalogs() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+            ratedItemRepository.rankedItems.value = rankedItems(8)
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(8, state.items.size)
+                assertEquals(emptyList<CategoryDetailVisibleRange>(), state.visibleRangeOptions)
+                assertEquals(CategoryDetailVisibleRange.All, state.visibleRange)
+            }
+        }
+
+    // endregion
 }

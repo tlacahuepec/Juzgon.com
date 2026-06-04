@@ -254,4 +254,155 @@ class CategoryDetailModelsTest {
         assertEquals("First", state.items[0].id)
         assertEquals("Second", state.items[1].id)
     }
+
+    // region Visible Range Tests
+
+    private fun rankedItems(count: Int): List<RankedRatedItem> =
+        (1..count).map { i ->
+            rankedItem("Item$i", score = (count - i + 1).toDouble())
+        }
+
+    @Test
+    fun reduce_withVisibleRangeTop10_limitsOutputTo10Items() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertEquals(10, state.items.size)
+    }
+
+    @Test
+    fun reduce_withVisibleRangeTop20_limitsOutputTo20Items() {
+        val items = rankedItems(25)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top20,
+            )
+
+        assertEquals(20, state.items.size)
+    }
+
+    @Test
+    fun reduce_withVisibleRangeAll_returnsAllItems() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.All,
+            )
+
+        assertEquals(15, state.items.size)
+    }
+
+    @Test
+    fun reduce_visibleRangePreservesRankFromFullSortedList() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertEquals(1, state.items.first().rank)
+        assertEquals(10, state.items.last().rank)
+    }
+
+    @Test
+    fun reduce_changingSortOptionChangesTop10Items() {
+        val items = rankedItems(15)
+
+        val byScore =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        val byName =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Name,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        // Different sort orders produce different top-10 item sets
+        assertFalse(byScore.items.map { it.id } == byName.items.map { it.id })
+    }
+
+    @Test
+    fun reduce_visibleRangeOptionsEmptyForSmallCatalogs() {
+        val items = rankedItems(8)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertTrue(state.visibleRangeOptions.isEmpty())
+    }
+
+    @Test
+    fun reduce_visibleRangeDoesNotMutateItemData() {
+        val items = rankedItems(15)
+        val originalScores = items.map { it.aggregateScore }
+
+        CategoryDetailReducer.reduce(
+            categoryName = "Cars",
+            category = carsCategory,
+            rankedItems = items,
+            sortOption = CategoryDetailSortOption.Score,
+            visibleRange = CategoryDetailVisibleRange.Top10,
+        )
+
+        assertEquals(originalScores, items.map { it.aggregateScore })
+    }
+
+    @Test
+    fun reduce_searchFiltersWithinVisibleRange() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+                searchQuery = "Item15",
+            )
+
+        // Item15 has the lowest score so it ranks last (rank 15),
+        // outside Top10 visible range → not found
+        assertTrue(state.items.isEmpty())
+    }
+
+    // endregion
 }
