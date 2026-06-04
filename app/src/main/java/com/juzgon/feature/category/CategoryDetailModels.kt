@@ -27,19 +27,25 @@ sealed interface CategoryDetailVisibleRange {
     val limit: Int?
 
     data object Top10 : CategoryDetailVisibleRange {
-        override val limit = 10
+        override val limit = LIMIT_TOP_10
     }
 
     data object Top20 : CategoryDetailVisibleRange {
-        override val limit = 20
+        override val limit = LIMIT_TOP_20
     }
 
     data object Top50 : CategoryDetailVisibleRange {
-        override val limit = 50
+        override val limit = LIMIT_TOP_50
     }
 
     data object All : CategoryDetailVisibleRange {
         override val limit: Int? = null
+    }
+
+    companion object {
+        private const val LIMIT_TOP_10 = 10
+        private const val LIMIT_TOP_20 = 20
+        private const val LIMIT_TOP_50 = 50
     }
 }
 
@@ -259,8 +265,8 @@ object CategoryDetailReducer {
         } else {
             buildList {
                 add(CategoryDetailVisibleRange.Top10)
-                if (totalItems > 10) add(CategoryDetailVisibleRange.Top20)
-                if (totalItems > 20) add(CategoryDetailVisibleRange.Top50)
+                if (totalItems > VISIBLE_RANGE_THRESHOLD) add(CategoryDetailVisibleRange.Top20)
+                if (totalItems > TOP_20_THRESHOLD) add(CategoryDetailVisibleRange.Top50)
                 add(CategoryDetailVisibleRange.All)
             }
         }
@@ -290,6 +296,7 @@ object CategoryDetailReducer {
     }
 
     private const val VISIBLE_RANGE_THRESHOLD = 10
+    private const val TOP_20_THRESHOLD = 20
 
     private val TEXT_SEARCHABLE_TYPES =
         setOf(
@@ -299,22 +306,6 @@ object CategoryDetailReducer {
             AttributeType.URL,
             AttributeType.BOOLEAN,
         )
-
-    private fun applySearchFilter(
-        items: List<RankedRatedItem>,
-        query: String,
-    ): List<RankedRatedItem> {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return items
-        return items.filter { ranked ->
-            ranked.item.id.contains(trimmed, ignoreCase = true) ||
-                ranked.item.notes.contains(trimmed, ignoreCase = true) ||
-                ranked.item.values.any { value ->
-                    value.attribute.type in TEXT_SEARCHABLE_TYPES &&
-                        value.value.contains(trimmed, ignoreCase = true)
-                }
-        }
-    }
 
     private fun buildItemUiModel(
         rankedItem: RankedRatedItem,
@@ -337,14 +328,6 @@ object CategoryDetailReducer {
     private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
         listOf(ProfileOption(id = null, name = "All Attributes")) +
             profiles.map { ProfileOption(id = it.id, name = it.name) }
-
-    private fun applyAttributeFilters(
-        items: List<RankedRatedItem>,
-        filters: List<AttributeFilter>,
-    ): List<RankedRatedItem> {
-        if (filters.isEmpty()) return items
-        return items.filter { ranked -> filters.all { filter -> matchesFilter(ranked, filter) } }
-    }
 
     @Suppress("CyclomaticComplexMethod")
     private fun matchesFilter(
