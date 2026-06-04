@@ -252,7 +252,12 @@ object CategoryDetailReducer {
     private fun resolveVisibleRange(
         requested: CategoryDetailVisibleRange,
         totalItems: Int,
-    ): CategoryDetailVisibleRange = if (totalItems <= VISIBLE_RANGE_THRESHOLD) CategoryDetailVisibleRange.All else requested
+    ): CategoryDetailVisibleRange =
+        if (totalItems <= VISIBLE_RANGE_THRESHOLD) {
+            CategoryDetailVisibleRange.All
+        } else {
+            requested
+        }
 
     private fun applyVisibleRange(
         items: List<Pair<Int, RankedRatedItem>>,
