@@ -23,6 +23,26 @@ sealed interface CategoryDetailSortOption {
     ) : CategoryDetailSortOption
 }
 
+sealed interface CategoryDetailVisibleRange {
+    val limit: Int?
+
+    data object Top10 : CategoryDetailVisibleRange {
+        override val limit = 10
+    }
+
+    data object Top20 : CategoryDetailVisibleRange {
+        override val limit = 20
+    }
+
+    data object Top50 : CategoryDetailVisibleRange {
+        override val limit = 50
+    }
+
+    data object All : CategoryDetailVisibleRange {
+        override val limit: Int? = null
+    }
+}
+
 sealed interface CategoryDetailNavigationEvent {
     data object NavigateToEditCategory : CategoryDetailNavigationEvent
 
@@ -101,6 +121,8 @@ data class CategoryDetailUiState(
     val searchQuery: String = "",
     val filterChips: List<FilterChipUiModel> = emptyList(),
     val activeFilters: List<AttributeFilter> = emptyList(),
+    val visibleRange: CategoryDetailVisibleRange = CategoryDetailVisibleRange.Top10,
+    val visibleRangeOptions: List<CategoryDetailVisibleRange> = emptyList(),
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -125,6 +147,7 @@ object CategoryDetailReducer {
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase? = null,
         searchQuery: String = "",
         activeFilters: List<AttributeFilter> = emptyList(),
+        visibleRange: CategoryDetailVisibleRange = CategoryDetailVisibleRange.All,
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -148,8 +171,14 @@ object CategoryDetailReducer {
         val selectedSortOption = resolveSelectedSortOption(sortOption, sortOptions)
 
         val sortedItems = sortItems(effectiveRankedItems, selectedSortOption, category)
-        val searchedItems = applySearchFilter(sortedItems, searchQuery)
-        val filteredItems = applyAttributeFilters(searchedItems, activeFilters)
+
+        val rankedWithIndex = sortedItems.mapIndexed { index, item -> index + 1 to item }
+
+        val effectiveVisibleRange = resolveVisibleRange(visibleRange, sortedItems.size)
+        val visibleItems = applyVisibleRange(rankedWithIndex, effectiveVisibleRange)
+
+        val searchedItems = applySearchFilterIndexed(visibleItems, searchQuery)
+        val filteredItems = applyAttributeFiltersIndexed(searchedItems, activeFilters)
 
         val activeProfile = activeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
 
@@ -157,8 +186,8 @@ object CategoryDetailReducer {
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
-                filteredItems.mapIndexed { index, rankedItem ->
-                    buildItemUiModel(rankedItem, index, category, selectedSortOption)
+                filteredItems.map { (rank, rankedItem) ->
+                    buildItemUiModel(rankedItem, rank - 1, category, selectedSortOption)
                 },
             isLoading = false,
             sortOption = selectedSortOption,
@@ -169,6 +198,8 @@ object CategoryDetailReducer {
             searchQuery = searchQuery,
             filterChips = buildFilterChips(category, effectiveRankedItems, activeFilters),
             activeFilters = activeFilters,
+            visibleRange = effectiveVisibleRange,
+            visibleRangeOptions = buildVisibleRangeOptions(sortedItems.size),
         )
     }
 
@@ -211,6 +242,54 @@ object CategoryDetailReducer {
             CategoryDetailSortOption.Name -> items.sortedBy { it.item.id }
             is CategoryDetailSortOption.Attribute -> items.sortedByAttribute(category, sortOption.attributeId)
         }
+
+    private fun resolveVisibleRange(
+        requested: CategoryDetailVisibleRange,
+        totalItems: Int,
+    ): CategoryDetailVisibleRange = if (totalItems <= VISIBLE_RANGE_THRESHOLD) CategoryDetailVisibleRange.All else requested
+
+    private fun applyVisibleRange(
+        items: List<Pair<Int, RankedRatedItem>>,
+        visibleRange: CategoryDetailVisibleRange,
+    ): List<Pair<Int, RankedRatedItem>> = visibleRange.limit?.let { items.take(it) } ?: items
+
+    private fun buildVisibleRangeOptions(totalItems: Int): List<CategoryDetailVisibleRange> =
+        if (totalItems <= VISIBLE_RANGE_THRESHOLD) {
+            emptyList()
+        } else {
+            buildList {
+                add(CategoryDetailVisibleRange.Top10)
+                if (totalItems > 10) add(CategoryDetailVisibleRange.Top20)
+                if (totalItems > 20) add(CategoryDetailVisibleRange.Top50)
+                add(CategoryDetailVisibleRange.All)
+            }
+        }
+
+    private fun applySearchFilterIndexed(
+        items: List<Pair<Int, RankedRatedItem>>,
+        query: String,
+    ): List<Pair<Int, RankedRatedItem>> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return items
+        return items.filter { (_, ranked) ->
+            ranked.item.id.contains(trimmed, ignoreCase = true) ||
+                ranked.item.notes.contains(trimmed, ignoreCase = true) ||
+                ranked.item.values.any { value ->
+                    value.attribute.type in TEXT_SEARCHABLE_TYPES &&
+                        value.value.contains(trimmed, ignoreCase = true)
+                }
+        }
+    }
+
+    private fun applyAttributeFiltersIndexed(
+        items: List<Pair<Int, RankedRatedItem>>,
+        filters: List<AttributeFilter>,
+    ): List<Pair<Int, RankedRatedItem>> {
+        if (filters.isEmpty()) return items
+        return items.filter { (_, ranked) -> filters.all { filter -> matchesFilter(ranked, filter) } }
+    }
+
+    private const val VISIBLE_RANGE_THRESHOLD = 10
 
     private val TEXT_SEARCHABLE_TYPES =
         setOf(
