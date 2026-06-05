@@ -1099,6 +1099,7 @@ private fun CategoryDetailItemCard(
                         value = item.metricValueText,
                     ),
                 badge = item.nationalityBadge,
+                badgeIcons = item.socialBadgeIcons,
                 contentDescription = buildItemCardContentDescription(item),
             ),
         onClick = { onEditItemClick(item.id) },

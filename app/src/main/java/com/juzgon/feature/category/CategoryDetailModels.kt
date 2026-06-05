@@ -10,6 +10,8 @@ import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.RatingSystem
 import com.juzgon.domain.ScoreProfile
+import com.juzgon.domain.social.SocialNetworkCodec
+import com.juzgon.domain.social.SocialPlatformIcons
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.item.decodeItemImageReferences
 import java.util.Locale
@@ -93,6 +95,7 @@ data class CategoryDetailItemUiModel(
     val averageScoreText: String,
     val imageValue: String? = null,
     val nationalityBadge: String? = null,
+    val socialBadgeIcons: List<Int> = emptyList(),
     val metricLabel: String = "Score",
     val metricValueText: String = averageScoreText,
 )
@@ -311,6 +314,7 @@ object CategoryDetailReducer {
             AttributeType.DROPDOWN,
             AttributeType.URL,
             AttributeType.BOOLEAN,
+            AttributeType.SOCIAL_NETWORK,
         )
 
     private fun buildItemUiModel(
@@ -326,6 +330,7 @@ object CategoryDetailReducer {
             averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
             imageValue = rankedItem.item.primaryImageValue(category),
             nationalityBadge = rankedItem.item.resolveNationalityBadge(category),
+            socialBadgeIcons = rankedItem.item.resolveSocialBadgeIcons(category),
             metricLabel = metric.label,
             metricValueText = metric.valueText,
         )
@@ -443,6 +448,7 @@ object CategoryDetailReducer {
 
 private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
 private const val MAX_BADGE_FLAGS = 3
+private const val MAX_SOCIAL_BADGE_ICONS = 4
 
 private data class CategoryDetailCardMetric(
     val label: String,
@@ -603,3 +609,18 @@ private fun RatedItem.resolveNationalityBadge(category: Category): String? =
                     if (overflow > 0) "$visible+$overflow" else visible
                 }
         }
+
+private fun RatedItem.resolveSocialBadgeIcons(category: Category): List<Int> =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.SOCIAL_NETWORK }
+        ?.let { socialAttr ->
+            values
+                .firstOrNull { it.attribute.id == socialAttr.id }
+                ?.value
+                ?.let { raw ->
+                    SocialNetworkCodec
+                        .parse(raw)
+                        .take(MAX_SOCIAL_BADGE_ICONS)
+                        .map { SocialPlatformIcons.iconRes(it.platform) }
+                }
+        } ?: emptyList()

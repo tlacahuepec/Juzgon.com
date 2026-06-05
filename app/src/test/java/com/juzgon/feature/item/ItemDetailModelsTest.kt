@@ -345,4 +345,26 @@ class ItemDetailModelsTest {
         val score = ItemDetailAttributeScore(label = "Speed", score = 8, weight = 2.0)
         assertEquals(2.0, score.weight, 0.0)
     }
+
+    @Test
+    fun formatAttributeValueForSocialNetworkJoinsPlatformDisplayNames() {
+        val json = """[{"platform":"INSTAGRAM","handle":"@user1"},{"platform":"TIKTOK","handle":"@user2"}]"""
+        assertEquals("Instagram, TikTok", formatAttributeValue(AttributeType.SOCIAL_NETWORK, json))
+    }
+
+    @Test
+    fun formatAttributeValueForSocialNetworkSingleEntry() {
+        val json = """[{"platform":"YOUTUBE","handle":"@channel"}]"""
+        assertEquals("YouTube", formatAttributeValue(AttributeType.SOCIAL_NETWORK, json))
+    }
+
+    @Test
+    fun formatAttributeValueForSocialNetworkEmptyReturnsRawValue() {
+        assertEquals("[]", formatAttributeValue(AttributeType.SOCIAL_NETWORK, "[]"))
+    }
+
+    @Test
+    fun formatAttributeValueForSocialNetworkInvalidJsonReturnsRawValue() {
+        assertEquals("not json", formatAttributeValue(AttributeType.SOCIAL_NETWORK, "not json"))
+    }
 }

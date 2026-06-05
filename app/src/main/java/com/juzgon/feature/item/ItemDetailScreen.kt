@@ -747,6 +747,8 @@ private fun AttributeValueRow(
             )
         } else if (attributeValue.type == AttributeType.URL) {
             UrlAttributeValue(attributeValue)
+        } else if (attributeValue.type == AttributeType.SOCIAL_NETWORK) {
+            SocialNetworkListSection(attributeValue.value)
         } else {
             Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
             attributeValue.ageText?.let { age ->

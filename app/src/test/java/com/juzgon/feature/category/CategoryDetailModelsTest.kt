@@ -494,4 +494,60 @@ class CategoryDetailModelsTest {
     }
 
     // endregion
+
+    // region social badge icons
+
+    @Test
+    fun reduce_resolvesSocialBadgeIcons_forItemWithSocialNetworks() {
+        val socialAttr = Attribute("Socials", type = AttributeType.SOCIAL_NETWORK)
+        val category = Category(name = "People", attributes = listOf(speed, socialAttr))
+        val json =
+            """[{"platform":"INSTAGRAM","handle":"@user1"},{"platform":"TIKTOK","handle":"@user2"}]"""
+        val item =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "Influencer",
+                        scores = listOf(ScoreEntry(speed, 9)),
+                        values = listOf(ItemAttributeValue(socialAttr, json)),
+                    ),
+                aggregateScore = 9.0,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "People",
+                category = category,
+                rankedItems = listOf(item),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        assertEquals(
+            2,
+            state.items
+                .single()
+                .socialBadgeIcons
+                .size,
+        )
+    }
+
+    @Test
+    fun reduce_socialBadgeIcons_emptyWhenNoSocialAttribute() {
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(rankedItem("Fast")),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        assertTrue(
+            state.items
+                .single()
+                .socialBadgeIcons
+                .isEmpty(),
+        )
+    }
+
+    // endregion
 }

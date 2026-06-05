@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -83,6 +86,7 @@ internal data class JuzgonCollectionCardMetadata(
     val metric: JuzgonCollectionCardMetric,
     val contentDescription: String,
     val badge: String? = null,
+    val badgeIcons: List<Int> = emptyList(),
 )
 
 internal data class JuzgonCollectionCardMetric(
@@ -127,6 +131,18 @@ private fun CollectionCardOverlay(
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
+            }
+            if (metadata.badgeIcons.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    metadata.badgeIcons.forEach { iconRes ->
+                        Icon(
+                            painter = painterResource(iconRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = tokens.palette.textSoft,
+                        )
+                    }
+                }
             }
             CollectionCardMetric(
                 label = metadata.metric.label,
