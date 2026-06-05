@@ -543,6 +543,13 @@ private fun ItemAttributeValueField(
                 errorText = validationError.value,
             )
         }
+        AttributeType.SOCIAL_NETWORK -> {
+            SocialNetworkEditorField(
+                attributeId = attributeId,
+                valueText = valueInput.valueText,
+                onValueChange = onValueChange,
+            )
+        }
         AttributeType.DATE -> {
             val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
             var showDatePicker by remember { mutableStateOf(false) }

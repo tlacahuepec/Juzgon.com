@@ -283,4 +283,47 @@ class GeminiPromptBuilderTest {
 
         assertTrue(prompt.contains("populate candidateValues"))
     }
+
+    @Test
+    fun build_socialNetworkExpectedTypeDescribesJsonFormat() {
+        val request =
+            AttributeEnrichmentRequest(
+                catalogId = "cat1",
+                catalogDescription = "Influencers",
+                catalogType = CatalogType.PERSON,
+                itemId = "item1",
+                itemName = "Test Person",
+                existingAttributes = emptyMap(),
+                targetAttributeKey = "social_links",
+                targetAttributeLabel = "Social Links",
+                targetAttributeType = AttributeType.SOCIAL_NETWORK,
+            )
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("JSON"))
+    }
+
+    @Test
+    fun build_socialMediaDisambiguationIncludesSocialNetworkEntries() {
+        val request =
+            AttributeEnrichmentRequest(
+                catalogId = "cat1",
+                catalogDescription = "Influencers",
+                catalogType = CatalogType.PERSON,
+                itemId = "item1",
+                itemName = "Test Person",
+                existingAttributes =
+                    mapOf(
+                        "Social Network" to
+                            """[{"platform":"INSTAGRAM","handle":"@testuser"}]""",
+                    ),
+                targetAttributeKey = "birth_date",
+                targetAttributeLabel = "Birth Date",
+                targetAttributeType = AttributeType.DATE,
+            )
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Disambiguation"))
+        assertTrue(prompt.contains("@testuser"))
+    }
 }

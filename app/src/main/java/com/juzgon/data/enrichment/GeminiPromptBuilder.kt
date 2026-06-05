@@ -141,6 +141,8 @@ class GeminiPromptBuilder
                 AttributeType.BOOLEAN -> "true or false"
                 AttributeType.NATIONALITY ->
                     "ISO 3166-1 alpha-2 country code(s), comma-separated if multiple (e.g., \"BR,IT\")"
+                AttributeType.SOCIAL_NETWORK ->
+                    "JSON array of {platform, handle} objects (not used for enrichment)"
                 else -> type.name.lowercase()
             }
 
