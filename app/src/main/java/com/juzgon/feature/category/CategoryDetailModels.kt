@@ -4,6 +4,7 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
@@ -343,7 +344,8 @@ object CategoryDetailReducer {
             is AttributeFilter.Nationality ->
                 ranked.item
                     .textValueForAttribute(filter.attributeId)
-                    ?.let { it in filter.selectedCodes } ?: false
+                    ?.let { NationalityCodes.parse(it).any { code -> code in filter.selectedCodes } }
+                    ?: false
             is AttributeFilter.NumberRange ->
                 ranked.item
                     .scoreForAttribute(filter.attributeId)
@@ -416,6 +418,16 @@ object CategoryDetailReducer {
     ): List<String> =
         if (attribute.type == AttributeType.NUMBER) {
             emptyList()
+        } else if (attribute.type == AttributeType.NATIONALITY) {
+            items
+                .flatMap { ranked ->
+                    ranked.item.values
+                        .firstOrNull { it.attribute.id == attribute.id }
+                        ?.value
+                        ?.let { NationalityCodes.parse(it) }
+                        ?: emptyList()
+                }.distinct()
+                .sorted()
         } else {
             items
                 .mapNotNull { ranked ->
@@ -430,6 +442,7 @@ object CategoryDetailReducer {
 }
 
 private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
+private const val MAX_BADGE_FLAGS = 3
 
 private data class CategoryDetailCardMetric(
     val label: String,
@@ -506,6 +519,21 @@ private fun List<RankedRatedItem>.sortedByAttribute(
                 current.item.id
             },
         )
+    } else if (attribute.type == AttributeType.NATIONALITY) {
+        sortedWith(
+            compareBy<RankedRatedItem> { current ->
+                current.item.textValueForAttribute(attribute.id) == null
+            }.thenBy { current ->
+                current.item
+                    .textValueForAttribute(attribute.id)
+                    ?.let { NationalityCodes.primary(it) }
+                    ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
+            }.thenBy { current ->
+                current.item.id.lowercase(Locale.US)
+            }.thenBy { current ->
+                current.item.id
+            },
+        )
     } else {
         sortedWith(
             compareBy<RankedRatedItem> { current ->
@@ -566,5 +594,12 @@ private fun RatedItem.resolveNationalityBadge(category: Category): String? =
                 ?.value
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
-                ?.let { NationalityDataset.findByCode(it)?.flagEmoji }
+                ?.let { raw ->
+                    val codes = NationalityCodes.parse(raw)
+                    val flags = codes.mapNotNull { NationalityDataset.findByCode(it)?.flagEmoji }
+                    if (flags.isEmpty()) return@let null
+                    val visible = flags.take(MAX_BADGE_FLAGS).joinToString("")
+                    val overflow = flags.size - MAX_BADGE_FLAGS
+                    if (overflow > 0) "$visible+$overflow" else visible
+                }
         }

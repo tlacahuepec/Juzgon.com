@@ -185,6 +185,59 @@ class CategoryDetailModelsTest {
     }
 
     @Test
+    fun reduce_resolvesNationalityBadge_multipleCodesShowsMultipleFlags() {
+        val itemWithMultiNat =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "DualCitizen",
+                        scores = emptyList(),
+                        values = listOf(ItemAttributeValue(nationality, "BR,IT")),
+                    ),
+                aggregateScore = 8.5,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(itemWithMultiNat),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        val badge = state.items.single().nationalityBadge
+        assertNotNull(badge)
+        assertTrue(badge!!.contains("\uD83C\uDDE7\uD83C\uDDF7"))
+        assertTrue(badge.contains("\uD83C\uDDEE\uD83C\uDDF9"))
+    }
+
+    @Test
+    fun reduce_resolvesNationalityBadge_overflowShowsPlusN() {
+        val itemWith4Nat =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "QuadCitizen",
+                        scores = emptyList(),
+                        values = listOf(ItemAttributeValue(nationality, "BR,IT,US,FR")),
+                    ),
+                aggregateScore = 8.5,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(itemWith4Nat),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        val badge = state.items.single().nationalityBadge
+        assertNotNull(badge)
+        assertTrue(badge!!.contains("+1"))
+    }
+
+    @Test
     fun reduce_usesProfileRanking_whenActiveProfileProvided() {
         val profile =
             ScoreProfile(
@@ -402,6 +455,42 @@ class CategoryDetailModelsTest {
         // Item15 has the lowest score so it ranks last (rank 15),
         // outside Top10 visible range → not found
         assertTrue(state.items.isEmpty())
+    }
+
+    @Test
+    fun reduce_sortByNationality_usesPrimaryNationalityName() {
+        val items =
+            listOf(
+                RankedRatedItem(
+                    item =
+                        RatedItem(
+                            id = "ItalianBrazilian",
+                            scores = emptyList(),
+                            values = listOf(ItemAttributeValue(nationality, "IT,BR")),
+                        ),
+                    aggregateScore = 8.0,
+                ),
+                RankedRatedItem(
+                    item =
+                        RatedItem(
+                            id = "Argentine",
+                            scores = emptyList(),
+                            values = listOf(ItemAttributeValue(nationality, "AR")),
+                        ),
+                    aggregateScore = 7.0,
+                ),
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Attribute(nationality.id),
+            )
+
+        assertEquals("Argentine", state.items[0].id)
+        assertEquals("ItalianBrazilian", state.items[1].id)
     }
 
     // endregion

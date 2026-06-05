@@ -1251,6 +1251,50 @@ class CategoryDetailViewModelTest {
         }
 
     @Test
+    fun nationalityFilterMatchesAnyCodeInMultiNationalityValue() =
+        runTest {
+            val nationalityAttr = Attribute("Cars/Nationality", type = AttributeType.NATIONALITY)
+            categoryRepository.category.value =
+                Category(name = "Cars", attributes = listOf(speed, nationalityAttr))
+            ratedItemRepository.rankedItems.value =
+                listOf(
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "dualCitizen",
+                                scores = listOf(ScoreEntry(speed, 9)),
+                                values = listOf(ItemAttributeValue(nationalityAttr, "BR,IT")),
+                            ),
+                        aggregateScore = 9.0,
+                    ),
+                    RankedRatedItem(
+                        item =
+                            RatedItem(
+                                id = "singleCitizen",
+                                scores = listOf(ScoreEntry(speed, 7)),
+                                values = listOf(ItemAttributeValue(nationalityAttr, "US")),
+                            ),
+                        aggregateScore = 7.0,
+                    ),
+                )
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onFilterSelected(
+                    AttributeFilter.Nationality("Cars/Nationality", setOf("IT")),
+                )
+                state = awaitItem()
+
+                assertEquals(1, state.items.size)
+                assertEquals("dualCitizen", state.items.single().id)
+            }
+        }
+
+    @Test
     fun numberRangeFilterExcludesOutOfRange() =
         runTest {
             categoryRepository.category.value = carsCategory

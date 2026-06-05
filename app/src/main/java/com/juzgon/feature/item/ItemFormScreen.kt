@@ -535,7 +535,7 @@ private fun ItemAttributeValueField(
             )
         }
         AttributeType.NATIONALITY -> {
-            NationalityAutocompleteField(
+            NationalityMultiSelectField(
                 attributeId = attributeId,
                 valueText = valueInput.valueText,
                 onValueChange = onValueChange,

@@ -4,6 +4,7 @@ package com.juzgon.feature.item
 
 import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -118,7 +119,11 @@ internal fun formatAttributeValue(
         AttributeType.BOOLEAN -> if (value.equals("true", ignoreCase = true)) "Yes" else "No"
         AttributeType.DATE -> value.toDisplayDate()
         AttributeType.NATIONALITY ->
-            NationalityDataset.findByCode(value)?.let { "${it.flagEmoji} ${it.nationality}" } ?: value
+            NationalityCodes
+                .parse(value)
+                .joinToString(", ") { code ->
+                    NationalityDataset.findByCode(code)?.let { "${it.flagEmoji} ${it.nationality}" } ?: code
+                }.ifEmpty { value }
         else -> value
     }
 

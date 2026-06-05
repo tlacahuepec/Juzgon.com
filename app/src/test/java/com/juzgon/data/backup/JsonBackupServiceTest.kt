@@ -490,6 +490,42 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun roundTrip_preservesMultiNationalityValues() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Nationality", "People", type = "NATIONALITY"),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("DualCitizen", "", 100L, 200L),
+                        emptyList(),
+                        listOf(
+                            ItemValueEntity("DualCitizen", "People/Nationality", "BR,IT"),
+                        ),
+                    ),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            service.import(json)
+
+            val nationalityValue = itemDao.upsertedValues.find { it.attributeId == "People/Nationality" }
+            assertEquals("BR,IT", nationalityValue?.valueText)
+        }
+
+    @Test
     fun export_excludesSoftDeletedValues() =
         runTest {
             categoryDao.state.value =
