@@ -301,6 +301,22 @@ class ItemDetailModelsTest {
     }
 
     @Test
+    fun formatAttributeValueForNationalityHandlesMultipleCodes() {
+        assertEquals(
+            "\uD83C\uDDE7\uD83C\uDDF7 Brazilian, \uD83C\uDDEE\uD83C\uDDF9 Italian",
+            formatAttributeValue(AttributeType.NATIONALITY, "BR,IT"),
+        )
+    }
+
+    @Test
+    fun formatAttributeValueForNationalityMultipleWithUnknownFallsBackToCode() {
+        assertEquals(
+            "\uD83C\uDDE7\uD83C\uDDF7 Brazilian, ZZ",
+            formatAttributeValue(AttributeType.NATIONALITY, "BR,ZZ"),
+        )
+    }
+
+    @Test
     fun itemDetailAttributeValueDefaultsAgeTextToNull() {
         val value = ItemDetailAttributeValue(label = "Birth Date", value = "1990-05-27", type = AttributeType.DATE)
         assertNull(value.ageText)

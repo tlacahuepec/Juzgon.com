@@ -209,6 +209,19 @@ class GeminiPromptBuilderTest {
     }
 
     @Test
+    fun build_personWithMultiNationality_usePrimaryCodeForSearchHint() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes = mapOf("Nationality" to "BR,IT"),
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Search strategy"))
+        assertTrue(prompt.contains("Portuguese"))
+    }
+
+    @Test
     fun build_nonPersonWithNationality_excludesSearchHint() {
         val request =
             requestWithAllFields().copy(
