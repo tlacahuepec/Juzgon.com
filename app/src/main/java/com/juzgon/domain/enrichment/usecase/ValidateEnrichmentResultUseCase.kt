@@ -3,6 +3,7 @@
 package com.juzgon.domain.enrichment.usecase
 
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
 import com.juzgon.domain.enrichment.EnrichmentConfidence
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
@@ -27,6 +28,7 @@ class ValidateEnrichmentResultUseCase
             }
             return when (attributeType) {
                 AttributeType.DATE -> validateDate(result)
+                AttributeType.SKIN_TYPE -> validateSkinType(result)
                 else -> result
             }
         }
@@ -41,6 +43,15 @@ class ValidateEnrichmentResultUseCase
                 }
             if (date.isAfter(LocalDate.now())) return invalidResult(result)
             return result
+        }
+
+        private fun validateSkinType(result: AttributeEnrichmentResult): AttributeEnrichmentResult {
+            val value = result.suggestedValue ?: return invalidResult(result)
+            val skinType = SkinTypeValues.fromStoredValue(value) ?: return invalidResult(result)
+            return result.copy(
+                suggestedValue = skinType.storedValue,
+                displayValue = skinType.displayLabel,
+            )
         }
 
         private fun invalidResult(result: AttributeEnrichmentResult) =

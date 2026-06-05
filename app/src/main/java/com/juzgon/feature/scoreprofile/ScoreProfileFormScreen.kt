@@ -236,6 +236,7 @@ private fun formatAttributeType(
             AttributeType.URL -> "URL"
             AttributeType.NOTES -> "Notes"
             AttributeType.SOCIAL_NETWORK -> "Social Network"
+            AttributeType.SKIN_TYPE -> "Skin Type"
         }
     val directionSuffix =
         when (scoringDirection) {

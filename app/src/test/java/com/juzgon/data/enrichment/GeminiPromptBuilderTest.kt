@@ -114,6 +114,21 @@ class GeminiPromptBuilderTest {
         assertTrue(prompt.contains("Numeric value"))
     }
 
+    @Test
+    fun build_skinTypeType_showsFitzpatrickOptions() {
+        val request =
+            requestWithAllFields().copy(
+                targetAttributeType = AttributeType.SKIN_TYPE,
+                targetAttributeLabel = "Skin Type",
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Fitzpatrick"))
+        assertTrue(prompt.contains("TYPE_I"))
+        assertTrue(prompt.contains("TYPE_VI"))
+    }
+
     private fun requestWithAllFields() =
         AttributeEnrichmentRequest(
             catalogId = "cat-1",

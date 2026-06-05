@@ -143,6 +143,8 @@ class GeminiPromptBuilder
                     "ISO 3166-1 alpha-2 country code(s), comma-separated if multiple (e.g., \"BR,IT\")"
                 AttributeType.SOCIAL_NETWORK ->
                     "JSON array of {platform, handle} objects (not used for enrichment)"
+                AttributeType.SKIN_TYPE ->
+                    "Fitzpatrick skin type stored value: TYPE_I, TYPE_II, TYPE_III, TYPE_IV, TYPE_V, or TYPE_VI"
                 else -> type.name.lowercase()
             }
 

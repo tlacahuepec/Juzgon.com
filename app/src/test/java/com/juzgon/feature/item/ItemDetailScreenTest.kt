@@ -503,6 +503,28 @@ class ItemDetailScreenTest {
         composeRule.onNodeWithText("Age:").assertDoesNotExist()
     }
 
+    @Test
+    fun loadedScreenRendersSkinTypeSwatchAndLabel() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Skin Type",
+                            value = "TYPE_I",
+                            type = AttributeType.SKIN_TYPE,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Type I, very light").performScrollTo().assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Skin Type swatch Type I, very light")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
     private fun setContent(
         state: ItemDetailUiState,
         onBackClick: () -> Unit = {},

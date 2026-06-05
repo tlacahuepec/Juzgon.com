@@ -146,6 +146,27 @@ class ValidateEnrichmentResultUseCaseTest {
         assertEquals(EnrichmentStatus.FOUND, validated.status)
     }
 
+    @Test
+    fun skinTypeSuggestion_isNormalizedToStoredValue() {
+        val result = foundDateResult("Type I")
+
+        val validated = useCase(result, AttributeType.SKIN_TYPE)
+
+        assertEquals(EnrichmentStatus.FOUND, validated.status)
+        assertEquals("TYPE_I", validated.suggestedValue)
+        assertEquals("Type I, very light", validated.displayValue)
+    }
+
+    @Test
+    fun invalidSkinTypeSuggestion_isRejected() {
+        val result = foundDateResult("Type X")
+
+        val validated = useCase(result, AttributeType.SKIN_TYPE)
+
+        assertEquals(EnrichmentStatus.ERROR, validated.status)
+        assertEquals(EnrichmentFailureCode.VALIDATION_FAILED, validated.failureCode)
+    }
+
     private fun foundDateResult(
         value: String,
         confidence: EnrichmentConfidence = EnrichmentConfidence.HIGH,

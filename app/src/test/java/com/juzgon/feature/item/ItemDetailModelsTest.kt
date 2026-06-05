@@ -367,4 +367,16 @@ class ItemDetailModelsTest {
     fun formatAttributeValueForSocialNetworkInvalidJsonReturnsRawValue() {
         assertEquals("not json", formatAttributeValue(AttributeType.SOCIAL_NETWORK, "not json"))
     }
+
+    @Test
+    fun formatAttributeValueForSkinTypeReturnsFitzpatrickLabel() {
+        assertEquals("Type I, very light", formatAttributeValue(AttributeType.SKIN_TYPE, "TYPE_I"))
+        assertEquals("Type VI, very dark", formatAttributeValue(AttributeType.SKIN_TYPE, "VI"))
+    }
+
+    @Test
+    fun formatAttributeValueForSkinTypeUnknownReturnsFallback() {
+        assertEquals("Unknown skin type", formatAttributeValue(AttributeType.SKIN_TYPE, "TYPE_X"))
+    }
+
 }

@@ -385,10 +385,7 @@ private fun CategoryAttributeRow(
                 },
         ) {
             OutlinedTextField(
-                value =
-                    attribute.type.name
-                        .lowercase()
-                        .replaceFirstChar { it.uppercase() },
+                value = attribute.type.displayLabel(),
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Type") },
@@ -404,7 +401,7 @@ private fun CategoryAttributeRow(
             ) {
                 AttributeType.entries.forEach { type ->
                     DropdownMenuItem(
-                        text = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                        text = { Text(type.displayLabel()) },
                         onClick = {
                             onTypeChange(attribute.key, type)
                             typeMenuExpanded = false
@@ -599,6 +596,12 @@ private fun ScoringDirectionDropdown(
         }
     }
 }
+
+private fun AttributeType.displayLabel(): String =
+    name
+        .lowercase()
+        .split('_')
+        .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

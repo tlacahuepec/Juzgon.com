@@ -188,6 +188,46 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun roundTrip_preservesSkinTypeAttributeAndValue() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity(
+                                id = "People/Skin Type",
+                                categoryName = "People",
+                                type = "SKIN_TYPE",
+                                isRequired = false,
+                                displayInDiamond = false,
+                            ),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("Alice", "", 100L, 200L),
+                        listOf(RatingEntity("Alice", "People/Score", 8)),
+                        listOf(ItemValueEntity("Alice", "People/Skin Type", "TYPE_I")),
+                    ),
+                )
+
+            val exported = service.export()
+            categoryDao.reset()
+            itemDao.reset()
+
+            service.import(exported)
+
+            val skinTypeAttribute = categoryDao.upsertedAttributes.single { it.id == "People/Skin Type" }
+            val skinTypeValue = itemDao.upsertedValues.single { it.attributeId == "People/Skin Type" }
+            assertEquals("SKIN_TYPE", skinTypeAttribute.type)
+            assertEquals("TYPE_I", skinTypeValue.valueText)
+        }
+
+    @Test
     fun export_includesScoreProfiles() =
         runTest {
             scoreProfileDao.profiles.value =

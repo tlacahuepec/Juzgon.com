@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.ui.components.JuzgonCollectionCard
 import com.juzgon.ui.components.JuzgonCollectionCardMetadata
 import com.juzgon.ui.components.JuzgonCollectionCardMetric
@@ -544,6 +545,7 @@ private fun AttributeFilterSheet(
     when (chip.type) {
         AttributeType.NATIONALITY -> NationalityFilterSheet(chip, onApply, onDismiss)
         AttributeType.DROPDOWN -> DropdownFilterSheet(chip, onApply, onDismiss)
+        AttributeType.SKIN_TYPE -> SkinTypeFilterSheet(chip, onApply, onDismiss)
         AttributeType.BOOLEAN -> BooleanFilterSheet(chip, onApply, onDismiss)
         AttributeType.NUMBER -> NumberRangeFilterSheet(chip, onApply, onDismiss)
         AttributeType.DATE -> DateRangeFilterSheet(chip, onApply, onDismiss)
@@ -629,6 +631,50 @@ private fun DropdownFilterSheet(
                 onClick = {
                     if (selected.isNotEmpty()) {
                         onApply(AttributeFilter.Dropdown(chip.attributeId, selected))
+                    }
+                },
+                enabled = selected.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply") }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SkinTypeFilterSheet(
+    chip: FilterChipUiModel,
+    onApply: (AttributeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = "Filter by ${chip.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                items(items = chip.availableValues, key = { it }) { value ->
+                    FilterOptionRow(
+                        label = SkinTypeValues.displayLabelOrUnknown(value),
+                        isSelected = value in selected,
+                        onClick = {
+                            selected = if (value in selected) selected - value else selected + value
+                        },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    if (selected.isNotEmpty()) {
+                        onApply(AttributeFilter.SkinType(chip.attributeId, selected))
                     }
                 },
                 enabled = selected.isNotEmpty(),
@@ -1097,6 +1143,7 @@ private fun CategoryDetailItemCard(
                     JuzgonCollectionCardMetric(
                         label = item.metricLabel,
                         value = item.metricValueText,
+                        swatchColorHex = item.metricColorHex,
                     ),
                 badge = item.nationalityBadge,
                 badgeIcons = item.socialBadgeIcons,

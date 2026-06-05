@@ -1,6 +1,8 @@
 package com.juzgon.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -8,6 +10,51 @@ class AttributeTypeTest {
     @Test
     fun `NATIONALITY exists in AttributeType entries`() {
         assertTrue(AttributeType.entries.any { it.name == "NATIONALITY" })
+    }
+
+    @Test
+    fun `SKIN_TYPE exists in AttributeType entries`() {
+        assertTrue(AttributeType.entries.any { it.name == "SKIN_TYPE" })
+    }
+
+    @Test
+    fun `isRankable false for SKIN_TYPE`() {
+        val attribute = Attribute(id = "People/Skin Type", type = AttributeType.SKIN_TYPE)
+
+        assertFalse(attribute.isRankable)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `SKIN_TYPE with displayInDiamond true throws`() {
+        Attribute(
+            id = "People/Skin Type",
+            type = AttributeType.SKIN_TYPE,
+            displayInDiamond = true,
+        )
+    }
+
+    @Test
+    fun `SkinTypeValues expose six Fitzpatrick values in natural order`() {
+        assertEquals(
+            listOf("TYPE_I", "TYPE_II", "TYPE_III", "TYPE_IV", "TYPE_V", "TYPE_VI"),
+            SkinTypeValues.entries.map { it.storedValue },
+        )
+        assertEquals("Type I, very light", SkinTypeValues.entries.first().displayLabel)
+        assertEquals("Type VI, very dark", SkinTypeValues.entries.last().displayLabel)
+    }
+
+    @Test
+    fun `SkinTypeValues normalize labels roman numerals and stored values`() {
+        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("TYPE_I"))
+        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("Type I"))
+        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("I"))
+        assertEquals(SkinTypeValues.TypeVI, SkinTypeValues.fromStoredValue("type vi, very dark"))
+    }
+
+    @Test
+    fun `SkinTypeValues return unknown display for invalid values`() {
+        assertNull(SkinTypeValues.fromStoredValue("TYPE_X"))
+        assertEquals("Unknown skin type", SkinTypeValues.displayLabelOrUnknown("TYPE_X"))
     }
 
     @Test

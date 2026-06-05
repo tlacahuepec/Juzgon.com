@@ -493,6 +493,100 @@ class CategoryDetailModelsTest {
         assertEquals("ItalianBrazilian", state.items[1].id)
     }
 
+    @Test
+    fun reduce_sortBySkinType_usesFitzpatrickNaturalOrder() {
+        val skinType = Attribute("People/Skin Type", type = AttributeType.SKIN_TYPE, isRequired = false)
+        val category = Category(name = "People", attributes = listOf(speed, skinType))
+        val items =
+            listOf(
+                rankedItemWithValue("TypeSix", skinType, "TYPE_VI"),
+                rankedItemWithValue("TypeOne", skinType, "TYPE_I"),
+                rankedItemWithValue("TypeThree", skinType, "TYPE_III"),
+                rankedItemWithValue("Unknown", skinType, "TYPE_X"),
+                rankedItemWithValue("Missing", skinType, ""),
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "People",
+                category = category,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Attribute(skinType.id),
+            )
+
+        assertEquals(
+            listOf("TypeOne", "TypeThree", "TypeSix", "Missing", "Unknown"),
+            state.items.map { it.id },
+        )
+        assertEquals("Type I, very light", state.items.first().metricValueText)
+        assertEquals("#F6D7C3", state.items.first().metricColorHex)
+    }
+
+    @Test
+    fun reduce_searchMatchesSkinTypeDisplayLabel() {
+        val skinType = Attribute("People/Skin Type", type = AttributeType.SKIN_TYPE, isRequired = false)
+        val category = Category(name = "People", attributes = listOf(speed, skinType))
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "People",
+                category = category,
+                rankedItems = listOf(rankedItemWithValue("Alice", skinType, "TYPE_I")),
+                sortOption = CategoryDetailSortOption.Score,
+                searchQuery = "very light",
+            )
+
+        assertEquals(listOf("Alice"), state.items.map { it.id })
+    }
+
+    @Test
+    fun reduce_skinTypeFilterChipUsesNaturalOrderAndFiltersItems() {
+        val skinType = Attribute("People/Skin Type", type = AttributeType.SKIN_TYPE, isRequired = false)
+        val category = Category(name = "People", attributes = listOf(speed, skinType))
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "People",
+                category = category,
+                rankedItems =
+                    listOf(
+                        rankedItemWithValue("Alice", skinType, "TYPE_III"),
+                        rankedItemWithValue("Bob", skinType, "TYPE_I"),
+                        rankedItemWithValue("Cleo", skinType, "TYPE_VI"),
+                    ),
+                sortOption = CategoryDetailSortOption.Score,
+                activeFilters = listOf(AttributeFilter.SkinType(skinType.id, selectedValues = setOf("TYPE_I"))),
+            )
+
+        val chip = state.filterChips.single { it.attributeId == skinType.id }
+        assertTrue(chip.isActive)
+        assertEquals("Type I, very light", chip.activeLabel)
+        assertEquals(
+            listOf("TYPE_I", "TYPE_III", "TYPE_VI"),
+            chip.availableValues,
+        )
+        assertEquals(listOf("Bob"), state.items.map { it.id })
+    }
+
+    private fun rankedItemWithValue(
+        id: String,
+        attribute: Attribute,
+        value: String,
+    ): RankedRatedItem =
+        RankedRatedItem(
+            item =
+                RatedItem(
+                    id = id,
+                    scores = listOf(ScoreEntry(speed, 8)),
+                    values =
+                        value
+                            .takeIf { it.isNotBlank() }
+                            ?.let { listOf(ItemAttributeValue(attribute, it)) }
+                            ?: emptyList(),
+                ),
+            aggregateScore = 8.0,
+        )
+
     // endregion
 
     // region social badge icons

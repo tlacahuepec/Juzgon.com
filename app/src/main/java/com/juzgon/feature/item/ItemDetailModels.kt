@@ -6,6 +6,7 @@ import com.juzgon.domain.AttributeRankSnapshot
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.social.SocialNetworkCodec
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -130,6 +131,7 @@ internal fun formatAttributeValue(
                 .parse(value)
                 .joinToString(", ") { it.platform.displayName }
                 .ifEmpty { value }
+        AttributeType.SKIN_TYPE -> SkinTypeValues.displayLabelOrUnknown(value)
         else -> value
     }
 
