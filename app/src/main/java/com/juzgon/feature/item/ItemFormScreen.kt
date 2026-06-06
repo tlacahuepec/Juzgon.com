@@ -13,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -563,90 +564,14 @@ private fun ItemAttributeValueField(
             )
         }
         AttributeType.DATE -> {
-            val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
-            var showDatePicker by remember { mutableStateOf(false) }
-            val currentIso = valueInput.valueText
-            val initialMillis = isoToDatePickerMillis(currentIso)
-
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedTextField(
-                    value = currentIso,
-                    onValueChange = { /* DATE values are set exclusively via the picker */ },
-                    readOnly = true,
-                    label = { Text(valueInput.attribute.displayName) },
-                    placeholder = { Text("Select date") },
-                    isError = validationError.value != null,
-                    supportingText = {
-                        validationError.value?.let { Text(it) }
-                    },
-                    singleLine = true,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .semantics { contentDescription = cd }
-                            .clickable { showDatePicker = true },
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.DateRange,
-                                contentDescription = "Pick ${valueInput.attribute.displayName}",
-                            )
-                        }
-                    },
-                )
-                if (showSuggest) {
-                    IconButton(
-                        onClick = { onSuggestClick(attributeId) },
-                        enabled = !enrichmentLoading,
-                        modifier =
-                            Modifier
-                                .padding(top = 8.dp)
-                                .semantics {
-                                    contentDescription = "Suggest ${valueInput.attribute.displayName}"
-                                },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = null,
-                        )
-                    }
-                }
-                if (!valueInput.attribute.isRequired && currentIso.isNotBlank()) {
-                    IconButton(onClick = { onDateSelected(attributeId, "") }) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Clear ${valueInput.attribute.displayName}",
-                        )
-                    }
-                }
-            }
-
-            if (showDatePicker) {
-                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            datePickerState.selectedDateMillis?.let { millis ->
-                                onDateSelected(attributeId, millisToIsoDate(millis))
-                            }
-                            showDatePicker = false
-                        }) {
-                            Text("OK")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel")
-                        }
-                    },
-                ) {
-                    DatePicker(state = datePickerState)
-                }
-            }
+            DateAttributeValueField(
+                valueInput = valueInput,
+                validationError = validationError,
+                onDateSelected = onDateSelected,
+                onSuggestClick = onSuggestClick,
+                enrichmentLoading = enrichmentLoading,
+                contentDescription = cd,
+            )
         }
         else -> {
             OutlinedTextField(
@@ -667,6 +592,102 @@ private fun ItemAttributeValueField(
 }
 
 @Composable
+private fun DateAttributeValueField(
+    valueInput: ItemValueInput,
+    validationError: ItemValueValidationError,
+    onDateSelected: (String, String) -> Unit,
+    onSuggestClick: (String) -> Unit,
+    enrichmentLoading: Boolean,
+    contentDescription: String,
+) {
+    val attributeId = valueInput.attribute.id
+    val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
+    var showDatePicker by remember { mutableStateOf(false) }
+    val currentIso = valueInput.valueText
+    val initialMillis = isoToDatePickerMillis(currentIso)
+
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = currentIso,
+            onValueChange = { /* DATE values are set exclusively via the picker */ },
+            readOnly = true,
+            label = { Text(valueInput.attribute.displayName) },
+            placeholder = { Text("Select date") },
+            isError = validationError.value != null,
+            supportingText = {
+                validationError.value?.let { Text(it) }
+            },
+            singleLine = true,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .semantics { this.contentDescription = contentDescription }
+                    .clickable { showDatePicker = true },
+            trailingIcon = {
+                IconButton(onClick = { showDatePicker = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = "Pick ${valueInput.attribute.displayName}",
+                    )
+                }
+            },
+        )
+        if (showSuggest) {
+            IconButton(
+                onClick = { onSuggestClick(attributeId) },
+                enabled = !enrichmentLoading,
+                modifier =
+                    Modifier
+                        .padding(top = 8.dp)
+                        .semantics {
+                            this.contentDescription = "Suggest ${valueInput.attribute.displayName}"
+                        },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                )
+            }
+        }
+        if (!valueInput.attribute.isRequired && currentIso.isNotBlank()) {
+            IconButton(onClick = { onDateSelected(attributeId, "") }) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Clear ${valueInput.attribute.displayName}",
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onDateSelected(attributeId, millisToIsoDate(millis))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
 private fun SkinTypeValueField(
     attributeId: String,
     selectedValue: String,
@@ -678,11 +699,15 @@ private fun SkinTypeValueField(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(text = attributeId.substringAfter("/"), style = MaterialTheme.typography.bodyLarge)
-        LazyRow(
+        Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 2.dp),
         ) {
-            items(SkinTypeValues.entries, key = { it.storedValue }) { skinType ->
+            SkinTypeValues.entries.forEach { skinType ->
                 SkinTypeOptionButton(
                     skinType = skinType,
                     selected = SkinTypeValues.fromStoredValue(selectedValue) == skinType,

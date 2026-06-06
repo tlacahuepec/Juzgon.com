@@ -4,6 +4,7 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
@@ -548,65 +549,50 @@ private fun List<RankedRatedItem>.sortedByAttribute(
         category.attributes.firstOrNull { current ->
             current.id == attributeId && current.type != AttributeType.IMAGE
         } ?: return this
-    return if (attribute.type == AttributeType.NUMBER) {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.scoreForAttribute(attribute.id) == null
-            }.thenByDescending { current ->
-                current.item.scoreForAttribute(attribute.id)
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
-    } else if (attribute.type == AttributeType.SKIN_TYPE) {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item
-                    .textValueForAttribute(attribute.id)
-                    ?.let { SkinTypeValues.sortOrderOrNull(it) } == null
-            }.thenBy { current ->
-                current.item
-                    .textValueForAttribute(attribute.id)
-                    ?.let { SkinTypeValues.sortOrderOrNull(it) }
-                    ?: Int.MAX_VALUE
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
-    } else if (attribute.type == AttributeType.NATIONALITY) {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.textValueForAttribute(attribute.id) == null
-            }.thenBy { current ->
-                current.item
-                    .textValueForAttribute(attribute.id)
-                    ?.let { NationalityCodes.primary(it) }
-                    ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
-    } else {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.textValueForAttribute(attribute.id) == null
-            }.thenBy { current ->
-                current.item.textValueForAttribute(attribute.id)?.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.textValueForAttribute(attribute.id)
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
+    return when (attribute.type) {
+        AttributeType.NUMBER ->
+            sortedByNullableKey(
+                keySelector = { it.item.scoreForAttribute(attribute.id) },
+                descending = true,
+            )
+        AttributeType.SKIN_TYPE ->
+            sortedByNullableKey(
+                keySelector = {
+                    it.item
+                        .textValueForAttribute(attribute.id)
+                        ?.let { v -> SkinTypeValues.sortOrderOrNull(v) }
+                },
+            )
+        AttributeType.NATIONALITY ->
+            sortedByNullableKey(
+                keySelector = {
+                    it.item
+                        .textValueForAttribute(attribute.id)
+                        ?.let { NationalityCodes.primary(it) }
+                        ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
+                },
+            )
+        else ->
+            sortedWith(
+                compareBy<RankedRatedItem> { it.item.textValueForAttribute(attribute.id) == null }
+                    .thenBy { it.item.textValueForAttribute(attribute.id)?.lowercase(Locale.US) }
+                    .thenBy { it.item.textValueForAttribute(attribute.id) }
+                    .thenBy { it.item.id.lowercase(Locale.US) }
+                    .thenBy { it.item.id },
+            )
     }
+}
+
+private fun <T : Comparable<T>> List<RankedRatedItem>.sortedByNullableKey(
+    keySelector: (RankedRatedItem) -> T?,
+    descending: Boolean = false,
+): List<RankedRatedItem> {
+    val comparator =
+        compareBy<RankedRatedItem> { keySelector(it) == null }
+            .let { if (descending) it.thenByDescending(keySelector) else it.thenBy(keySelector) }
+            .thenBy { it.item.id.lowercase(Locale.US) }
+            .thenBy { it.item.id }
+    return sortedWith(comparator)
 }
 
 private fun ItemAttributeValue.matchesSearchQuery(query: String): Boolean =

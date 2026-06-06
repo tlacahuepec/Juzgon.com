@@ -195,7 +195,11 @@ class CategoryFormScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Skin Type").performScrollTo().assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Attribute 1 type")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithText("Skin Type").assertCountEquals(2)
     }
 
     @Test

@@ -405,15 +405,15 @@ class ItemFormScreenTest {
         setContent(
             loadedState().copy(
                 categoryName = "People",
+                scores = emptyList(),
                 values = listOf(ItemValueInput(skinTypeAttr, valueText = "TYPE_I")),
             ),
         )
 
         composeRule.onNodeWithText("Skin Type").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Type I, very light").assertIsDisplayed()
-        composeRule.onNodeWithText("Type VI, very dark").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Skin Type swatch Type I, very light").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Type III").assertCountEquals(1)
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type II").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type VI, very dark").assertHasClickAction()
     }
 
     @Test
@@ -425,6 +425,7 @@ class ItemFormScreenTest {
         setContent(
             loadedState().copy(
                 categoryName = "People",
+                scores = emptyList(),
                 values = listOf(ItemValueInput(skinTypeAttr)),
             ),
             onValueChange = { id, value ->
@@ -433,10 +434,10 @@ class ItemFormScreenTest {
             },
         )
 
-        composeRule.onNodeWithText("Type IV").performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type II").performClick()
 
         assertEquals("People/Skin Type", changedAttributeId)
-        assertEquals("TYPE_IV", changedValue)
+        assertEquals("TYPE_II", changedValue)
     }
 
     @Suppress("LongParameterList")

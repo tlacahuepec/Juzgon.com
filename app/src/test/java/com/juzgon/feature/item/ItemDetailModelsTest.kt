@@ -378,5 +378,4 @@ class ItemDetailModelsTest {
     fun formatAttributeValueForSkinTypeUnknownReturnsFallback() {
         assertEquals("Unknown skin type", formatAttributeValue(AttributeType.SKIN_TYPE, "TYPE_X"))
     }
-
 }
