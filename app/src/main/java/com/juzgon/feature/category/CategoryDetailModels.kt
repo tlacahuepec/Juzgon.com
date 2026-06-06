@@ -4,12 +4,14 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.RatingSystem
 import com.juzgon.domain.ScoreProfile
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.social.SocialNetworkCodec
 import com.juzgon.domain.social.SocialPlatformIcons
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
@@ -87,6 +89,11 @@ sealed interface AttributeFilter {
         override val attributeId: String,
         val value: Boolean,
     ) : AttributeFilter
+
+    data class SkinType(
+        override val attributeId: String,
+        val selectedValues: Set<String>,
+    ) : AttributeFilter
 }
 
 data class CategoryDetailItemUiModel(
@@ -98,6 +105,7 @@ data class CategoryDetailItemUiModel(
     val socialBadgeIcons: List<Int> = emptyList(),
     val metricLabel: String = "Score",
     val metricValueText: String = averageScoreText,
+    val metricColorHex: String? = null,
 )
 
 data class ProfileOption(
@@ -291,7 +299,7 @@ object CategoryDetailReducer {
                 ranked.item.notes.contains(trimmed, ignoreCase = true) ||
                 ranked.item.values.any { value ->
                     value.attribute.type in TEXT_SEARCHABLE_TYPES &&
-                        value.value.contains(trimmed, ignoreCase = true)
+                        value.matchesSearchQuery(trimmed)
                 }
         }
     }
@@ -315,6 +323,7 @@ object CategoryDetailReducer {
             AttributeType.URL,
             AttributeType.BOOLEAN,
             AttributeType.SOCIAL_NETWORK,
+            AttributeType.SKIN_TYPE,
         )
 
     private fun buildItemUiModel(
@@ -333,6 +342,7 @@ object CategoryDetailReducer {
             socialBadgeIcons = rankedItem.item.resolveSocialBadgeIcons(category),
             metricLabel = metric.label,
             metricValueText = metric.valueText,
+            metricColorHex = metric.colorHex,
         )
     }
 
@@ -367,6 +377,12 @@ object CategoryDetailReducer {
                 ranked.item
                     .textValueForAttribute(filter.attributeId)
                     ?.let { it.equals(filter.value.toString(), ignoreCase = true) } ?: false
+            is AttributeFilter.SkinType ->
+                ranked.item
+                    .textValueForAttribute(filter.attributeId)
+                    ?.let { value ->
+                        SkinTypeValues.fromStoredValue(value)?.storedValue in filter.selectedValues
+                    } ?: false
         }
 
     @Suppress("ReturnCount")
@@ -387,6 +403,7 @@ object CategoryDetailReducer {
             AttributeType.DROPDOWN,
             AttributeType.DATE,
             AttributeType.BOOLEAN,
+            AttributeType.SKIN_TYPE,
         )
 
     private fun buildFilterChips(
@@ -415,6 +432,10 @@ object CategoryDetailReducer {
             is AttributeFilter.DateRange -> listOfNotNull(startDate, endDate).joinToString(" – ")
             is AttributeFilter.Dropdown -> selectedValues.joinToString(", ")
             is AttributeFilter.BooleanFilter -> if (value) "Yes" else "No"
+            is AttributeFilter.SkinType ->
+                selectedValues
+                    .map { value -> SkinTypeValues.displayLabelOrUnknown(value) }
+                    .joinToString(", ")
         }
 
     private fun collectAvailableValues(
@@ -423,6 +444,15 @@ object CategoryDetailReducer {
     ): List<String> =
         if (attribute.type == AttributeType.NUMBER) {
             emptyList()
+        } else if (attribute.type == AttributeType.SKIN_TYPE) {
+            items
+                .mapNotNull { ranked ->
+                    ranked.item.values
+                        .firstOrNull { it.attribute.id == attribute.id }
+                        ?.value
+                        ?.let { SkinTypeValues.fromStoredValue(it)?.storedValue }
+                }.distinct()
+                .sortedBy { SkinTypeValues.sortOrderOrNull(it) ?: Int.MAX_VALUE }
         } else if (attribute.type == AttributeType.NATIONALITY) {
             items
                 .flatMap { ranked ->
@@ -453,6 +483,7 @@ private const val MAX_SOCIAL_BADGE_ICONS = 4
 private data class CategoryDetailCardMetric(
     val label: String,
     val valueText: String,
+    val colorHex: String? = null,
 )
 
 private fun RankedRatedItem.toCardMetric(
@@ -466,13 +497,18 @@ private fun RankedRatedItem.toCardMetric(
                     current.id == selectedSortOption.attributeId && current.type != AttributeType.IMAGE
                 } ?: return CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
 
+            val textValue = item.textValueForAttribute(attribute.id)
             val valueText =
-                if (attribute.type == AttributeType.NUMBER) {
-                    item.scoreForAttribute(attribute.id)?.toString()
-                } else {
-                    item.textValueForAttribute(attribute.id)
+                when (attribute.type) {
+                    AttributeType.NUMBER -> item.scoreForAttribute(attribute.id)?.toString()
+                    AttributeType.SKIN_TYPE -> textValue?.let { SkinTypeValues.displayLabelOrUnknown(it) }
+                    else -> textValue
                 } ?: MISSING_ATTRIBUTE_VALUE_TEXT
-            CategoryDetailCardMetric(label = attribute.displayName, valueText = valueText)
+            CategoryDetailCardMetric(
+                label = attribute.displayName,
+                valueText = valueText,
+                colorHex = textValue?.let { SkinTypeValues.fromStoredValue(it)?.colorHex },
+            )
         }
 
         else -> CategoryDetailCardMetric(label = "Score", valueText = aggregateScore.toAverageScoreText())
@@ -513,49 +549,58 @@ private fun List<RankedRatedItem>.sortedByAttribute(
         category.attributes.firstOrNull { current ->
             current.id == attributeId && current.type != AttributeType.IMAGE
         } ?: return this
-    return if (attribute.type == AttributeType.NUMBER) {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.scoreForAttribute(attribute.id) == null
-            }.thenByDescending { current ->
-                current.item.scoreForAttribute(attribute.id)
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
-    } else if (attribute.type == AttributeType.NATIONALITY) {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.textValueForAttribute(attribute.id) == null
-            }.thenBy { current ->
-                current.item
-                    .textValueForAttribute(attribute.id)
-                    ?.let { NationalityCodes.primary(it) }
-                    ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
-    } else {
-        sortedWith(
-            compareBy<RankedRatedItem> { current ->
-                current.item.textValueForAttribute(attribute.id) == null
-            }.thenBy { current ->
-                current.item.textValueForAttribute(attribute.id)?.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.textValueForAttribute(attribute.id)
-            }.thenBy { current ->
-                current.item.id.lowercase(Locale.US)
-            }.thenBy { current ->
-                current.item.id
-            },
-        )
+    return when (attribute.type) {
+        AttributeType.NUMBER ->
+            sortedByNullableKey(
+                keySelector = { it.item.scoreForAttribute(attribute.id) },
+                descending = true,
+            )
+        AttributeType.SKIN_TYPE ->
+            sortedByNullableKey(
+                keySelector = {
+                    it.item
+                        .textValueForAttribute(attribute.id)
+                        ?.let { v -> SkinTypeValues.sortOrderOrNull(v) }
+                },
+            )
+        AttributeType.NATIONALITY ->
+            sortedByNullableKey(
+                keySelector = {
+                    it.item
+                        .textValueForAttribute(attribute.id)
+                        ?.let { NationalityCodes.primary(it) }
+                        ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
+                },
+            )
+        else ->
+            sortedWith(
+                compareBy<RankedRatedItem> { it.item.textValueForAttribute(attribute.id) == null }
+                    .thenBy { it.item.textValueForAttribute(attribute.id)?.lowercase(Locale.US) }
+                    .thenBy { it.item.textValueForAttribute(attribute.id) }
+                    .thenBy { it.item.id.lowercase(Locale.US) }
+                    .thenBy { it.item.id },
+            )
     }
 }
+
+private fun <T : Comparable<T>> List<RankedRatedItem>.sortedByNullableKey(
+    keySelector: (RankedRatedItem) -> T?,
+    descending: Boolean = false,
+): List<RankedRatedItem> {
+    val comparator =
+        compareBy<RankedRatedItem> { keySelector(it) == null }
+            .let { if (descending) it.thenByDescending(keySelector) else it.thenBy(keySelector) }
+            .thenBy { it.item.id.lowercase(Locale.US) }
+            .thenBy { it.item.id }
+    return sortedWith(comparator)
+}
+
+private fun ItemAttributeValue.matchesSearchQuery(query: String): Boolean =
+    if (attribute.type == AttributeType.SKIN_TYPE) {
+        SkinTypeValues.matchesQuery(value, query)
+    } else {
+        value.contains(query, ignoreCase = true)
+    }
 
 private fun RatedItem.scoreForAttribute(attributeId: String): Int? =
     scores

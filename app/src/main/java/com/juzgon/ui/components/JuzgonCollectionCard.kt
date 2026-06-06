@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -92,6 +93,7 @@ internal data class JuzgonCollectionCardMetadata(
 internal data class JuzgonCollectionCardMetric(
     val label: String,
     val value: String,
+    val swatchColorHex: String? = null,
 )
 
 @Composable
@@ -147,6 +149,7 @@ private fun CollectionCardOverlay(
             CollectionCardMetric(
                 label = metadata.metric.label,
                 value = metadata.metric.value,
+                swatchColorHex = metadata.metric.swatchColorHex,
             )
         }
     }
@@ -182,6 +185,7 @@ private fun CollectionCardPill(
 private fun CollectionCardMetric(
     label: String,
     value: String,
+    swatchColorHex: String?,
 ) {
     val tokens = JuzgonVisualTheme.tokens
 
@@ -200,13 +204,26 @@ private fun CollectionCardMetric(
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
-        Text(
-            text = value,
-            color = tokens.palette.textStrong,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            swatchColorHex?.let { colorHex ->
+                Box(
+                    modifier =
+                        Modifier
+                            .size(12.dp)
+                            .background(Color(android.graphics.Color.parseColor(colorHex))),
+                )
+            }
+            Text(
+                text = value,
+                color = tokens.palette.textStrong,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
     }
 }
 

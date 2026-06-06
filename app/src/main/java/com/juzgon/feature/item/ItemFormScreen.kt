@@ -10,8 +10,10 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -71,6 +74,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.SkinTypeValue
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.enrichment.EnrichmentSupportRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -550,91 +555,23 @@ private fun ItemAttributeValueField(
                 onValueChange = onValueChange,
             )
         }
+        AttributeType.SKIN_TYPE -> {
+            SkinTypeValueField(
+                attributeId = attributeId,
+                selectedValue = valueInput.valueText,
+                onValueChange = onValueChange,
+                validationError = validationError,
+            )
+        }
         AttributeType.DATE -> {
-            val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
-            var showDatePicker by remember { mutableStateOf(false) }
-            val currentIso = valueInput.valueText
-            val initialMillis = isoToDatePickerMillis(currentIso)
-
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedTextField(
-                    value = currentIso,
-                    onValueChange = { /* DATE values are set exclusively via the picker */ },
-                    readOnly = true,
-                    label = { Text(valueInput.attribute.displayName) },
-                    placeholder = { Text("Select date") },
-                    isError = validationError.value != null,
-                    supportingText = {
-                        validationError.value?.let { Text(it) }
-                    },
-                    singleLine = true,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .semantics { contentDescription = cd }
-                            .clickable { showDatePicker = true },
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.DateRange,
-                                contentDescription = "Pick ${valueInput.attribute.displayName}",
-                            )
-                        }
-                    },
-                )
-                if (showSuggest) {
-                    IconButton(
-                        onClick = { onSuggestClick(attributeId) },
-                        enabled = !enrichmentLoading,
-                        modifier =
-                            Modifier
-                                .padding(top = 8.dp)
-                                .semantics {
-                                    contentDescription = "Suggest ${valueInput.attribute.displayName}"
-                                },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = null,
-                        )
-                    }
-                }
-                if (!valueInput.attribute.isRequired && currentIso.isNotBlank()) {
-                    IconButton(onClick = { onDateSelected(attributeId, "") }) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Clear ${valueInput.attribute.displayName}",
-                        )
-                    }
-                }
-            }
-
-            if (showDatePicker) {
-                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            datePickerState.selectedDateMillis?.let { millis ->
-                                onDateSelected(attributeId, millisToIsoDate(millis))
-                            }
-                            showDatePicker = false
-                        }) {
-                            Text("OK")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel")
-                        }
-                    },
-                ) {
-                    DatePicker(state = datePickerState)
-                }
-            }
+            DateAttributeValueField(
+                valueInput = valueInput,
+                validationError = validationError,
+                onDateSelected = onDateSelected,
+                onSuggestClick = onSuggestClick,
+                enrichmentLoading = enrichmentLoading,
+                contentDescription = cd,
+            )
         }
         else -> {
             OutlinedTextField(
@@ -650,6 +587,174 @@ private fun ItemAttributeValueField(
                         .fillMaxWidth()
                         .semantics { contentDescription = cd },
             )
+        }
+    }
+}
+
+@Composable
+private fun DateAttributeValueField(
+    valueInput: ItemValueInput,
+    validationError: ItemValueValidationError,
+    onDateSelected: (String, String) -> Unit,
+    onSuggestClick: (String) -> Unit,
+    enrichmentLoading: Boolean,
+    contentDescription: String,
+) {
+    val attributeId = valueInput.attribute.id
+    val showSuggest = EnrichmentSupportRules.isSupported(valueInput.attribute)
+    var showDatePicker by remember { mutableStateOf(false) }
+    val currentIso = valueInput.valueText
+    val initialMillis = isoToDatePickerMillis(currentIso)
+
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = currentIso,
+            onValueChange = { /* DATE values are set exclusively via the picker */ },
+            readOnly = true,
+            label = { Text(valueInput.attribute.displayName) },
+            placeholder = { Text("Select date") },
+            isError = validationError.value != null,
+            supportingText = {
+                validationError.value?.let { Text(it) }
+            },
+            singleLine = true,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .semantics { this.contentDescription = contentDescription }
+                    .clickable { showDatePicker = true },
+            trailingIcon = {
+                IconButton(onClick = { showDatePicker = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = "Pick ${valueInput.attribute.displayName}",
+                    )
+                }
+            },
+        )
+        if (showSuggest) {
+            IconButton(
+                onClick = { onSuggestClick(attributeId) },
+                enabled = !enrichmentLoading,
+                modifier =
+                    Modifier
+                        .padding(top = 8.dp)
+                        .semantics {
+                            this.contentDescription = "Suggest ${valueInput.attribute.displayName}"
+                        },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                )
+            }
+        }
+        if (!valueInput.attribute.isRequired && currentIso.isNotBlank()) {
+            IconButton(onClick = { onDateSelected(attributeId, "") }) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Clear ${valueInput.attribute.displayName}",
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onDateSelected(attributeId, millisToIsoDate(millis))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+private fun SkinTypeValueField(
+    attributeId: String,
+    selectedValue: String,
+    onValueChange: (String, String) -> Unit,
+    validationError: ItemValueValidationError,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(text = attributeId.substringAfter("/"), style = MaterialTheme.typography.bodyLarge)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 2.dp),
+        ) {
+            SkinTypeValues.entries.forEach { skinType ->
+                SkinTypeOptionButton(
+                    skinType = skinType,
+                    selected = SkinTypeValues.fromStoredValue(selectedValue) == skinType,
+                    onClick = { onValueChange(attributeId, skinType.storedValue) },
+                )
+            }
+        }
+        validationError.value?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SkinTypeOptionButton(
+    skinType: SkinTypeValue,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier =
+            Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .semantics {
+                    contentDescription = "Skin Type swatch ${skinType.displayLabel}"
+                },
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .sizeIn(minWidth = 16.dp, minHeight = 16.dp)
+                        .background(Color(android.graphics.Color.parseColor(skinType.colorHex)))
+                        .border(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        ),
+            )
+            Text(text = skinType.displayLabel)
         }
     }
 }

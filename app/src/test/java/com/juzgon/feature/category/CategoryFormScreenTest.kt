@@ -180,6 +180,29 @@ class CategoryFormScreenTest {
     }
 
     @Test
+    fun skinTypeAttributeDisplaysReadableTypeLabel() {
+        setContent(
+            CategoryFormUiState(
+                name = "People",
+                attributes =
+                    listOf(
+                        CategoryAttributeInput(
+                            key = 0L,
+                            name = "Skin Type",
+                            type = AttributeType.SKIN_TYPE,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Attribute 1 type")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithText("Skin Type").assertCountEquals(2)
+    }
+
+    @Test
     fun requiredToggleIsRenderedForEachAttribute() {
         setContent(CategoryFormReducer.createState())
 

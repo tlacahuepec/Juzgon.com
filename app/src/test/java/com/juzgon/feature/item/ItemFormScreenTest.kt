@@ -398,6 +398,48 @@ class ItemFormScreenTest {
         composeRule.onNodeWithText("Details is required").performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun skinTypeAttributeRendersSixFitzpatrickOptions() {
+        val skinTypeAttr = Attribute("People/Skin Type", type = AttributeType.SKIN_TYPE, isRequired = false)
+
+        setContent(
+            loadedState().copy(
+                categoryName = "People",
+                scores = emptyList(),
+                values = listOf(ItemValueInput(skinTypeAttr, valueText = "TYPE_I")),
+            ),
+        )
+
+        composeRule.onNodeWithText("Skin Type").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type I, very light").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type II").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type VI, very dark").assertHasClickAction()
+    }
+
+    @Test
+    fun selectingSkinTypeOptionCallsOnValueChangeWithStoredValue() {
+        val skinTypeAttr = Attribute("People/Skin Type", type = AttributeType.SKIN_TYPE, isRequired = false)
+        var changedAttributeId: String? = null
+        var changedValue: String? = null
+
+        setContent(
+            loadedState().copy(
+                categoryName = "People",
+                scores = emptyList(),
+                values = listOf(ItemValueInput(skinTypeAttr)),
+            ),
+            onValueChange = { id, value ->
+                changedAttributeId = id
+                changedValue = value
+            },
+        )
+
+        composeRule.onNodeWithContentDescription("Skin Type swatch Type II").performClick()
+
+        assertEquals("People/Skin Type", changedAttributeId)
+        assertEquals("TYPE_II", changedValue)
+    }
+
     @Suppress("LongParameterList")
     private fun setContent(
         state: ItemFormUiState,

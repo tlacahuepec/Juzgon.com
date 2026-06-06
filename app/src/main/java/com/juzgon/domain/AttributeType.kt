@@ -10,4 +10,5 @@ enum class AttributeType {
     IMAGE,
     NATIONALITY,
     SOCIAL_NETWORK,
+    SKIN_TYPE,
 }

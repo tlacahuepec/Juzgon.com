@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -70,6 +71,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.SkinTypeValue
+import com.juzgon.domain.SkinTypeValues
 import com.juzgon.ui.theme.JuzgonVisualTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -749,6 +752,8 @@ private fun AttributeValueRow(
             UrlAttributeValue(attributeValue)
         } else if (attributeValue.type == AttributeType.SOCIAL_NETWORK) {
             SocialNetworkListSection(attributeValue.value)
+        } else if (attributeValue.type == AttributeType.SKIN_TYPE) {
+            SkinTypeAttributeValue(attributeValue)
         } else {
             Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
             attributeValue.ageText?.let { age ->
@@ -760,6 +765,31 @@ private fun AttributeValueRow(
             }
         }
     }
+}
+
+@Composable
+private fun SkinTypeAttributeValue(attributeValue: ItemDetailAttributeValue) {
+    val skinType = SkinTypeValues.fromStoredValue(attributeValue.value)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        skinType?.let { SkinTypeSwatch(it) }
+        Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun SkinTypeSwatch(skinType: SkinTypeValue) {
+    Box(
+        modifier =
+            Modifier
+                .sizeIn(minWidth = 20.dp, minHeight = 20.dp)
+                .background(Color(android.graphics.Color.parseColor(skinType.colorHex)))
+                .semantics {
+                    contentDescription = "Skin Type swatch ${skinType.displayLabel}"
+                },
+    )
 }
 
 @Composable
