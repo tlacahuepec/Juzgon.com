@@ -2,6 +2,7 @@ package com.juzgon.data.enrichment
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.CatalogType
+import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import javax.inject.Inject
 
@@ -79,17 +80,17 @@ class GeminiPromptBuilder
 
         private fun StringBuilder.appendNationalitySearchHint(request: AttributeEnrichmentRequest) {
             if (request.catalogType != CatalogType.PERSON) return
-            val nationalityCode =
+            val language =
                 request.existingAttributes.entries
                     .firstOrNull { (key, _) -> key.lowercase().contains("nationality") }
                     ?.value
-                    ?.takeIf { it.length == 2 }
-            val language = nationalityCode?.let { COUNTRY_TO_LANGUAGE[it.uppercase()] } ?: return
+                    ?.let { NationalityCodes.primary(it)?.uppercase() }
+                    ?.let { COUNTRY_TO_LANGUAGE[it] }
+                    ?: return
 
             appendLine("Search strategy:")
             appendLine(
-                "- This person's nationality is $nationalityCode. " +
-                    "Also search in $language for more accurate results about less globally-known people.",
+                "- Also search in $language for more accurate results about less globally-known people.",
             )
             appendLine()
         }
@@ -105,7 +106,10 @@ class GeminiPromptBuilder
             appendLine("- Use reliable public internet sources.")
             appendLine("- Do not guess.")
             appendLine("- If no reliable source is found, return NOT_FOUND.")
-            appendLine("- If sources conflict, return CONFLICT.")
+            appendLine(
+                "- If sources conflict, return CONFLICT and populate candidateValues " +
+                    "with each distinct value found, linking each to its source title.",
+            )
             if (request.targetAttributeType == AttributeType.DATE) {
                 appendLine("- Return dates in ISO-8601 format (YYYY-MM-DD).")
             }
@@ -123,7 +127,8 @@ class GeminiPromptBuilder
                   "displayValue": "human-readable value or null",
                   "confidence": "HIGH | MEDIUM | LOW",
                   "reason": "brief explanation",
-                  "sources": [{"title": "...", "url": "...", "snippet": "..."}]
+                  "sources": [{"title": "...", "url": "...", "snippet": "..."}],
+                  "candidateValues": [{"value": "...", "displayValue": "...", "source": "source title"}]
                 }
                 """.trimIndent(),
             )
@@ -134,6 +139,10 @@ class GeminiPromptBuilder
                 AttributeType.DATE -> "Date in ISO-8601 format (YYYY-MM-DD)"
                 AttributeType.NUMBER -> "Numeric value"
                 AttributeType.BOOLEAN -> "true or false"
+                AttributeType.NATIONALITY ->
+                    "ISO 3166-1 alpha-2 country code(s), comma-separated if multiple (e.g., \"BR,IT\")"
+                AttributeType.SOCIAL_NETWORK ->
+                    "JSON array of {platform, handle} objects (not used for enrichment)"
                 else -> type.name.lowercase()
             }
 

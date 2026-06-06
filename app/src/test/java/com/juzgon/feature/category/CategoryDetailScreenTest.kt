@@ -931,6 +931,7 @@ class CategoryDetailScreenTest {
         onEditCategoryClick: () -> Unit = {},
         onScoreProfilesClick: () -> Unit = {},
         onProfileSelected: (String?) -> Unit = {},
+        onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -947,10 +948,92 @@ class CategoryDetailScreenTest {
                     onEditCategoryClick = onEditCategoryClick,
                     onScoreProfilesClick = onScoreProfilesClick,
                     onProfileSelected = onProfileSelected,
+                    onVisibleRangeSelected = onVisibleRangeSelected,
                 )
             }
         }
     }
+
+    // region Visible Range Tests
+
+    @Test
+    fun visibleRangeChipsDisplayedWhenOptionsExist() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    (1..10).map { i ->
+                        CategoryDetailItemUiModel(rank = i, id = "Item$i", averageScoreText = "8.0")
+                    },
+                isLoading = false,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+                visibleRangeOptions =
+                    listOf(
+                        CategoryDetailVisibleRange.Top10,
+                        CategoryDetailVisibleRange.Top20,
+                        CategoryDetailVisibleRange.Top50,
+                        CategoryDetailVisibleRange.All,
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Top 10").assertIsDisplayed()
+        composeRule.onNodeWithText("Top 20").assertIsDisplayed()
+        composeRule.onNodeWithText("Top 50").assertIsDisplayed()
+        composeRule.onNodeWithText("All").assertIsDisplayed()
+    }
+
+    @Test
+    fun visibleRangeChipsHiddenWhenNoOptions() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+                visibleRangeOptions = emptyList(),
+            ),
+        )
+
+        composeRule.onNodeWithText("Top 10").assertDoesNotExist()
+        composeRule.onNodeWithText("Top 20").assertDoesNotExist()
+    }
+
+    @Test
+    fun visibleRangeChipSelectionInvokesCallback() {
+        var selectedRange: CategoryDetailVisibleRange? = null
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        (1..10).map { i ->
+                            CategoryDetailItemUiModel(rank = i, id = "Item$i", averageScoreText = "8.0")
+                        },
+                    isLoading = false,
+                    visibleRange = CategoryDetailVisibleRange.Top10,
+                    visibleRangeOptions =
+                        listOf(
+                            CategoryDetailVisibleRange.Top10,
+                            CategoryDetailVisibleRange.Top20,
+                            CategoryDetailVisibleRange.Top50,
+                            CategoryDetailVisibleRange.All,
+                        ),
+                ),
+            onVisibleRangeSelected = { selectedRange = it },
+        )
+
+        composeRule.onNodeWithText("Top 20").performClick()
+
+        assertEquals(CategoryDetailVisibleRange.Top20, selectedRange)
+    }
+
+    // endregion
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
         assertWidthIsAtLeast(48.dp)

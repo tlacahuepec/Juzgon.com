@@ -209,6 +209,19 @@ class GeminiPromptBuilderTest {
     }
 
     @Test
+    fun build_personWithMultiNationality_usePrimaryCodeForSearchHint() {
+        val request =
+            requestWithAllFields().copy(
+                existingAttributes = mapOf("Nationality" to "BR,IT"),
+            )
+
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Search strategy"))
+        assertTrue(prompt.contains("Portuguese"))
+    }
+
+    @Test
     fun build_nonPersonWithNationality_excludesSearchHint() {
         val request =
             requestWithAllFields().copy(
@@ -254,5 +267,63 @@ class GeminiPromptBuilderTest {
         assertTrue(refIdx < disIdx)
         assertTrue(disIdx < searchIdx)
         assertTrue(searchIdx < targetIdx)
+    }
+
+    @Test
+    fun build_includesCandidateValuesInResponseFormat() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertTrue(prompt.contains("\"candidateValues\""))
+        assertTrue(prompt.contains("candidateValues"))
+    }
+
+    @Test
+    fun build_conflictRuleIncludesCandidateValuesInstruction() {
+        val prompt = builder.build(requestWithAllFields())
+
+        assertTrue(prompt.contains("populate candidateValues"))
+    }
+
+    @Test
+    fun build_socialNetworkExpectedTypeDescribesJsonFormat() {
+        val request =
+            AttributeEnrichmentRequest(
+                catalogId = "cat1",
+                catalogDescription = "Influencers",
+                catalogType = CatalogType.PERSON,
+                itemId = "item1",
+                itemName = "Test Person",
+                existingAttributes = emptyMap(),
+                targetAttributeKey = "social_links",
+                targetAttributeLabel = "Social Links",
+                targetAttributeType = AttributeType.SOCIAL_NETWORK,
+            )
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("JSON"))
+    }
+
+    @Test
+    fun build_socialMediaDisambiguationIncludesSocialNetworkEntries() {
+        val request =
+            AttributeEnrichmentRequest(
+                catalogId = "cat1",
+                catalogDescription = "Influencers",
+                catalogType = CatalogType.PERSON,
+                itemId = "item1",
+                itemName = "Test Person",
+                existingAttributes =
+                    mapOf(
+                        "Social Network" to
+                            """[{"platform":"INSTAGRAM","handle":"@testuser"}]""",
+                    ),
+                targetAttributeKey = "birth_date",
+                targetAttributeLabel = "Birth Date",
+                targetAttributeType = AttributeType.DATE,
+            )
+        val prompt = builder.build(request)
+
+        assertTrue(prompt.contains("Disambiguation"))
+        assertTrue(prompt.contains("@testuser"))
     }
 }

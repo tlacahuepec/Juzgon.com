@@ -3,6 +3,7 @@ package com.juzgon.feature.item
 import com.juzgon.domain.Category
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
+import com.juzgon.domain.enrichment.EnrichmentCandidateValue
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
 import com.juzgon.domain.enrichment.EnrichmentStatus
@@ -89,6 +90,21 @@ class ItemEnrichmentCoordinator(
         }
     }
 
+    fun acceptConflictResolution(
+        currentSheet: EnrichmentSheetState.Conflict,
+        selectedCandidate: EnrichmentCandidateValue,
+        onValueChanged: (String, String) -> Unit,
+        onSheetHidden: () -> Unit,
+    ) {
+        eventLogger.accepted(
+            attributeKey = currentSheet.attributeId,
+            itemId = lastRequest?.itemId ?: "",
+            suggestedValue = selectedCandidate.value,
+        )
+        onValueChanged(currentSheet.attributeId, selectedCandidate.value)
+        onSheetHidden()
+    }
+
     fun retry(
         currentState: ItemFormUiState,
         onResult: (EnrichmentSheetState) -> Unit,
@@ -137,7 +153,13 @@ class ItemEnrichmentCoordinator(
                 EnrichmentSheetState.NotFound(reason)
 
             status == EnrichmentStatus.CONFLICT ->
-                EnrichmentSheetState.Conflict(reason, sources)
+                EnrichmentSheetState.Conflict(
+                    attributeId = attributeId,
+                    attributeLabel = attributeLabel,
+                    reason = reason,
+                    sources = sources,
+                    candidateValues = candidateValues,
+                )
 
             else ->
                 EnrichmentSheetState.Error(failureCode, reason)

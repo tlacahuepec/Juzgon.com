@@ -37,7 +37,7 @@ android {
         versionCode = 3
         versionName = "1.3.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.juzgon.HiltTestRunner"
 
         buildConfigField("String", "BUILD_CHANNEL", "\"dev\"")
         buildConfigField("String", "GIT_SHA", "\"${getGitSha()}\"")
@@ -70,6 +70,9 @@ android {
             assets.directories.add(roomSchemaDir)
         }
         getByName("test") {
+            assets.directories.add(roomSchemaDir)
+        }
+        getByName("androidTest") {
             assets.directories.add(roomSchemaDir)
         }
     }
@@ -179,6 +182,9 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.androidx.navigation.testing)
+    kspAndroidTest(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

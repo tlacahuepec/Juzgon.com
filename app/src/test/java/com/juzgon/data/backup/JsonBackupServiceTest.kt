@@ -490,6 +490,82 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun roundTrip_preservesMultiNationalityValues() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Nationality", "People", type = "NATIONALITY"),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("DualCitizen", "", 100L, 200L),
+                        emptyList(),
+                        listOf(
+                            ItemValueEntity("DualCitizen", "People/Nationality", "BR,IT"),
+                        ),
+                    ),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            service.import(json)
+
+            val nationalityValue = itemDao.upsertedValues.find { it.attributeId == "People/Nationality" }
+            assertEquals("BR,IT", nationalityValue?.valueText)
+        }
+
+    @Test
+    fun export_import_roundTrips_socialNetworkJsonValue() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity("People/Score", "People", type = "NUMBER"),
+                            AttributeEntity("People/Socials", "People", type = "SOCIAL_NETWORK"),
+                        ),
+                    ),
+                )
+            val socialJson =
+                """[{"platform":"INSTAGRAM","handle":"@testuser"},{"platform":"TIKTOK","handle":"@tiktoker"}]"""
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("Influencer", "", 100L, 200L),
+                        listOf(RatingEntity("Influencer", "People/Score", 9)),
+                        listOf(
+                            ItemValueEntity("Influencer", "People/Socials", socialJson),
+                        ),
+                    ),
+                )
+
+            val json = service.export()
+
+            categoryDao.reset()
+            itemDao.reset()
+            categoryDao.state.value = emptyList()
+            itemDao.state.value = emptyList()
+
+            service.import(json)
+
+            val socialValue =
+                itemDao.upsertedValues.find { it.attributeId == "People/Socials" }
+            assertEquals(socialJson, socialValue?.valueText)
+        }
+
+    @Test
     fun export_excludesSoftDeletedValues() =
         runTest {
             categoryDao.state.value =

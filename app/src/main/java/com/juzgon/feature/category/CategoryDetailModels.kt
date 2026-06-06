@@ -4,11 +4,14 @@ package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.RatingSystem
 import com.juzgon.domain.ScoreProfile
+import com.juzgon.domain.social.SocialNetworkCodec
+import com.juzgon.domain.social.SocialPlatformIcons
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.item.decodeItemImageReferences
 import java.util.Locale
@@ -21,6 +24,32 @@ sealed interface CategoryDetailSortOption {
     data class Attribute(
         val attributeId: String,
     ) : CategoryDetailSortOption
+}
+
+sealed interface CategoryDetailVisibleRange {
+    val limit: Int?
+
+    data object Top10 : CategoryDetailVisibleRange {
+        override val limit = LIMIT_TOP_10
+    }
+
+    data object Top20 : CategoryDetailVisibleRange {
+        override val limit = LIMIT_TOP_20
+    }
+
+    data object Top50 : CategoryDetailVisibleRange {
+        override val limit = LIMIT_TOP_50
+    }
+
+    data object All : CategoryDetailVisibleRange {
+        override val limit: Int? = null
+    }
+
+    companion object {
+        private const val LIMIT_TOP_10 = 10
+        private const val LIMIT_TOP_20 = 20
+        private const val LIMIT_TOP_50 = 50
+    }
 }
 
 sealed interface CategoryDetailNavigationEvent {
@@ -66,6 +95,7 @@ data class CategoryDetailItemUiModel(
     val averageScoreText: String,
     val imageValue: String? = null,
     val nationalityBadge: String? = null,
+    val socialBadgeIcons: List<Int> = emptyList(),
     val metricLabel: String = "Score",
     val metricValueText: String = averageScoreText,
 )
@@ -101,6 +131,8 @@ data class CategoryDetailUiState(
     val searchQuery: String = "",
     val filterChips: List<FilterChipUiModel> = emptyList(),
     val activeFilters: List<AttributeFilter> = emptyList(),
+    val visibleRange: CategoryDetailVisibleRange = CategoryDetailVisibleRange.Top10,
+    val visibleRangeOptions: List<CategoryDetailVisibleRange> = emptyList(),
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -125,6 +157,7 @@ object CategoryDetailReducer {
         calculateProfileRankedItems: CalculateProfileRankedItemsUseCase? = null,
         searchQuery: String = "",
         activeFilters: List<AttributeFilter> = emptyList(),
+        visibleRange: CategoryDetailVisibleRange = CategoryDetailVisibleRange.All,
     ): CategoryDetailUiState {
         if (category == null) {
             return CategoryDetailUiState(
@@ -148,8 +181,14 @@ object CategoryDetailReducer {
         val selectedSortOption = resolveSelectedSortOption(sortOption, sortOptions)
 
         val sortedItems = sortItems(effectiveRankedItems, selectedSortOption, category)
-        val searchedItems = applySearchFilter(sortedItems, searchQuery)
-        val filteredItems = applyAttributeFilters(searchedItems, activeFilters)
+
+        val rankedWithIndex = sortedItems.mapIndexed { index, item -> index + 1 to item }
+
+        val effectiveVisibleRange = resolveVisibleRange(visibleRange, sortedItems.size)
+        val visibleItems = applyVisibleRange(rankedWithIndex, effectiveVisibleRange)
+
+        val searchedItems = applySearchFilterIndexed(visibleItems, searchQuery)
+        val filteredItems = applyAttributeFiltersIndexed(searchedItems, activeFilters)
 
         val activeProfile = activeProfileId?.let { id -> profiles.firstOrNull { it.id == id } }
 
@@ -157,8 +196,8 @@ object CategoryDetailReducer {
             categoryName = category.name,
             attributeSummary = category.attributes.size.toAttributeSummary(),
             items =
-                filteredItems.mapIndexed { index, rankedItem ->
-                    buildItemUiModel(rankedItem, index, category, selectedSortOption)
+                filteredItems.map { (rank, rankedItem) ->
+                    buildItemUiModel(rankedItem, rank - 1, category, selectedSortOption)
                 },
             isLoading = false,
             sortOption = selectedSortOption,
@@ -169,6 +208,8 @@ object CategoryDetailReducer {
             searchQuery = searchQuery,
             filterChips = buildFilterChips(category, effectiveRankedItems, activeFilters),
             activeFilters = activeFilters,
+            visibleRange = effectiveVisibleRange,
+            visibleRangeOptions = buildVisibleRangeOptions(sortedItems.size),
         )
     }
 
@@ -212,22 +253,40 @@ object CategoryDetailReducer {
             is CategoryDetailSortOption.Attribute -> items.sortedByAttribute(category, sortOption.attributeId)
         }
 
-    private val TEXT_SEARCHABLE_TYPES =
-        setOf(
-            AttributeType.NATIONALITY,
-            AttributeType.NOTES,
-            AttributeType.DROPDOWN,
-            AttributeType.URL,
-            AttributeType.BOOLEAN,
-        )
+    private fun resolveVisibleRange(
+        requested: CategoryDetailVisibleRange,
+        totalItems: Int,
+    ): CategoryDetailVisibleRange =
+        if (totalItems <= VISIBLE_RANGE_THRESHOLD) {
+            CategoryDetailVisibleRange.All
+        } else {
+            requested
+        }
 
-    private fun applySearchFilter(
-        items: List<RankedRatedItem>,
+    private fun applyVisibleRange(
+        items: List<Pair<Int, RankedRatedItem>>,
+        visibleRange: CategoryDetailVisibleRange,
+    ): List<Pair<Int, RankedRatedItem>> = visibleRange.limit?.let { items.take(it) } ?: items
+
+    private fun buildVisibleRangeOptions(totalItems: Int): List<CategoryDetailVisibleRange> =
+        if (totalItems <= VISIBLE_RANGE_THRESHOLD) {
+            emptyList()
+        } else {
+            buildList {
+                add(CategoryDetailVisibleRange.Top10)
+                if (totalItems > VISIBLE_RANGE_THRESHOLD) add(CategoryDetailVisibleRange.Top20)
+                if (totalItems > TOP_20_THRESHOLD) add(CategoryDetailVisibleRange.Top50)
+                add(CategoryDetailVisibleRange.All)
+            }
+        }
+
+    private fun applySearchFilterIndexed(
+        items: List<Pair<Int, RankedRatedItem>>,
         query: String,
-    ): List<RankedRatedItem> {
+    ): List<Pair<Int, RankedRatedItem>> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return items
-        return items.filter { ranked ->
+        return items.filter { (_, ranked) ->
             ranked.item.id.contains(trimmed, ignoreCase = true) ||
                 ranked.item.notes.contains(trimmed, ignoreCase = true) ||
                 ranked.item.values.any { value ->
@@ -236,6 +295,27 @@ object CategoryDetailReducer {
                 }
         }
     }
+
+    private fun applyAttributeFiltersIndexed(
+        items: List<Pair<Int, RankedRatedItem>>,
+        filters: List<AttributeFilter>,
+    ): List<Pair<Int, RankedRatedItem>> {
+        if (filters.isEmpty()) return items
+        return items.filter { (_, ranked) -> filters.all { filter -> matchesFilter(ranked, filter) } }
+    }
+
+    private const val VISIBLE_RANGE_THRESHOLD = 10
+    private const val TOP_20_THRESHOLD = 20
+
+    private val TEXT_SEARCHABLE_TYPES =
+        setOf(
+            AttributeType.NATIONALITY,
+            AttributeType.NOTES,
+            AttributeType.DROPDOWN,
+            AttributeType.URL,
+            AttributeType.BOOLEAN,
+            AttributeType.SOCIAL_NETWORK,
+        )
 
     private fun buildItemUiModel(
         rankedItem: RankedRatedItem,
@@ -250,6 +330,7 @@ object CategoryDetailReducer {
             averageScoreText = rankedItem.aggregateScore.toAverageScoreText(),
             imageValue = rankedItem.item.primaryImageValue(category),
             nationalityBadge = rankedItem.item.resolveNationalityBadge(category),
+            socialBadgeIcons = rankedItem.item.resolveSocialBadgeIcons(category),
             metricLabel = metric.label,
             metricValueText = metric.valueText,
         )
@@ -258,14 +339,6 @@ object CategoryDetailReducer {
     private fun buildProfileOptions(profiles: List<ScoreProfile>): List<ProfileOption> =
         listOf(ProfileOption(id = null, name = "All Attributes")) +
             profiles.map { ProfileOption(id = it.id, name = it.name) }
-
-    private fun applyAttributeFilters(
-        items: List<RankedRatedItem>,
-        filters: List<AttributeFilter>,
-    ): List<RankedRatedItem> {
-        if (filters.isEmpty()) return items
-        return items.filter { ranked -> filters.all { filter -> matchesFilter(ranked, filter) } }
-    }
 
     @Suppress("CyclomaticComplexMethod")
     private fun matchesFilter(
@@ -276,7 +349,8 @@ object CategoryDetailReducer {
             is AttributeFilter.Nationality ->
                 ranked.item
                     .textValueForAttribute(filter.attributeId)
-                    ?.let { it in filter.selectedCodes } ?: false
+                    ?.let { NationalityCodes.parse(it).any { code -> code in filter.selectedCodes } }
+                    ?: false
             is AttributeFilter.NumberRange ->
                 ranked.item
                     .scoreForAttribute(filter.attributeId)
@@ -349,6 +423,16 @@ object CategoryDetailReducer {
     ): List<String> =
         if (attribute.type == AttributeType.NUMBER) {
             emptyList()
+        } else if (attribute.type == AttributeType.NATIONALITY) {
+            items
+                .flatMap { ranked ->
+                    ranked.item.values
+                        .firstOrNull { it.attribute.id == attribute.id }
+                        ?.value
+                        ?.let { NationalityCodes.parse(it) }
+                        ?: emptyList()
+                }.distinct()
+                .sorted()
         } else {
             items
                 .mapNotNull { ranked ->
@@ -363,6 +447,8 @@ object CategoryDetailReducer {
 }
 
 private const val MISSING_ATTRIBUTE_VALUE_TEXT = "Not rated"
+private const val MAX_BADGE_FLAGS = 3
+private const val MAX_SOCIAL_BADGE_ICONS = 4
 
 private data class CategoryDetailCardMetric(
     val label: String,
@@ -439,6 +525,21 @@ private fun List<RankedRatedItem>.sortedByAttribute(
                 current.item.id
             },
         )
+    } else if (attribute.type == AttributeType.NATIONALITY) {
+        sortedWith(
+            compareBy<RankedRatedItem> { current ->
+                current.item.textValueForAttribute(attribute.id) == null
+            }.thenBy { current ->
+                current.item
+                    .textValueForAttribute(attribute.id)
+                    ?.let { NationalityCodes.primary(it) }
+                    ?.let { NationalityDataset.findByCode(it)?.nationality?.lowercase(Locale.US) }
+            }.thenBy { current ->
+                current.item.id.lowercase(Locale.US)
+            }.thenBy { current ->
+                current.item.id
+            },
+        )
     } else {
         sortedWith(
             compareBy<RankedRatedItem> { current ->
@@ -499,5 +600,27 @@ private fun RatedItem.resolveNationalityBadge(category: Category): String? =
                 ?.value
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
-                ?.let { NationalityDataset.findByCode(it)?.flagEmoji }
+                ?.let { raw ->
+                    val codes = NationalityCodes.parse(raw)
+                    val flags = codes.mapNotNull { NationalityDataset.findByCode(it)?.flagEmoji }
+                    if (flags.isEmpty()) return@let null
+                    val visible = flags.take(MAX_BADGE_FLAGS).joinToString("")
+                    val overflow = flags.size - MAX_BADGE_FLAGS
+                    if (overflow > 0) "$visible+$overflow" else visible
+                }
         }
+
+private fun RatedItem.resolveSocialBadgeIcons(category: Category): List<Int> =
+    category.attributes
+        .firstOrNull { it.type == AttributeType.SOCIAL_NETWORK }
+        ?.let { socialAttr ->
+            values
+                .firstOrNull { it.attribute.id == socialAttr.id }
+                ?.value
+                ?.let { raw ->
+                    SocialNetworkCodec
+                        .parse(raw)
+                        .take(MAX_SOCIAL_BADGE_ICONS)
+                        .map { SocialPlatformIcons.iconRes(it.platform) }
+                }
+        } ?: emptyList()

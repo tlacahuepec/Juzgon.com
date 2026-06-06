@@ -2,12 +2,19 @@
 
 package com.juzgon.feature.item
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,21 +23,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.juzgon.domain.NationalityDataset
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-internal fun NationalityAutocompleteField(
+internal fun NationalityMultiSelectField(
     attributeId: String,
     valueText: String,
     onValueChange: (String, String) -> Unit,
     isError: Boolean,
     errorText: String?,
 ) {
-    val state = remember(valueText) { NationalityAutocompleteState(valueText) }
+    val state = remember(valueText) { NationalityMultiSelectState(valueText) }
 
-    // Keep the state in sync if the external value changes
     LaunchedEffect(valueText) {
         state.updateFromExternalValue(valueText)
+    }
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        state.selectedCodes.forEach { code ->
+            val option = NationalityDataset.findByCode(code)
+            val label = option?.let { "${it.flagEmoji} ${it.nationality}" } ?: code
+            InputChip(
+                selected = true,
+                onClick = { state.removeNationality(code, attributeId, onValueChange) },
+                label = { Text(label) },
+                trailingIcon = {
+                    Icon(Icons.Default.Close, contentDescription = "Remove $code")
+                },
+                modifier = Modifier.semantics { contentDescription = "Selected nationality $code" },
+            )
+        }
     }
 
     val cd = "$attributeId value"
@@ -40,10 +67,8 @@ internal fun NationalityAutocompleteField(
     ) {
         OutlinedTextField(
             value = state.searchQuery,
-            onValueChange = { text ->
-                state.onSearchQueryChange(text) { /* no-op, handled on selection */ }
-            },
-            label = { Text(attributeId) },
+            onValueChange = { text -> state.onSearchQueryChange(text) },
+            label = { Text(if (state.selectedCodes.isEmpty()) attributeId else "Add nationality") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(state.expanded) },
             isError = isError,
             supportingText = { errorText?.let { Text(it) } },
@@ -51,7 +76,7 @@ internal fun NationalityAutocompleteField(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryEditable)
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                     .semantics { contentDescription = cd },
         )
         ExposedDropdownMenu(
@@ -62,7 +87,7 @@ internal fun NationalityAutocompleteField(
                 DropdownMenuItem(
                     text = { Text("${option.flagEmoji} ${option.nationality} (${option.country})") },
                     onClick = {
-                        state.onOptionSelected(option, attributeId, onValueChange)
+                        state.addNationality(option.code, attributeId, onValueChange)
                     },
                 )
             }

@@ -185,6 +185,59 @@ class CategoryDetailModelsTest {
     }
 
     @Test
+    fun reduce_resolvesNationalityBadge_multipleCodesShowsMultipleFlags() {
+        val itemWithMultiNat =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "DualCitizen",
+                        scores = emptyList(),
+                        values = listOf(ItemAttributeValue(nationality, "BR,IT")),
+                    ),
+                aggregateScore = 8.5,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(itemWithMultiNat),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        val badge = state.items.single().nationalityBadge
+        assertNotNull(badge)
+        assertTrue(badge!!.contains("\uD83C\uDDE7\uD83C\uDDF7"))
+        assertTrue(badge.contains("\uD83C\uDDEE\uD83C\uDDF9"))
+    }
+
+    @Test
+    fun reduce_resolvesNationalityBadge_overflowShowsPlusN() {
+        val itemWith4Nat =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "QuadCitizen",
+                        scores = emptyList(),
+                        values = listOf(ItemAttributeValue(nationality, "BR,IT,US,FR")),
+                    ),
+                aggregateScore = 8.5,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(itemWith4Nat),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        val badge = state.items.single().nationalityBadge
+        assertNotNull(badge)
+        assertTrue(badge!!.contains("+1"))
+    }
+
+    @Test
     fun reduce_usesProfileRanking_whenActiveProfileProvided() {
         val profile =
             ScoreProfile(
@@ -254,4 +307,247 @@ class CategoryDetailModelsTest {
         assertEquals("First", state.items[0].id)
         assertEquals("Second", state.items[1].id)
     }
+
+    // region Visible Range Tests
+
+    private fun rankedItems(count: Int): List<RankedRatedItem> =
+        (1..count).map { i ->
+            rankedItem("Item$i", score = (count - i + 1).toDouble())
+        }
+
+    @Test
+    fun reduce_withVisibleRangeTop10_limitsOutputTo10Items() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertEquals(10, state.items.size)
+    }
+
+    @Test
+    fun reduce_withVisibleRangeTop20_limitsOutputTo20Items() {
+        val items = rankedItems(25)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top20,
+            )
+
+        assertEquals(20, state.items.size)
+    }
+
+    @Test
+    fun reduce_withVisibleRangeAll_returnsAllItems() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.All,
+            )
+
+        assertEquals(15, state.items.size)
+    }
+
+    @Test
+    fun reduce_visibleRangePreservesRankFromFullSortedList() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertEquals(1, state.items.first().rank)
+        assertEquals(10, state.items.last().rank)
+    }
+
+    @Test
+    fun reduce_changingSortOptionChangesTop10Items() {
+        val items = rankedItems(15)
+
+        val byScore =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        val byName =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Name,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        // Different sort orders produce different top-10 item sets
+        assertFalse(byScore.items.map { it.id } == byName.items.map { it.id })
+    }
+
+    @Test
+    fun reduce_visibleRangeOptionsEmptyForSmallCatalogs() {
+        val items = rankedItems(8)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+            )
+
+        assertTrue(state.visibleRangeOptions.isEmpty())
+    }
+
+    @Test
+    fun reduce_visibleRangeDoesNotMutateItemData() {
+        val items = rankedItems(15)
+        val originalScores = items.map { it.aggregateScore }
+
+        CategoryDetailReducer.reduce(
+            categoryName = "Cars",
+            category = carsCategory,
+            rankedItems = items,
+            sortOption = CategoryDetailSortOption.Score,
+            visibleRange = CategoryDetailVisibleRange.Top10,
+        )
+
+        assertEquals(originalScores, items.map { it.aggregateScore })
+    }
+
+    @Test
+    fun reduce_searchFiltersWithinVisibleRange() {
+        val items = rankedItems(15)
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Score,
+                visibleRange = CategoryDetailVisibleRange.Top10,
+                searchQuery = "Item15",
+            )
+
+        // Item15 has the lowest score so it ranks last (rank 15),
+        // outside Top10 visible range → not found
+        assertTrue(state.items.isEmpty())
+    }
+
+    @Test
+    fun reduce_sortByNationality_usesPrimaryNationalityName() {
+        val items =
+            listOf(
+                RankedRatedItem(
+                    item =
+                        RatedItem(
+                            id = "ItalianBrazilian",
+                            scores = emptyList(),
+                            values = listOf(ItemAttributeValue(nationality, "IT,BR")),
+                        ),
+                    aggregateScore = 8.0,
+                ),
+                RankedRatedItem(
+                    item =
+                        RatedItem(
+                            id = "Argentine",
+                            scores = emptyList(),
+                            values = listOf(ItemAttributeValue(nationality, "AR")),
+                        ),
+                    aggregateScore = 7.0,
+                ),
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = items,
+                sortOption = CategoryDetailSortOption.Attribute(nationality.id),
+            )
+
+        assertEquals("Argentine", state.items[0].id)
+        assertEquals("ItalianBrazilian", state.items[1].id)
+    }
+
+    // endregion
+
+    // region social badge icons
+
+    @Test
+    fun reduce_resolvesSocialBadgeIcons_forItemWithSocialNetworks() {
+        val socialAttr = Attribute("Socials", type = AttributeType.SOCIAL_NETWORK)
+        val category = Category(name = "People", attributes = listOf(speed, socialAttr))
+        val json =
+            """[{"platform":"INSTAGRAM","handle":"@user1"},{"platform":"TIKTOK","handle":"@user2"}]"""
+        val item =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "Influencer",
+                        scores = listOf(ScoreEntry(speed, 9)),
+                        values = listOf(ItemAttributeValue(socialAttr, json)),
+                    ),
+                aggregateScore = 9.0,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "People",
+                category = category,
+                rankedItems = listOf(item),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        assertEquals(
+            2,
+            state.items
+                .single()
+                .socialBadgeIcons
+                .size,
+        )
+    }
+
+    @Test
+    fun reduce_socialBadgeIcons_emptyWhenNoSocialAttribute() {
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = carsCategory,
+                rankedItems = listOf(rankedItem("Fast")),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        assertTrue(
+            state.items
+                .single()
+                .socialBadgeIcons
+                .isEmpty(),
+        )
+    }
+
+    // endregion
 }

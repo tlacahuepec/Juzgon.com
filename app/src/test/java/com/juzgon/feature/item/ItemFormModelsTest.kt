@@ -249,13 +249,27 @@ class ItemFormModelsTest {
 
     @Test
     fun conflictErrorStateShowsRetryWhenAttemptsRemain() {
-        val errorState = EnrichmentSheetState.Conflict(reason = "Conflict", sources = emptyList())
+        val errorState =
+            EnrichmentSheetState.Conflict(
+                attributeId = "test",
+                attributeLabel = "Test",
+                reason = "Conflict",
+                sources = emptyList(),
+                candidateValues = emptyList(),
+            )
         assertTrue(errorState.canRetry(retryAttemptsUsed = 0, maxRetryAttempts = 2))
     }
 
     @Test
     fun conflictErrorStateHidesRetryAfterMaxRetries() {
-        val errorState = EnrichmentSheetState.Conflict(reason = "Conflict", sources = emptyList())
+        val errorState =
+            EnrichmentSheetState.Conflict(
+                attributeId = "test",
+                attributeLabel = "Test",
+                reason = "Conflict",
+                sources = emptyList(),
+                candidateValues = emptyList(),
+            )
         assertFalse(errorState.canRetry(retryAttemptsUsed = 2, maxRetryAttempts = 2))
     }
 

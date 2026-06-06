@@ -9,4 +9,5 @@ enum class AttributeType {
     NOTES,
     IMAGE,
     NATIONALITY,
+    SOCIAL_NETWORK,
 }

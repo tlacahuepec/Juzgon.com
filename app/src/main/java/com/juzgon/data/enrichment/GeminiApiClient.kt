@@ -19,6 +19,7 @@ open class GeminiApiClient
         open suspend fun generateContent(
             apiKey: String,
             prompt: String,
+            useGrounding: Boolean = true,
         ): String =
             withContext(Dispatchers.IO) {
                 val url = URL("$BASE_URL/models/$MODEL:generateContent?key=$apiKey")
@@ -27,7 +28,7 @@ open class GeminiApiClient
                 conn.setRequestProperty("Content-Type", "application/json")
                 conn.doOutput = true
 
-                val body = buildRequestBody(prompt)
+                val body = buildRequestBody(prompt, useGrounding)
                 conn.outputStream.use { it.write(body.toByteArray()) }
 
                 val code = conn.responseCode
@@ -39,7 +40,10 @@ open class GeminiApiClient
                 extractTextFromResponse(responseJson)
             }
 
-        fun buildRequestBody(prompt: String): String {
+        fun buildRequestBody(
+            prompt: String,
+            useGrounding: Boolean = true,
+        ): String {
             val escapedPrompt =
                 prompt
                     .replace("\\", "\\\\")
@@ -47,8 +51,13 @@ open class GeminiApiClient
                     .replace("\n", "\\n")
                     .replace("\r", "\\r")
                     .replace("\t", "\\t")
-            return """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
-                """"generationConfig":{"responseMimeType":"application/json"}}"""
+            return if (useGrounding) {
+                """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
+                    """"tools":[{"google_search":{}}]}"""
+            } else {
+                """{"contents":[{"parts":[{"text":"$escapedPrompt"}]}],""" +
+                    """"generationConfig":{"responseMimeType":"application/json"}}"""
+            }
         }
 
         fun extractTextFromResponse(responseJson: String): String {
@@ -69,6 +78,16 @@ open class GeminiApiClient
                 throw GeminiApiException(0, "No text in response")
             }
             return stripMarkdownFences(text)
+        }
+
+        fun extractGroundingMetadata(responseJson: String): GeminiGroundingMetadata? {
+            val response =
+                try {
+                    json.decodeFromString<GeminiApiResponse>(responseJson)
+                } catch (_: Exception) {
+                    return null
+                }
+            return response.candidates?.firstOrNull()?.groundingMetadata
         }
 
         fun stripMarkdownFences(text: String): String {
@@ -94,6 +113,7 @@ internal data class GeminiApiResponse(
 @Serializable
 internal data class GeminiCandidate(
     val content: GeminiContent? = null,
+    val groundingMetadata: GeminiGroundingMetadata? = null,
 )
 
 @Serializable
@@ -104,4 +124,35 @@ internal data class GeminiContent(
 @Serializable
 internal data class GeminiPart(
     @SerialName("text") val text: String? = null,
+)
+
+@Serializable
+data class GeminiGroundingMetadata(
+    val webSearchQueries: List<String>? = null,
+    val groundingChunks: List<GeminiGroundingChunk>? = null,
+    val groundingSupports: List<GeminiGroundingSupport>? = null,
+)
+
+@Serializable
+data class GeminiGroundingChunk(
+    val web: GeminiWebChunk? = null,
+)
+
+@Serializable
+data class GeminiWebChunk(
+    val title: String? = null,
+    val uri: String? = null,
+)
+
+@Serializable
+data class GeminiGroundingSupport(
+    val segment: GeminiSegment? = null,
+    val groundingChunkIndices: List<Int>? = null,
+    val confidenceScores: List<Double>? = null,
+)
+
+@Serializable
+data class GeminiSegment(
+    val startIndex: Int? = null,
+    val endIndex: Int? = null,
 )
