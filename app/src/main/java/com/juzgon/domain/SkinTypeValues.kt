@@ -1,4 +1,4 @@
-@file:Suppress("MagicNumber", "VariableNaming")
+@file:Suppress("MagicNumber")
 
 package com.juzgon.domain
 
@@ -13,7 +13,7 @@ data class SkinTypeValue(
 )
 
 object SkinTypeValues {
-    val TypeI =
+    val typeI =
         SkinTypeValue(
             storedValue = "TYPE_I",
             displayLabel = "Type I, very light",
@@ -21,7 +21,7 @@ object SkinTypeValues {
             sortOrder = 1,
             aliases = setOf("I", "Type I"),
         )
-    val TypeII =
+    val typeII =
         SkinTypeValue(
             storedValue = "TYPE_II",
             displayLabel = "Type II",
@@ -29,7 +29,7 @@ object SkinTypeValues {
             sortOrder = 2,
             aliases = setOf("II", "Type II"),
         )
-    val TypeIII =
+    val typeIII =
         SkinTypeValue(
             storedValue = "TYPE_III",
             displayLabel = "Type III",
@@ -37,7 +37,7 @@ object SkinTypeValues {
             sortOrder = 3,
             aliases = setOf("III", "Type III"),
         )
-    val TypeIV =
+    val typeIV =
         SkinTypeValue(
             storedValue = "TYPE_IV",
             displayLabel = "Type IV",
@@ -45,7 +45,7 @@ object SkinTypeValues {
             sortOrder = 4,
             aliases = setOf("IV", "Type IV"),
         )
-    val TypeV =
+    val typeV =
         SkinTypeValue(
             storedValue = "TYPE_V",
             displayLabel = "Type V",
@@ -53,7 +53,7 @@ object SkinTypeValues {
             sortOrder = 5,
             aliases = setOf("V", "Type V"),
         )
-    val TypeVI =
+    val typeVI =
         SkinTypeValue(
             storedValue = "TYPE_VI",
             displayLabel = "Type VI, very dark",
@@ -62,7 +62,7 @@ object SkinTypeValues {
             aliases = setOf("VI", "Type VI"),
         )
 
-    val entries: List<SkinTypeValue> = listOf(TypeI, TypeII, TypeIII, TypeIV, TypeV, TypeVI)
+    val entries: List<SkinTypeValue> = listOf(typeI, typeII, typeIII, typeIV, typeV, typeVI)
 
     fun fromStoredValue(value: String): SkinTypeValue? {
         val normalized = value.normalizeSkinTypeKey()

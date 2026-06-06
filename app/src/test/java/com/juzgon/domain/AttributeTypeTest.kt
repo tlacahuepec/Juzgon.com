@@ -45,10 +45,10 @@ class AttributeTypeTest {
 
     @Test
     fun `SkinTypeValues normalize labels roman numerals and stored values`() {
-        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("TYPE_I"))
-        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("Type I"))
-        assertEquals(SkinTypeValues.TypeI, SkinTypeValues.fromStoredValue("I"))
-        assertEquals(SkinTypeValues.TypeVI, SkinTypeValues.fromStoredValue("type vi, very dark"))
+        assertEquals(SkinTypeValues.typeI, SkinTypeValues.fromStoredValue("TYPE_I"))
+        assertEquals(SkinTypeValues.typeI, SkinTypeValues.fromStoredValue("Type I"))
+        assertEquals(SkinTypeValues.typeI, SkinTypeValues.fromStoredValue("I"))
+        assertEquals(SkinTypeValues.typeVI, SkinTypeValues.fromStoredValue("type vi, very dark"))
     }
 
     @Test
