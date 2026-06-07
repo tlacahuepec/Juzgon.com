@@ -1,5 +1,8 @@
 package com.juzgon.ui.theme
 
+import androidx.compose.animation.core.EaseIn
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.Easing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -31,6 +34,12 @@ private const val SPACING_SMALL_DP = 8
 private const val SPACING_MEDIUM_DP = 12
 private const val SPACING_LARGE_DP = 16
 private const val SPACING_EXTRA_LARGE_DP = 24
+private const val ANIMATION_SHORT_DURATION_MS = 150
+private const val ANIMATION_MEDIUM_DURATION_MS = 300
+private const val ANIMATION_LONG_DURATION_MS = 500
+private const val GLOW_RADIUS_SMALL_DP = 4
+private const val GLOW_RADIUS_MEDIUM_DP = 8
+private const val GLOW_RADIUS_LARGE_DP = 16
 
 @Immutable
 internal data class JuzgonVisualTokens(
@@ -38,6 +47,8 @@ internal data class JuzgonVisualTokens(
     val gradients: JuzgonVisualGradients,
     val shapes: JuzgonVisualShapes,
     val spacing: JuzgonVisualSpacing,
+    val animations: JuzgonVisualAnimations,
+    val glow: JuzgonVisualGlow,
 )
 
 @Immutable
@@ -64,6 +75,7 @@ internal data class JuzgonVisualGradients(
     val heroSurface: List<Color>,
     val glowBorder: List<Color>,
     val scoreBar: List<Color>,
+    val glowRing: List<Color>,
 )
 
 @Immutable
@@ -80,6 +92,22 @@ internal data class JuzgonVisualSpacing(
     val medium: Dp,
     val large: Dp,
     val extraLarge: Dp,
+)
+
+@Immutable
+internal data class JuzgonVisualAnimations(
+    val shortDuration: Int,
+    val mediumDuration: Int,
+    val longDuration: Int,
+    val enterEasing: Easing,
+    val exitEasing: Easing,
+)
+
+@Immutable
+internal data class JuzgonVisualGlow(
+    val radiusSmall: Dp,
+    val radiusMedium: Dp,
+    val radiusLarge: Dp,
 )
 
 internal object JuzgonVisualTokenSelector {
@@ -138,6 +166,12 @@ private val JuzgonRefreshVisualTokens =
                         JuzgonRefreshVisualPalette.primaryGlowStrong,
                         JuzgonRefreshVisualPalette.ratingAccentWarm,
                     ),
+                glowRing =
+                    listOf(
+                        JuzgonRefreshVisualPalette.primaryGlow,
+                        JuzgonRefreshVisualPalette.secondaryGlowStrong,
+                        JuzgonRefreshVisualPalette.contrastAccent,
+                    ),
             ),
         shapes =
             JuzgonVisualShapes(
@@ -152,5 +186,19 @@ private val JuzgonRefreshVisualTokens =
                 medium = SPACING_MEDIUM_DP.dp,
                 large = SPACING_LARGE_DP.dp,
                 extraLarge = SPACING_EXTRA_LARGE_DP.dp,
+            ),
+        animations =
+            JuzgonVisualAnimations(
+                shortDuration = ANIMATION_SHORT_DURATION_MS,
+                mediumDuration = ANIMATION_MEDIUM_DURATION_MS,
+                longDuration = ANIMATION_LONG_DURATION_MS,
+                enterEasing = EaseOut,
+                exitEasing = EaseIn,
+            ),
+        glow =
+            JuzgonVisualGlow(
+                radiusSmall = GLOW_RADIUS_SMALL_DP.dp,
+                radiusMedium = GLOW_RADIUS_MEDIUM_DP.dp,
+                radiusLarge = GLOW_RADIUS_LARGE_DP.dp,
             ),
     )
