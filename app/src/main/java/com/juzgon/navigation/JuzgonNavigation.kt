@@ -3,12 +3,21 @@
 package com.juzgon.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.juzgon.feature.category.CategoryDetailRoute
@@ -19,11 +28,23 @@ import com.juzgon.feature.item.ItemFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileListRoute
 import com.juzgon.feature.settings.GeminiKeySettingsRoute
+import com.juzgon.ui.components.BottomNavItem
+import com.juzgon.ui.components.JuzgonBottomNavBar
 
 private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 private const val ITEM_ID_ARGUMENT = "itemId"
 private const val PROFILE_ID_ARGUMENT = "profileId"
 private const val ACTIVE_PROFILE_ID_ARGUMENT = "activeProfileId"
+private const val HOME_TAB_INDEX = 0
+private const val COLLECTION_TAB_INDEX = 1
+
+private val BottomNavItems =
+    listOf(
+        BottomNavItem(Icons.Filled.Home, "Discover"),
+        BottomNavItem(Icons.AutoMirrored.Filled.List, "Collection"),
+        BottomNavItem(Icons.Filled.Favorite, "Favorites", enabled = false),
+        BottomNavItem(Icons.Filled.Person, "Profile", enabled = false),
+    )
 
 object JuzgonRoutes {
     const val HOME = "home"
@@ -77,10 +98,44 @@ object JuzgonRoutes {
 
 @Composable
 fun JuzgonApp(modifier: Modifier = Modifier) {
-    JuzgonNavHost(
-        navController = rememberNavController(),
-        modifier = modifier,
-    )
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val selectedIndex =
+        when {
+            currentRoute?.startsWith("category/") == true -> COLLECTION_TAB_INDEX
+            else -> HOME_TAB_INDEX
+        }
+
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        bottomBar = {
+            JuzgonBottomNavBar(
+                items = BottomNavItems,
+                selectedIndex = selectedIndex,
+                onItemSelected = { index ->
+                    when (index) {
+                        HOME_TAB_INDEX ->
+                            navController.navigate(JuzgonRoutes.HOME) {
+                                popUpTo(JuzgonRoutes.HOME) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        COLLECTION_TAB_INDEX ->
+                            navController.navigate(JuzgonRoutes.HOME) {
+                                popUpTo(JuzgonRoutes.HOME) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        JuzgonNavHost(
+            navController = navController,
+            modifier = modifier.padding(innerPadding),
+        )
+    }
 }
 
 @Composable
