@@ -365,6 +365,138 @@ class HomeScreenTest {
         assertTrue(aboutClicked)
     }
 
+    @Test
+    fun heroCardRendersWithTopItemData() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Games", attributeCount = 3, itemCount = 2),
+                                ),
+                            heroItem =
+                                HomeHeroUiModel(
+                                    name = "Elden Ring",
+                                    tierLabel = "S-Tier",
+                                    scoreText = "9.5/10",
+                                    categoryName = "Games",
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Elden Ring").assertIsDisplayed()
+        composeRule.onNodeWithText("S-Tier").assertIsDisplayed()
+        composeRule.onNodeWithText("9.5/10").assertIsDisplayed()
+    }
+
+    @Test
+    fun trendingRowDisplaysTopScoredItems() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Games", attributeCount = 2, itemCount = 3),
+                                ),
+                            trendingItems =
+                                listOf(
+                                    HomeTrendingItemUiModel(
+                                        name = "Alpha",
+                                        scoreText = "9.0/10",
+                                        contentDescription = "Alpha, score 9.0/10",
+                                        categoryName = "Games",
+                                    ),
+                                    HomeTrendingItemUiModel(
+                                        name = "Beta",
+                                        scoreText = "8.5/10",
+                                        contentDescription = "Beta, score 8.5/10",
+                                        categoryName = "Games",
+                                    ),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Trending").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Alpha, score 9.0/10").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Beta, score 8.5/10").assertIsDisplayed()
+    }
+
+    @Test
+    fun segmentedFilterTriggersSortChange() {
+        var selectedSort = HomeSortOption.Recent
+
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Food", attributeCount = 1),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = { selectedSort = it },
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Name").performClick()
+        assertEquals(HomeSortOption.Name, selectedSort)
+    }
+
+    @Test
+    fun emptyStateRendersWithoutHeroOrTrending() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state = HomeUiState(),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("No categories yet").assertIsDisplayed()
+        composeRule.onNodeWithText("Create category").assertIsDisplayed()
+    }
+
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {
         assertWidthIsAtLeast(48.dp)
         assertHeightIsAtLeast(48.dp)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,11 +27,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,6 +56,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.feature.about.AboutDialog
 import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
+import com.juzgon.ui.components.JuzgonHeroCard
+import com.juzgon.ui.components.JuzgonItemThumbnail
+import com.juzgon.ui.components.JuzgonSegmentedFilter
 import com.juzgon.ui.theme.JuzgonVisualTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -213,26 +216,36 @@ private fun HomeCategoriesState(
     ) {
         HomeHeader(actions = actions)
         Spacer(modifier = Modifier.height(12.dp))
-        HomeCollectionSummary(stats = state.collectionStats)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.searchQuery,
-            onValueChange = actions.onSearchQueryChange,
-            label = { Text("Search categories") },
-            singleLine = true,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "Search categories"
-                    },
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        HomeSortControls(
-            selectedOption = state.sortOption,
-            onSortOptionSelected = actions.onSortOptionSelected,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        if (!state.isEmpty || state.hasSearchQuery) {
+            state.heroItem?.let { hero ->
+                HomeHeroSection(hero = hero, onCategoryClick = actions.onCategoryClick)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            if (state.trendingItems.isNotEmpty()) {
+                HomeTrendingRow(items = state.trendingItems, onItemClick = actions.onCategoryClick)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            HomeCollectionSummary(stats = state.collectionStats)
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = actions.onSearchQueryChange,
+                label = { Text("Search categories") },
+                singleLine = true,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Search categories"
+                        },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HomeSortControls(
+                selectedOption = state.sortOption,
+                onSortOptionSelected = actions.onSortOptionSelected,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         HomeCategoryContent(
             state = state,
             onCreateCategoryClick = actions.onCreateCategoryClick,
@@ -250,7 +263,7 @@ private fun HomeHeader(actions: HomeScreenActions) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "Categories",
+            text = "Diamond Home",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
         )
@@ -385,27 +398,15 @@ private fun HomeSortControls(
             text = "Sort",
             style = MaterialTheme.typography.labelLarge,
         )
-        FilterChip(
-            selected = selectedOption == HomeSortOption.Recent,
-            onClick = { onSortOptionSelected(HomeSortOption.Recent) },
-            label = { Text("Recent") },
-            modifier =
-                Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                    .semantics {
-                        contentDescription = "Sort categories by recent"
-                    },
-        )
-        FilterChip(
-            selected = selectedOption == HomeSortOption.Name,
-            onClick = { onSortOptionSelected(HomeSortOption.Name) },
-            label = { Text("Name") },
-            modifier =
-                Modifier
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                    .semantics {
-                        contentDescription = "Sort categories by name"
-                    },
+        JuzgonSegmentedFilter(
+            items = listOf("Recent", "Name"),
+            selectedIndex = if (selectedOption == HomeSortOption.Recent) 0 else 1,
+            onSelected = { index ->
+                onSortOptionSelected(
+                    if (index == 0) HomeSortOption.Recent else HomeSortOption.Name,
+                )
+            },
+            contentDescriptions = listOf("Sort categories by recent", "Sort categories by name"),
         )
     }
 }
@@ -491,18 +492,19 @@ private fun CategoryRow(
     category: HomeCategoryUiModel,
     onCategoryClick: (String) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     val summary = buildCategorySummary(category.itemCount, category.attributeCount)
+    val shape = RoundedCornerShape(tokens.shapes.cardCornerRadius)
 
-    ListItem(
-        headlineContent = { Text(category.name) },
-        supportingContent = {
-            Text(
-                text = summary,
-            )
-        },
+    Column(
         modifier =
             Modifier
-                .clickable(
+                .fillMaxWidth()
+                .sizeIn(minHeight = 48.dp)
+                .background(
+                    color = tokens.palette.elevatedBackground,
+                    shape = shape,
+                ).clickable(
                     onClickLabel = "Open category ${category.name}",
                     role = Role.Button,
                 ) {
@@ -510,8 +512,21 @@ private fun CategoryRow(
                 }.semantics(mergeDescendants = true) {
                     contentDescription = "Open category ${category.name}, $summary"
                     role = Role.Button
-                },
-    )
+                }.padding(tokens.spacing.large),
+    ) {
+        Text(
+            text = category.name,
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
+        Text(
+            text = summary,
+            color = tokens.palette.textSoft,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 private fun buildCategorySummary(
@@ -528,5 +543,50 @@ private fun formatCategoryCount(count: Int): String = if (count == 1) "1 categor
 private fun formatItemCount(count: Int): String = if (count == 1) "1 item" else "$count items"
 
 private fun formatAttributeCount(count: Int): String = if (count == 1) "1 attribute" else "$count attributes"
+
+@Composable
+private fun HomeHeroSection(
+    hero: HomeHeroUiModel,
+    onCategoryClick: (String) -> Unit,
+) {
+    JuzgonHeroCard(
+        title = hero.name,
+        tierLabel = hero.tierLabel,
+        scoreText = hero.scoreText,
+        onClick = { onCategoryClick(hero.categoryName) },
+        image = { Text(hero.name.take(1)) },
+    )
+}
+
+@Composable
+private fun HomeTrendingRow(
+    items: List<HomeTrendingItemUiModel>,
+    onItemClick: (String) -> Unit,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+
+    Column {
+        Text(
+            text = "Trending",
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(tokens.spacing.small))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(tokens.spacing.small),
+            contentPadding = PaddingValues(horizontal = tokens.spacing.extraSmall),
+        ) {
+            items(items = items, key = { it.name }) { item ->
+                JuzgonItemThumbnail(
+                    scoreText = item.scoreText,
+                    contentDescription = item.contentDescription,
+                    onClick = { onItemClick(item.categoryName) },
+                    image = { Text(item.name.take(1)) },
+                )
+            }
+        }
+    }
+}
 
 internal const val HOME_CATEGORY_LIST_TAG = "Home category list"

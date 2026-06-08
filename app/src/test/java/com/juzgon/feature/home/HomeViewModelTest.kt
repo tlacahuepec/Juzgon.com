@@ -3,12 +3,16 @@ package com.juzgon.feature.home
 import app.cash.turbine.test
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.Category
+import com.juzgon.domain.RankedRatedItem
+import com.juzgon.domain.RatedItem
 import com.juzgon.domain.repository.CategoryRepository
+import com.juzgon.domain.repository.RatedItemRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -30,12 +34,14 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var fakeRepository: FakeCategoryRepository
+    private lateinit var fakeRatedItemRepository: FakeRatedItemRepository
     private lateinit var viewModel: HomeViewModel
 
     @Before
     fun setUp() {
         fakeRepository = FakeCategoryRepository()
-        viewModel = HomeViewModel(fakeRepository)
+        fakeRatedItemRepository = FakeRatedItemRepository()
+        viewModel = HomeViewModel(fakeRepository, fakeRatedItemRepository)
     }
 
     @Test
@@ -189,7 +195,7 @@ class HomeViewModelTest {
     fun stateShowsErrorWhenRepositoryThrows() =
         runTest {
             val throwingRepo = ThrowingCategoryRepository()
-            val vm = HomeViewModel(throwingRepo)
+            val vm = HomeViewModel(throwingRepo, FakeRatedItemRepository())
 
             vm.state.test {
                 var state = awaitItem()
@@ -205,7 +211,7 @@ class HomeViewModelTest {
     fun retryResubscribesToRepository() =
         runTest {
             val throwingRepo = ThrowingCategoryRepository()
-            val vm = HomeViewModel(throwingRepo)
+            val vm = HomeViewModel(throwingRepo, FakeRatedItemRepository())
 
             vm.state.test {
                 var state = awaitItem()
@@ -284,6 +290,29 @@ class HomeViewModelTest {
     }
 
     private class RepositoryUnavailableException : Exception("DB error")
+
+    private class FakeRatedItemRepository : RatedItemRepository {
+        override fun observeRatedItems(): Flow<List<RatedItem>> = flowOf(emptyList())
+
+        override fun observeRatedItem(id: String): Flow<RatedItem?> = flowOf(null)
+
+        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> = flowOf(emptyList())
+
+        override suspend fun saveRatedItem(ratedItem: RatedItem) {
+            error("not used")
+        }
+
+        override suspend fun renameRatedItem(
+            originalId: String,
+            ratedItem: RatedItem,
+        ) {
+            error("not used")
+        }
+
+        override suspend fun deleteRatedItem(id: String) {
+            error("not used")
+        }
+    }
 
     private companion object {
         val foodCategory = Category(name = "Food", attributes = listOf(Attribute("taste"), Attribute("service")))
