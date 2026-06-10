@@ -51,6 +51,10 @@ class ItemDetailViewModel
             }
         }
 
+        fun onViewModeChanged(mode: ItemDetailViewMode) {
+            mutableState.value = mutableState.value.copy(viewMode = mode)
+        }
+
         fun onDeleteClick() {
             mutableState.value = mutableState.value.copy(showDeleteConfirmDialog = true)
         }

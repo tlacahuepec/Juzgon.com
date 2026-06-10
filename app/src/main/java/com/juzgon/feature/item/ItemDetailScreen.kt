@@ -5,7 +5,6 @@ package com.juzgon.feature.item
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -56,7 +54,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -73,17 +70,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValue
 import com.juzgon.domain.SkinTypeValues
+import com.juzgon.ui.components.JuzgonGlowRing
+import com.juzgon.ui.components.JuzgonRadarChart
+import com.juzgon.ui.components.JuzgonScorePill
+import com.juzgon.ui.components.JuzgonSegmentedFilter
+import com.juzgon.ui.components.RadarChartPoint
 import com.juzgon.ui.theme.JuzgonVisualTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
 
 private const val CHART_MIN_POINTS = 3
-private const val CHART_GRID_RINGS = 4
-private const val CHART_RADIUS_FRACTION = 0.38f
 
 @Composable
 fun ItemDetailRoute(
@@ -112,6 +108,7 @@ fun ItemDetailRoute(
         onDeleteClick = viewModel::onDeleteClick,
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDialogDismissed = viewModel::onDeleteDialogDismissed,
+        onViewModeChanged = viewModel::onViewModeChanged,
     )
 }
 
@@ -124,6 +121,7 @@ fun ItemDetailScreen(
     onDeleteClick: () -> Unit = {},
     onDeleteConfirmed: () -> Unit = {},
     onDeleteDialogDismissed: () -> Unit = {},
+    onViewModeChanged: (ItemDetailViewMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog) {
@@ -223,6 +221,7 @@ fun ItemDetailScreen(
             else ->
                 ItemDetailContent(
                     state = state,
+                    onViewModeChanged = onViewModeChanged,
                     modifier = Modifier.padding(innerPadding),
                 )
         }
@@ -311,6 +310,7 @@ private fun FullImagePreviewDialog(
 @Composable
 private fun ItemDetailContent(
     state: ItemDetailUiState,
+    onViewModeChanged: (ItemDetailViewMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var selectedImageForPreview by remember { mutableStateOf<ItemImageReference?>(null) }
@@ -333,12 +333,19 @@ private fun ItemDetailContent(
             imageReference = state.primaryImage,
             onImageClick = { imageReference -> selectedImageForPreview = imageReference },
         )
-        OverallScoreSection(overallScoreText = state.overallScoreText)
+        OverallScoreSection(tierLabel = state.tierLabel, overallScoreText = state.overallScoreText)
         ProfileBreakdownSection(profileBreakdown = state.profileBreakdown)
         HorizontalDivider()
-        DiamondChartSection(points = state.diamondChartPoints)
-        HorizontalDivider()
-        RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
+        ViewModeToggleSection(
+            viewMode = state.viewMode,
+            onViewModeChanged = onViewModeChanged,
+        )
+        if (state.viewMode == ItemDetailViewMode.DIAMOND) {
+            DiamondChartSection(points = state.diamondChartPoints)
+            AttributeGridSection(attributes = state.attributeGrid)
+        } else {
+            RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
+        }
         if (state.attributeValues.isNotEmpty()) {
             HorizontalDivider()
             AttributeValuesSection(
@@ -354,25 +361,20 @@ private fun ItemDetailContent(
 }
 
 @Composable
-private fun OverallScoreSection(overallScoreText: String) {
+private fun OverallScoreSection(
+    tierLabel: String,
+    overallScoreText: String,
+) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(text = "Overall", style = MaterialTheme.typography.titleMedium)
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = MaterialTheme.shapes.small,
-        ) {
-            Text(
-                text = overallScoreText,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-        }
+        JuzgonScorePill(
+            tierText = tierLabel,
+            scoreText = overallScoreText,
+        )
     }
 }
 
@@ -426,6 +428,21 @@ private fun ProfileBreakdownSection(profileBreakdown: ItemProfileBreakdown?) {
 }
 
 @Composable
+private fun ViewModeToggleSection(
+    viewMode: ItemDetailViewMode,
+    onViewModeChanged: (ItemDetailViewMode) -> Unit,
+) {
+    JuzgonSegmentedFilter(
+        items = listOf("Diamond", "Bars"),
+        selectedIndex = if (viewMode == ItemDetailViewMode.BARS) 1 else 0,
+        onSelected = { index ->
+            onViewModeChanged(if (index == 0) ItemDetailViewMode.DIAMOND else ItemDetailViewMode.BARS)
+        },
+        contentDescriptions = listOf("Show diamond chart", "Show bars view"),
+    )
+}
+
+@Composable
 private fun DiamondChartSection(points: List<DiamondChartPoint>) {
     val tokens = JuzgonVisualTheme.tokens
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -450,115 +467,48 @@ private fun DiamondChartSection(points: List<DiamondChartPoint>) {
             return
         }
 
-        Surface(
-            color = tokens.palette.panelBackground,
-            contentColor = tokens.palette.textStrong,
-            shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Diamond chart surface, ${points.size} attributes" },
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(tokens.spacing.small),
-                modifier = Modifier.padding(tokens.spacing.large),
-            ) {
-                ItemAttributeDiamondChart(points = points)
-                points.forEach { point ->
-                    Text(
-                        text = "${point.label}: ${point.value} / ${point.maxValue}",
-                        color = tokens.palette.textSoft,
-                        style = MaterialTheme.typography.bodySmall,
+        JuzgonRadarChart(
+            points =
+                points.map { point ->
+                    RadarChartPoint(
+                        label = point.label,
+                        value = point.value.toFloat(),
+                        maxValue = point.maxValue.toFloat(),
                     )
-                }
-            }
-        }
+                },
+        )
     }
 }
 
 @Composable
-private fun ItemAttributeDiamondChart(points: List<DiamondChartPoint>) {
+private fun AttributeGridSection(attributes: List<AttributeGridItem>) {
+    if (attributes.isEmpty()) return
     val tokens = JuzgonVisualTheme.tokens
-    val gridColor = tokens.palette.contrastAccentSoft.copy(alpha = 0.38f)
-    val polygonFill = tokens.palette.ratingAccent.copy(alpha = 0.36f)
-    val polygonStroke = tokens.palette.contrastAccent
-    Canvas(
+    Column(
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.small),
         modifier =
             Modifier
                 .fillMaxWidth()
-                .widthIn(max = 320.dp)
-                .height(240.dp)
-                .semantics { contentDescription = "Attribute diamond chart" },
+                .semantics { contentDescription = "Attribute score grid" },
     ) {
-        val center =
-            androidx.compose.ui.geometry
-                .Offset(size.width / 2f, size.height / 2f)
-        val radius = min(size.width, size.height) * CHART_RADIUS_FRACTION
-        repeat(CHART_GRID_RINGS) { index ->
-            val scale = (index + 1) / CHART_GRID_RINGS.toFloat()
-            drawPath(
-                path = points.regularPolygonPath(center, radius * scale),
-                color = gridColor,
-                style =
-                    androidx.compose.ui.graphics.drawscope
-                        .Stroke(width = 1.dp.toPx()),
-            )
-        }
-        points.forEachIndexed { index, _ ->
-            val outer = chartOffset(center, radius, index, points.size)
-            drawLine(color = gridColor, start = center, end = outer, strokeWidth = 1.dp.toPx())
-        }
-        drawPath(
-            path = points.valuePolygonPath(center, radius),
-            color = polygonFill,
-        )
-        drawPath(
-            path = points.valuePolygonPath(center, radius),
-            color = polygonStroke,
-            style =
-                androidx.compose.ui.graphics.drawscope
-                    .Stroke(width = 3.dp.toPx()),
-        )
-    }
-}
-
-private fun List<DiamondChartPoint>.regularPolygonPath(
-    center: androidx.compose.ui.geometry.Offset,
-    radius: Float,
-): Path =
-    mapIndexed { index, _ -> chartOffset(center, radius, index, size) }
-        .toPath()
-
-private fun List<DiamondChartPoint>.valuePolygonPath(
-    center: androidx.compose.ui.geometry.Offset,
-    radius: Float,
-): Path =
-    mapIndexed { index, point -> chartOffset(center, radius * point.fraction, index, size) }
-        .toPath()
-
-private fun List<androidx.compose.ui.geometry.Offset>.toPath(): Path =
-    Path().also { path ->
-        forEachIndexed { index, point ->
-            if (index == 0) {
-                path.moveTo(point.x, point.y)
-            } else {
-                path.lineTo(point.x, point.y)
+        attributes.chunked(2).forEach { row ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                row.forEach { attr ->
+                    Text(
+                        text = "${attr.emoji} ${attr.label} \u2022 ${attr.scoreText}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) {
+                    Box(modifier = Modifier.weight(1f))
+                }
             }
         }
-        path.close()
     }
-
-private fun chartOffset(
-    center: androidx.compose.ui.geometry.Offset,
-    radius: Float,
-    index: Int,
-    count: Int,
-): androidx.compose.ui.geometry.Offset {
-    val angle = -PI / 2.0 + (2.0 * PI * index / count)
-    return androidx.compose.ui.geometry.Offset(
-        x = center.x + (cos(angle) * radius).toFloat(),
-        y = center.y + (sin(angle) * radius).toFloat(),
-    )
 }
 
 @Composable
@@ -567,32 +517,46 @@ private fun PrimaryImageSection(
     imageReference: ItemImageReference?,
     onImageClick: (ItemImageReference) -> Unit,
 ) {
-    if (imageReference == null) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            shape = MaterialTheme.shapes.small,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 180.dp)
-                    .semantics { contentDescription = "$itemId image placeholder" },
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxSize(),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (imageReference == null) {
+            JuzgonGlowRing(
+                contentDescription = "$itemId avatar",
+                modifier = Modifier.sizeIn(minWidth = 100.dp, minHeight = 100.dp),
             ) {
-                Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.small,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .semantics { contentDescription = "$itemId image placeholder" },
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        } else {
+            JuzgonGlowRing(
+                contentDescription = "$itemId avatar",
+                modifier = Modifier.sizeIn(minWidth = 100.dp, minHeight = 100.dp),
+            ) {
+                ImageAttributePreview(
+                    imageReference = imageReference,
+                    contentDescription = "$itemId image preview",
+                    height = 220.dp,
+                    onClick = { onImageClick(imageReference) },
+                )
             }
         }
-    } else {
-        ImageAttributePreview(
-            imageReference = imageReference,
-            contentDescription = "$itemId image preview",
-            height = 220.dp,
-            onClick = { onImageClick(imageReference) },
-        )
     }
 }
 

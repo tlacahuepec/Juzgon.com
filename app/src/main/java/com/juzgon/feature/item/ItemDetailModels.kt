@@ -96,6 +96,14 @@ data class ItemProfileBreakdown(
     val includedAttributeIds: Set<String>,
 )
 
+enum class ItemDetailViewMode { DIAMOND, BARS }
+
+data class AttributeGridItem(
+    val emoji: String,
+    val label: String,
+    val scoreText: String,
+)
+
 data class ItemDetailUiState(
     val itemId: String = "",
     val primaryImage: ItemImageReference? = null,
@@ -111,6 +119,9 @@ data class ItemDetailUiState(
     val isDeleting: Boolean = false,
     val deleteCompleted: Boolean = false,
     val profileBreakdown: ItemProfileBreakdown? = null,
+    val viewMode: ItemDetailViewMode = ItemDetailViewMode.DIAMOND,
+    val tierLabel: String = "",
+    val attributeGrid: List<AttributeGridItem> = emptyList(),
 )
 
 internal fun formatAttributeValue(
@@ -255,6 +266,15 @@ internal fun AttributeMovementDirection.accessibleLabel(): String =
         AttributeMovementDirection.Improved -> "improved"
         AttributeMovementDirection.Declined -> "declined"
         AttributeMovementDirection.Unchanged -> "unchanged"
+    }
+
+internal fun buildAttributeGrid(attributeScores: List<ItemDetailAttributeScore>): List<AttributeGridItem> =
+    attributeScores.map { score ->
+        AttributeGridItem(
+            emoji = score.label.take(1).uppercase(),
+            label = score.label,
+            scoreText = "${score.score}/10",
+        )
     }
 
 private fun String.toDisplayDate(): String {

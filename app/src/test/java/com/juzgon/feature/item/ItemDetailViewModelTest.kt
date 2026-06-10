@@ -475,6 +475,85 @@ class ItemDetailViewModelTest {
             assertEquals(false, viewModel.state.value.showDeleteConfirmDialog)
         }
 
+    @Test
+    fun defaultViewModeIsDiamond() =
+        runTest {
+            repository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(Attribute("Speed"), 8)))
+
+            viewModel.loadItem("Roadster")
+
+            assertEquals(ItemDetailViewMode.DIAMOND, viewModel.state.value.viewMode)
+        }
+
+    @Test
+    fun onViewModeChangedUpdatesToBars() =
+        runTest {
+            repository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(Attribute("Speed"), 8)))
+            viewModel.loadItem("Roadster")
+
+            viewModel.onViewModeChanged(ItemDetailViewMode.BARS)
+
+            assertEquals(ItemDetailViewMode.BARS, viewModel.state.value.viewMode)
+        }
+
+    @Test
+    fun onViewModeChangedBackToDiamond() =
+        runTest {
+            repository.item.value =
+                RatedItem(id = "Roadster", scores = listOf(ScoreEntry(Attribute("Speed"), 8)))
+            viewModel.loadItem("Roadster")
+
+            viewModel.onViewModeChanged(ItemDetailViewMode.BARS)
+            viewModel.onViewModeChanged(ItemDetailViewMode.DIAMOND)
+
+            assertEquals(ItemDetailViewMode.DIAMOND, viewModel.state.value.viewMode)
+        }
+
+    @Test
+    fun loadItemPopulatesTierLabel() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores =
+                        listOf(
+                            ScoreEntry(Attribute("Speed"), 9),
+                            ScoreEntry(Attribute("Brakes"), 9),
+                        ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            assertEquals("S-Tier", viewModel.state.value.tierLabel)
+        }
+
+    @Test
+    fun loadItemPopulatesAttributeGrid() =
+        runTest {
+            repository.item.value =
+                RatedItem(
+                    id = "Roadster",
+                    scores =
+                        listOf(
+                            ScoreEntry(Attribute("Speed"), 8),
+                            ScoreEntry(Attribute("Brakes"), 6),
+                        ),
+                )
+
+            viewModel.loadItem("Roadster")
+
+            val grid = viewModel.state.value.attributeGrid
+            assertEquals(2, grid.size)
+            assertEquals("S", grid[0].emoji)
+            assertEquals("Speed", grid[0].label)
+            assertEquals("8/10", grid[0].scoreText)
+            assertEquals("B", grid[1].emoji)
+            assertEquals("Brakes", grid[1].label)
+            assertEquals("6/10", grid[1].scoreText)
+        }
+
     private class FakeDetailRatedItemRepository : RatedItemRepository {
         val item = MutableStateFlow<RatedItem?>(null)
         val rankedItems = MutableStateFlow<List<RankedRatedItem>>(emptyList())
