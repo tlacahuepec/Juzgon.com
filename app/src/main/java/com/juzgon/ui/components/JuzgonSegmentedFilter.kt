@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.juzgon.ui.theme.JuzgonVisualTheme
@@ -28,12 +30,14 @@ private val MinTouchTarget = 48.dp
 private const val UNSELECTED_BACKGROUND_ALPHA = 0.5f
 private val PillShape = RoundedCornerShape(percent = 50)
 
+@Suppress("LongParameterList")
 @Composable
 internal fun JuzgonSegmentedFilter(
     items: List<String>,
     selectedIndex: Int,
     onSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    contentDescriptions: List<String>? = null,
 ) {
     val tokens = JuzgonVisualTheme.tokens
 
@@ -43,16 +47,23 @@ internal fun JuzgonSegmentedFilter(
     ) {
         items.forEachIndexed { index, label ->
             val isSelected = index == selectedIndex
+            val segmentCd = contentDescriptions?.getOrNull(index)
 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .sizeIn(minHeight = MinTouchTarget)
+                        .sizeIn(minWidth = MinTouchTarget, minHeight = MinTouchTarget)
                         .selectable(
                             selected = isSelected,
                             role = Role.Tab,
                             onClick = { onSelected(index) },
+                        ).then(
+                            if (segmentCd != null) {
+                                Modifier.semantics { contentDescription = segmentCd }
+                            } else {
+                                Modifier
+                            },
                         ).background(
                             color =
                                 if (isSelected) {

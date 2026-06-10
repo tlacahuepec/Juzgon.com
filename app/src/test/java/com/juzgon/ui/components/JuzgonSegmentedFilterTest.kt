@@ -2,11 +2,13 @@
 
 package com.juzgon.ui.components
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -123,5 +125,28 @@ class JuzgonSegmentedFilterTest {
 
         composeRule.onNodeWithText("Tab 1").assertIsDisplayed()
         composeRule.onNodeWithText("Tab 4").assertIsSelected()
+    }
+
+    @Test
+    fun contentDescriptionsAreAppliedToSegments() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonSegmentedFilter(
+                    items = listOf("Recent", "Name"),
+                    selectedIndex = 0,
+                    onSelected = {},
+                    contentDescriptions = listOf("Sort by recent", "Sort by name"),
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("Sort by recent")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+        composeRule
+            .onNodeWithContentDescription("Sort by name")
+            .assertIsDisplayed()
+            .assertHasClickAction()
     }
 }

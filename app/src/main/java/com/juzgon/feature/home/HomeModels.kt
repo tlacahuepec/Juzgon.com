@@ -28,6 +28,20 @@ data class HomeCollectionStatsUiModel(
     val attributeCount: Int = 0,
 )
 
+data class HomeHeroUiModel(
+    val name: String,
+    val tierLabel: String,
+    val scoreText: String,
+    val categoryName: String,
+)
+
+data class HomeTrendingItemUiModel(
+    val name: String,
+    val scoreText: String,
+    val contentDescription: String,
+    val categoryName: String,
+)
+
 data class HomeScreenActions(
     val onSearchQueryChange: (String) -> Unit,
     val onSortOptionSelected: (HomeSortOption) -> Unit,
@@ -44,6 +58,8 @@ data class HomeUiState(
     val sortOption: HomeSortOption = HomeSortOption.Recent,
     val categories: List<HomeCategoryUiModel> = emptyList(),
     val collectionStats: HomeCollectionStatsUiModel = HomeCollectionStatsUiModel(),
+    val heroItem: HomeHeroUiModel? = null,
+    val trendingItems: List<HomeTrendingItemUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 ) {
@@ -95,3 +111,17 @@ object HomeStateReducer {
         )
     }
 }
+
+private const val S_TIER_THRESHOLD = 9.0
+private const val A_TIER_THRESHOLD = 8.0
+private const val B_TIER_THRESHOLD = 7.0
+private const val C_TIER_THRESHOLD = 6.0
+
+internal fun tierFromScore(score: Double): String =
+    when {
+        score >= S_TIER_THRESHOLD -> "S-Tier"
+        score >= A_TIER_THRESHOLD -> "A-Tier"
+        score >= B_TIER_THRESHOLD -> "B-Tier"
+        score >= C_TIER_THRESHOLD -> "C-Tier"
+        else -> "D-Tier"
+    }
