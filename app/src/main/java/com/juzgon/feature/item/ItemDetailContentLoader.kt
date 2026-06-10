@@ -7,6 +7,7 @@ import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.repository.ScoreProfileRepository
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
+import com.juzgon.feature.home.tierFromScore
 import kotlinx.coroutines.flow.first
 import java.util.Locale
 
@@ -41,13 +42,16 @@ class ItemDetailContentLoader(
         val imageReferencesByAttributeId = buildImageReferences(item)
         val profileBreakdown = resolveProfileBreakdown(categoryName, activeProfileId, itemId)
 
+        val overallScoreText =
+            computeWeightedAverageText(
+                attributeScores.map { it.weight to it.score },
+            )
+        val overallScore = overallScoreText.toDoubleOrNull() ?: 0.0
+
         return ItemDetailUiState(
             itemId = item.id,
             primaryImage = imageReferencesByAttributeId.values.firstNotNullOfOrNull { it.firstOrNull() },
-            overallScoreText =
-                computeWeightedAverageText(
-                    attributeScores.map { it.weight to it.score },
-                ),
+            overallScoreText = overallScoreText,
             attributeScores = attributeScores,
             rankedAttributes = rankedAttributeCards(attributeScores, previousSnapshots),
             diamondChartPoints = itemAttributeDiamondChartPoints(attributeScores),
@@ -65,6 +69,8 @@ class ItemDetailContentLoader(
             notes = item.notes,
             isLoading = false,
             profileBreakdown = profileBreakdown,
+            tierLabel = tierFromScore(overallScore),
+            attributeGrid = buildAttributeGrid(attributeScores),
         )
     }
 

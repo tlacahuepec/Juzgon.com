@@ -33,12 +33,12 @@ class ItemDetailScreenTest {
         setContent(loadedState())
 
         composeRule.onNodeWithText("Roadster").assertIsDisplayed()
-        composeRule.onNodeWithText("7.5").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("B-Tier, 7.5").assertIsDisplayed()
     }
 
     @Test
     fun loadedScreenRendersAttributeScoreRows() {
-        setContent(loadedState())
+        setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
 
         composeRule.onNodeWithText("Ranked attributes").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Speed").performScrollTo().assertIsDisplayed()
@@ -165,7 +165,7 @@ class ItemDetailScreenTest {
 
     @Test
     fun loadedScreenRendersRankedAttributeCardSemantics() {
-        setContent(loadedState())
+        setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
 
         composeRule
             .onNodeWithContentDescription("Rank 1, Speed, 8 out of 10, 80 percent")
@@ -174,7 +174,7 @@ class ItemDetailScreenTest {
     }
 
     @Test
-    fun loadedScreenRendersDiamondChartWithLabels() {
+    fun loadedScreenRendersDiamondChartWithRadarComponent() {
         setContent(
             loadedState().copy(
                 diamondChartPoints =
@@ -186,13 +186,14 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithContentDescription("Attribute diamond chart").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Speed: 8 / 10").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Brakes: 7 / 10").performScrollTo().assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Radar chart, 3 attributes, highest Speed 8 of 10")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     @Test
-    fun loadedScreenRendersRefreshedDiamondChartSurfaceWithLabels() {
+    fun loadedScreenRendersRadarChartWithCorrectHighestAttribute() {
         setContent(
             loadedState().copy(
                 diamondChartPoints =
@@ -205,12 +206,9 @@ class ItemDetailScreenTest {
         )
 
         composeRule
-            .onNodeWithContentDescription("Diamond chart surface, 3 attributes")
+            .onNodeWithContentDescription("Radar chart, 3 attributes, highest Speed 10 of 10")
             .performScrollTo()
             .assertIsDisplayed()
-        composeRule.onNodeWithText("Speed: 10 / 10").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Brakes: 5 / 10").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Control: 1 / 10").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -228,6 +226,7 @@ class ItemDetailScreenTest {
     fun loadedScreenRendersMovementIndicators() {
         setContent(
             loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
                 rankedAttributes =
                     listOf(
                         RankedAttributeCardUiModel(
@@ -272,6 +271,7 @@ class ItemDetailScreenTest {
     fun loadedScreenRendersGroupedScoreBarsForHighMidAndLowValues() {
         setContent(
             loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
                 rankedAttributes =
                     listOf(
                         RankedAttributeCardUiModel(
@@ -328,7 +328,7 @@ class ItemDetailScreenTest {
 
     @Test
     fun loadedScreenAppliesRankedAttributeSizeVariants() {
-        setContent(loadedState())
+        setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
 
         composeRule.onNodeWithTag("RankedAttributeCard:Rank1:1").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("RankedAttributeCard:Rank2:2").performScrollTo().assertIsDisplayed()
@@ -465,6 +465,80 @@ class ItemDetailScreenTest {
     }
 
     @Test
+    fun avatarDisplaysInsideGlowRing() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithContentDescription("Roadster avatar").assertIsDisplayed()
+    }
+
+    @Test
+    fun scorePillShowsTierAndScore() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithContentDescription("B-Tier, 7.5").assertIsDisplayed()
+    }
+
+    @Test
+    fun segmentedFilterSwitchesBetweenViews() {
+        var changedMode: ItemDetailViewMode? = null
+        setContent(
+            loadedState(),
+            onViewModeChanged = { changedMode = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Show bars view").performClick()
+
+        assertTrue(changedMode == ItemDetailViewMode.BARS)
+    }
+
+    @Test
+    fun attributeGridShowsNumericAttributes() {
+        setContent(loadedState())
+
+        composeRule.onNodeWithContentDescription("Attribute score grid").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("S Speed \u2022 8/10").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("B Brakes \u2022 7/10").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun diamondViewModeShowsRadarChart() {
+        setContent(
+            loadedState().copy(
+                diamondChartPoints =
+                    listOf(
+                        DiamondChartPoint(label = "Speed", value = 8),
+                        DiamondChartPoint(label = "Brakes", value = 7),
+                        DiamondChartPoint(label = "Control", value = 6),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Radar chart, 3 attributes, highest Speed 8 of 10")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewModeHidesRadarChart() {
+        setContent(
+            loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
+                diamondChartPoints =
+                    listOf(
+                        DiamondChartPoint(label = "Speed", value = 8),
+                        DiamondChartPoint(label = "Brakes", value = 7),
+                        DiamondChartPoint(label = "Control", value = 6),
+                    ),
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Radar chart, 3 attributes, highest Speed 8 of 10")
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun birthDateAttributeRendersAgeText() {
         setContent(
             loadedState().copy(
@@ -532,6 +606,7 @@ class ItemDetailScreenTest {
         onDeleteClick: () -> Unit = {},
         onDeleteConfirmed: () -> Unit = {},
         onDeleteDialogDismissed: () -> Unit = {},
+        onViewModeChanged: (ItemDetailViewMode) -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -542,6 +617,7 @@ class ItemDetailScreenTest {
                     onDeleteClick = onDeleteClick,
                     onDeleteConfirmed = onDeleteConfirmed,
                     onDeleteDialogDismissed = onDeleteDialogDismissed,
+                    onViewModeChanged = onViewModeChanged,
                 )
             }
         }
@@ -551,6 +627,7 @@ class ItemDetailScreenTest {
         ItemDetailUiState(
             itemId = "Roadster",
             overallScoreText = "7.5",
+            tierLabel = "B-Tier",
             attributeScores =
                 listOf(
                     ItemDetailAttributeScore(label = "Speed", score = 8),
@@ -576,6 +653,11 @@ class ItemDetailScreenTest {
                         progressFraction = 0.7f,
                         sizeVariant = AttributeRankSizeVariant.Rank2,
                     ),
+                ),
+            attributeGrid =
+                listOf(
+                    AttributeGridItem(emoji = "S", label = "Speed", scoreText = "8/10"),
+                    AttributeGridItem(emoji = "B", label = "Brakes", scoreText = "7/10"),
                 ),
             notes = "",
             isLoading = false,
