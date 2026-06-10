@@ -37,6 +37,7 @@ class CategoryDetailViewModel
         private val activeFilters = MutableStateFlow<List<AttributeFilter>>(emptyList())
         private val visibleRange =
             MutableStateFlow<CategoryDetailVisibleRange>(CategoryDetailVisibleRange.Top10)
+        private val viewMode = MutableStateFlow(CategoryDetailViewMode.LIST)
 
         val state: StateFlow<CategoryDetailUiState> = mutableState
         val navigationEvents: SharedFlow<CategoryDetailNavigationEvent> = mutableNavigationEvents.asSharedFlow()
@@ -80,6 +81,7 @@ class CategoryDetailViewModel
                                 showDeleteConfirmDialog = mutableState.value.showDeleteConfirmDialog,
                                 showDeleteWithItemsWarning = mutableState.value.showDeleteWithItemsWarning,
                                 isDeleting = mutableState.value.isDeleting,
+                                viewMode = viewMode.value,
                             )
                     }
                 }
@@ -110,6 +112,15 @@ class CategoryDetailViewModel
 
         fun onFilterCleared(attributeId: String) {
             activeFilters.value = activeFilters.value.filter { it.attributeId != attributeId }
+        }
+
+        fun onViewModeToggled() {
+            viewMode.value =
+                when (viewMode.value) {
+                    CategoryDetailViewMode.LIST -> CategoryDetailViewMode.GRID
+                    CategoryDetailViewMode.GRID -> CategoryDetailViewMode.LIST
+                }
+            mutableState.value = mutableState.value.copy(viewMode = viewMode.value)
         }
 
         fun onRetry() {

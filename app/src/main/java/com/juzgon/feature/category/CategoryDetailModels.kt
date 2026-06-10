@@ -15,8 +15,12 @@ import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.social.SocialNetworkCodec
 import com.juzgon.domain.social.SocialPlatformIcons
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
+import com.juzgon.feature.home.tierFromScore
 import com.juzgon.feature.item.decodeItemImageReferences
+import com.juzgon.ui.components.GridCardAttribute
 import java.util.Locale
+
+enum class CategoryDetailViewMode { LIST, GRID }
 
 sealed interface CategoryDetailSortOption {
     data object Score : CategoryDetailSortOption
@@ -106,6 +110,8 @@ data class CategoryDetailItemUiModel(
     val metricLabel: String = "Score",
     val metricValueText: String = averageScoreText,
     val metricColorHex: String? = null,
+    val tierLabel: String = "",
+    val gridAttributes: List<GridCardAttribute> = emptyList(),
 )
 
 data class ProfileOption(
@@ -141,6 +147,7 @@ data class CategoryDetailUiState(
     val activeFilters: List<AttributeFilter> = emptyList(),
     val visibleRange: CategoryDetailVisibleRange = CategoryDetailVisibleRange.Top10,
     val visibleRangeOptions: List<CategoryDetailVisibleRange> = emptyList(),
+    val viewMode: CategoryDetailViewMode = CategoryDetailViewMode.LIST,
 ) {
     val hasItems: Boolean = items.isNotEmpty()
 }
@@ -343,6 +350,8 @@ object CategoryDetailReducer {
             metricLabel = metric.label,
             metricValueText = metric.valueText,
             metricColorHex = metric.colorHex,
+            tierLabel = tierFromScore(rankedItem.aggregateScore),
+            gridAttributes = rankedItem.item.toGridAttributes(),
         )
     }
 
@@ -669,3 +678,21 @@ private fun RatedItem.resolveSocialBadgeIcons(category: Category): List<Int> =
                         .map { SocialPlatformIcons.iconRes(it.platform) }
                 }
         } ?: emptyList()
+
+private const val MAX_GRID_ATTRIBUTES = 3
+private const val SCORE_FORMAT_MAX = 10
+
+private fun RatedItem.toGridAttributes(): List<GridCardAttribute> =
+    scores
+        .sortedByDescending { it.score }
+        .take(MAX_GRID_ATTRIBUTES)
+        .map { entry ->
+            GridCardAttribute(
+                emoji =
+                    entry.attribute.id
+                        .take(1)
+                        .uppercase(Locale.US),
+                label = entry.attribute.id,
+                scoreText = "${entry.score}/$SCORE_FORMAT_MAX",
+            )
+        }
