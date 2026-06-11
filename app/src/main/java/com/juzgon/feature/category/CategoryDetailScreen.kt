@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -72,6 +76,10 @@ import com.juzgon.domain.SkinTypeValues
 import com.juzgon.ui.components.JuzgonCollectionCard
 import com.juzgon.ui.components.JuzgonCollectionCardMetadata
 import com.juzgon.ui.components.JuzgonCollectionCardMetric
+import com.juzgon.ui.components.JuzgonCollectionGridCard
+import com.juzgon.ui.components.JuzgonSegmentedFilter
+
+private const val GRID_COLUMN_COUNT = 3
 
 @Composable
 fun CategoryDetailRoute(
@@ -115,6 +123,7 @@ fun CategoryDetailRoute(
         onFilterSelected = viewModel::onFilterSelected,
         onFilterCleared = viewModel::onFilterCleared,
         onVisibleRangeSelected = viewModel::onVisibleRangeSelected,
+        onViewModeToggled = viewModel::onViewModeToggled,
     )
 }
 
@@ -137,6 +146,7 @@ fun CategoryDetailScreen(
     onFilterSelected: (AttributeFilter) -> Unit = {},
     onFilterCleared: (String) -> Unit = {},
     onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit = {},
+    onViewModeToggled: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog || state.showDeleteWithItemsWarning) {
@@ -253,6 +263,7 @@ fun CategoryDetailScreen(
             onFilterSelected = onFilterSelected,
             onFilterCleared = onFilterCleared,
             onVisibleRangeSelected = onVisibleRangeSelected,
+            onViewModeToggled = onViewModeToggled,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -309,6 +320,7 @@ private fun CategoryDetailContent(
     onFilterSelected: (AttributeFilter) -> Unit,
     onFilterCleared: (String) -> Unit,
     onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
+    onViewModeToggled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -325,6 +337,7 @@ private fun CategoryDetailContent(
                 onFilterSelected = onFilterSelected,
                 onFilterCleared = onFilterCleared,
                 onVisibleRangeSelected = onVisibleRangeSelected,
+                onViewModeToggled = onViewModeToggled,
                 modifier = modifier,
             )
     }
@@ -391,6 +404,49 @@ private fun CategoryDetailItemList(
     onFilterSelected: (AttributeFilter) -> Unit,
     onFilterCleared: (String) -> Unit,
     onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
+    onViewModeToggled: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (state.viewMode == CategoryDetailViewMode.GRID) {
+        CategoryDetailGridLayout(
+            state = state,
+            onSortOptionSelected = onSortOptionSelected,
+            onSearchQueryChanged = onSearchQueryChanged,
+            onEditItemClick = onEditItemClick,
+            onProfileSelected = onProfileSelected,
+            onFilterSelected = onFilterSelected,
+            onFilterCleared = onFilterCleared,
+            onVisibleRangeSelected = onVisibleRangeSelected,
+            onViewModeToggled = onViewModeToggled,
+            modifier = modifier,
+        )
+    } else {
+        CategoryDetailListLayout(
+            state = state,
+            onSortOptionSelected = onSortOptionSelected,
+            onSearchQueryChanged = onSearchQueryChanged,
+            onEditItemClick = onEditItemClick,
+            onProfileSelected = onProfileSelected,
+            onFilterSelected = onFilterSelected,
+            onFilterCleared = onFilterCleared,
+            onVisibleRangeSelected = onVisibleRangeSelected,
+            onViewModeToggled = onViewModeToggled,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun CategoryDetailListLayout(
+    state: CategoryDetailUiState,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onEditItemClick: (String) -> Unit,
+    onProfileSelected: (String?) -> Unit,
+    onFilterSelected: (AttributeFilter) -> Unit,
+    onFilterCleared: (String) -> Unit,
+    onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
+    onViewModeToggled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -399,10 +455,17 @@ private fun CategoryDetailItemList(
         modifier = modifier.fillMaxSize(),
     ) {
         item {
-            Text(
-                text = state.attributeSummary,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = state.attributeSummary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                ViewModeToggle(state = state, onViewModeToggled = onViewModeToggled)
+            }
         }
         if (state.profiles.isNotEmpty()) {
             item {
@@ -455,6 +518,121 @@ private fun CategoryDetailItemList(
             )
         }
     }
+}
+
+@Composable
+private fun CategoryDetailGridLayout(
+    state: CategoryDetailUiState,
+    onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onEditItemClick: (String) -> Unit,
+    onProfileSelected: (String?) -> Unit,
+    onFilterSelected: (AttributeFilter) -> Unit,
+    onFilterCleared: (String) -> Unit,
+    onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit,
+    onViewModeToggled: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(GRID_COLUMN_COUNT),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(24.dp),
+        modifier = modifier.fillMaxSize(),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = state.attributeSummary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                ViewModeToggle(state = state, onViewModeToggled = onViewModeToggled)
+            }
+        }
+        if (state.profiles.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ProfileSelector(
+                    profiles = state.profiles,
+                    activeProfileId = state.activeProfileId,
+                    activeProfileLabel = state.activeProfileLabel,
+                    onProfileSelected = onProfileSelected,
+                )
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            CategoryDetailSortControls(
+                selectedOption = state.sortOption,
+                sortOptions = state.sortOptions,
+                onSortOptionSelected = onSortOptionSelected,
+            )
+        }
+        if (state.visibleRangeOptions.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                VisibleRangeChips(
+                    selectedRange = state.visibleRange,
+                    options = state.visibleRangeOptions,
+                    onRangeSelected = onVisibleRangeSelected,
+                )
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            CategoryDetailSearchBar(
+                query = state.searchQuery,
+                onQueryChanged = onSearchQueryChanged,
+            )
+        }
+        if (state.filterChips.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                AttributeFilterChipRow(
+                    chips = state.filterChips,
+                    onFilterSelected = onFilterSelected,
+                    onFilterCleared = onFilterCleared,
+                )
+            }
+        }
+        items(
+            items = state.items,
+            key = { item -> item.id },
+        ) { item ->
+            CategoryDetailGridCard(
+                item = item,
+                onEditItemClick = onEditItemClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ViewModeToggle(
+    state: CategoryDetailUiState,
+    onViewModeToggled: () -> Unit,
+) {
+    JuzgonSegmentedFilter(
+        items = listOf("List", "Grid"),
+        selectedIndex = if (state.viewMode == CategoryDetailViewMode.GRID) 1 else 0,
+        onSelected = { onViewModeToggled() },
+        contentDescriptions = listOf("View as list", "View as grid"),
+    )
+}
+
+@Composable
+private fun CategoryDetailGridCard(
+    item: CategoryDetailItemUiModel,
+    onEditItemClick: (String) -> Unit,
+) {
+    JuzgonCollectionGridCard(
+        name = item.id,
+        tierLabel = item.tierLabel,
+        scoreText = item.averageScoreText,
+        onClick = { onEditItemClick(item.id) },
+        onFavoriteClick = {},
+        attributes = item.gridAttributes,
+        image = { CategoryDetailItemVisual(item = item) },
+    )
 }
 
 @Composable

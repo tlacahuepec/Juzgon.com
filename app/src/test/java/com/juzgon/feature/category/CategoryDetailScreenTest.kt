@@ -13,8 +13,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
+import com.juzgon.ui.components.GridCardAttribute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -932,6 +934,7 @@ class CategoryDetailScreenTest {
         onScoreProfilesClick: () -> Unit = {},
         onProfileSelected: (String?) -> Unit = {},
         onVisibleRangeSelected: (CategoryDetailVisibleRange) -> Unit = {},
+        onViewModeToggled: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -949,6 +952,7 @@ class CategoryDetailScreenTest {
                     onScoreProfilesClick = onScoreProfilesClick,
                     onProfileSelected = onProfileSelected,
                     onVisibleRangeSelected = onVisibleRangeSelected,
+                    onViewModeToggled = onViewModeToggled,
                 )
             }
         }
@@ -1031,6 +1035,148 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithText("Top 20").performClick()
 
         assertEquals(CategoryDetailVisibleRange.Top20, selectedRange)
+    }
+
+    // endregion
+
+    // region Grid View Mode Tests
+
+    @Test
+    fun gridViewModeRendersGridCards() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            tierLabel = "A-Tier",
+                        ),
+                        CategoryDetailItemUiModel(
+                            rank = 2,
+                            id = "coupe",
+                            averageScoreText = "7.4",
+                            tierLabel = "B-Tier",
+                        ),
+                    ),
+                isLoading = false,
+                viewMode = CategoryDetailViewMode.GRID,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("sedan, A-Tier 8.7").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("coupe, B-Tier 7.4").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun gridViewToggleCallsCallback() {
+        var toggled = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                ),
+            onViewModeToggled = { toggled = true },
+        )
+
+        composeRule.onNodeWithContentDescription("View as grid").performClick()
+
+        assertTrue(toggled)
+    }
+
+    @Test
+    fun gridCardRendersNameTierAndScore() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "9.2",
+                            tierLabel = "S-Tier",
+                        ),
+                    ),
+                isLoading = false,
+                viewMode = CategoryDetailViewMode.GRID,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("sedan, S-Tier 9.2").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun viewModeToggleSegmentsAreDisplayed() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("View as list").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("View as grid").assertIsDisplayed()
+    }
+
+    @Test
+    fun viewModeToggleMeetsMinimumTouchTarget() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                    ),
+                isLoading = false,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("View as list").assertMinimumTouchTarget()
+        composeRule.onNodeWithContentDescription("View as grid").assertMinimumTouchTarget()
+    }
+
+    @Test
+    fun gridCardGridAttributesAreDisplayed() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            tierLabel = "A-Tier",
+                            gridAttributes =
+                                listOf(
+                                    GridCardAttribute(emoji = "S", label = "Speed", scoreText = "8/10"),
+                                ),
+                        ),
+                    ),
+                isLoading = false,
+                viewMode = CategoryDetailViewMode.GRID,
+            ),
+        )
+
+        composeRule.onNodeWithContentDescription("sedan, A-Tier 8.7").performScrollTo().assertIsDisplayed()
     }
 
     // endregion

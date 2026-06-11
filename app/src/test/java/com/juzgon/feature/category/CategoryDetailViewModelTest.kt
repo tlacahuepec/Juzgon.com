@@ -14,6 +14,7 @@ import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.repository.ScoreProfileRepository
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.home.MainDispatcherRule
+import com.juzgon.ui.components.GridCardAttribute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -92,8 +93,20 @@ class CategoryDetailViewModelTest {
 
                 assertEquals(
                     listOf(
-                        CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
-                        CategoryDetailItemUiModel(rank = 2, id = "coupe", averageScoreText = "8.3"),
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            tierLabel = "A-Tier",
+                            gridAttributes = listOf(GridCardAttribute(emoji = "S", label = "Speed", scoreText = "8/10")),
+                        ),
+                        CategoryDetailItemUiModel(
+                            rank = 2,
+                            id = "coupe",
+                            averageScoreText = "8.3",
+                            tierLabel = "A-Tier",
+                            gridAttributes = listOf(GridCardAttribute(emoji = "S", label = "Speed", scoreText = "8/10")),
+                        ),
                     ),
                     state.items,
                 )
@@ -1960,6 +1973,63 @@ class CategoryDetailViewModelTest {
                 assertEquals(8, state.items.size)
                 assertEquals(emptyList<CategoryDetailVisibleRange>(), state.visibleRangeOptions)
                 assertEquals(CategoryDetailVisibleRange.All, state.visibleRange)
+            }
+        }
+
+    // endregion
+
+    // region View Mode Tests
+
+    @Test
+    fun defaultViewModeIsList() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                assertEquals(CategoryDetailViewMode.LIST, state.viewMode)
+            }
+        }
+
+    @Test
+    fun toggleViewModeSwitchesToGrid() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onViewModeToggled()
+                state = awaitItem()
+
+                assertEquals(CategoryDetailViewMode.GRID, state.viewMode)
+            }
+        }
+
+    @Test
+    fun toggleViewModeTwiceReturnsToList() =
+        runTest {
+            categoryRepository.category.value = carsCategory
+
+            viewModel.state.test {
+                awaitItem()
+                viewModel.loadCategory("Cars")
+                var state = awaitItem()
+                if (state.isLoading) state = awaitItem()
+
+                viewModel.onViewModeToggled()
+                state = awaitItem()
+                viewModel.onViewModeToggled()
+                state = awaitItem()
+
+                assertEquals(CategoryDetailViewMode.LIST, state.viewMode)
             }
         }
 
