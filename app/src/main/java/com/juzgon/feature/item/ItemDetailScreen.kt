@@ -27,8 +27,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,11 +72,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValue
 import com.juzgon.domain.SkinTypeValues
+import com.juzgon.ui.components.BottomNavItem
+import com.juzgon.ui.components.JuzgonBottomNavBar
 import com.juzgon.ui.components.JuzgonGlowRing
+import com.juzgon.ui.components.JuzgonGradientScoreBar
 import com.juzgon.ui.components.JuzgonRadarChart
 import com.juzgon.ui.components.JuzgonScorePill
 import com.juzgon.ui.components.JuzgonSegmentedFilter
 import com.juzgon.ui.components.RadarChartPoint
+import com.juzgon.ui.components.ScoreBarItem
 import com.juzgon.ui.theme.JuzgonVisualTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -344,7 +350,12 @@ private fun ItemDetailContent(
             DiamondChartSection(points = state.diamondChartPoints)
             AttributeGridSection(attributes = state.attributeGrid)
         } else {
-            RankedAttributeProgressCards(rankedAttributes = state.rankedAttributes)
+            BarsViewContent(
+                state = state,
+                tierLabel = state.tierLabel,
+                overallScoreText = state.overallScoreText,
+                rankedAttributes = state.rankedAttributes,
+            )
         }
         if (state.attributeValues.isNotEmpty()) {
             HorizontalDivider()
@@ -440,6 +451,162 @@ private fun ViewModeToggleSection(
         },
         contentDescriptions = listOf("Show diamond chart", "Show bars view"),
     )
+}
+
+@Composable
+private fun BarsViewContent(
+    state: ItemDetailUiState,
+    tierLabel: String,
+    overallScoreText: String,
+    rankedAttributes: List<RankedAttributeCardUiModel>,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+    Column(
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.large),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            JuzgonGlowRing(
+                contentDescription = "${state.itemId} avatar",
+                modifier = Modifier.sizeIn(minWidth = 100.dp, minHeight = 100.dp),
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+            JuzgonScorePill(
+                tierText = tierLabel,
+                scoreText = overallScoreText,
+            )
+        }
+
+        BarsScoreListContent(rankedAttributes = rankedAttributes)
+
+        BarsViewBottomNav()
+    }
+}
+
+@Composable
+private fun BarsScoreListContent(rankedAttributes: List<RankedAttributeCardUiModel>) {
+    val tokens = JuzgonVisualTheme.tokens
+    Column(
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(tokens.gradients.heroSurface),
+                    shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+                ).semantics { contentDescription = "Score list, ${rankedAttributes.size} attributes" }
+                .padding(tokens.spacing.large),
+    ) {
+        Text(text = "Ranked attributes", style = MaterialTheme.typography.titleSmall)
+        rankedAttributes.forEach { attr ->
+            val (scoreBarItem, _) = attr.toScoreBarItemWithMovement()
+            BarsScoreRow(
+                attr = attr,
+                scoreBarItem = scoreBarItem,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BarsViewBottomNav() {
+    JuzgonBottomNavBar(
+        items =
+            listOf(
+                BottomNavItem(Icons.Filled.Home, "Home"),
+                BottomNavItem(Icons.AutoMirrored.Filled.List, "Collection"),
+            ),
+        selectedIndex = 0,
+        onItemSelected = { },
+    )
+}
+
+@Composable
+private fun BarsScoreRow(
+    attr: RankedAttributeCardUiModel,
+    scoreBarItem: ScoreBarItem,
+) {
+    val sizeStyle = attr.sizeVariant.cardSizeStyle()
+    val tokens = JuzgonVisualTheme.tokens
+    val progress = scoreBarItem.value.toFloat() / scoreBarItem.maxValue.toFloat()
+
+    Surface(
+        color = tokens.palette.baseBackground.copy(alpha = 0.72f),
+        contentColor = tokens.palette.textStrong,
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = sizeStyle.minHeight)
+                .testTag(attr.testTag)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = attr.accessibleDescription
+                },
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier =
+                Modifier.padding(
+                    horizontal = sizeStyle.horizontalPadding,
+                    vertical = sizeStyle.verticalPadding,
+                ),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "#${attr.rank}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = scoreBarItem.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    if (attr.movement != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(text = movementIndicatorEmoji(attr.movement.rank))
+                            Text(text = movementIndicatorEmoji(attr.movement.value))
+                        }
+                    }
+                }
+                Text(
+                    text = "${scoreBarItem.value} / ${scoreBarItem.maxValue}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            JuzgonGradientScoreBar(
+                progress = progress,
+                height = sizeStyle.progressHeight,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag("JuzgonGradientScoreBar:${attr.sizeVariant.name}:${attr.rank}"),
+            )
+        }
+    }
 }
 
 @Composable

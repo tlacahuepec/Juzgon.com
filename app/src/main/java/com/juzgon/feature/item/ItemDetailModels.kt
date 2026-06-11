@@ -8,6 +8,7 @@ import com.juzgon.domain.NationalityCodes
 import com.juzgon.domain.NationalityDataset
 import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.social.SocialNetworkCodec
+import com.juzgon.ui.components.ScoreBarItem
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -291,4 +292,33 @@ internal fun computeWeightedAverageText(attributeScores: List<Pair<Double, Int>>
     val weightedSum = attributeScores.sumOf { (weight, score) -> weight * score }
     val totalWeight = attributeScores.sumOf { (weight, _) -> weight }
     return if (totalWeight == 0.0) "—" else String.format(Locale.US, SCORE_FORMAT, weightedSum / totalWeight)
+}
+
+internal fun extractEmojiFromLabel(label: String): String? {
+    if (label.isEmpty()) return null
+    val firstChar = label.first()
+    return if (firstChar.isLetterOrDigit() || firstChar.isWhitespace()) {
+        null
+    } else {
+        firstChar.toString()
+    }
+}
+
+internal fun movementIndicatorEmoji(direction: AttributeMovementDirection): String =
+    when (direction) {
+        AttributeMovementDirection.Improved -> "📈"
+        AttributeMovementDirection.Declined -> "📉"
+        AttributeMovementDirection.Unchanged -> "➡️"
+    }
+
+internal fun RankedAttributeCardUiModel.toScoreBarItemWithMovement(): Pair<ScoreBarItem, String?> {
+    val scoreBarItem =
+        ScoreBarItem(
+            label = label.removePrefix(extractEmojiFromLabel(label) ?: "").trim(),
+            icon = extractEmojiFromLabel(label),
+            value = valueText.toIntOrNull() ?: 0,
+            maxValue = maxText.toIntOrNull() ?: 10,
+        )
+    val movementEmoji = movement?.let { movementIndicatorEmoji(it.rank) }
+    return scoreBarItem to movementEmoji
 }

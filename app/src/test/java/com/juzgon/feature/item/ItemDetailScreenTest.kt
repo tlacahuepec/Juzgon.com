@@ -261,10 +261,9 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Rank ↑").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Value ↓").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Rank =").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Value =").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("📈").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("📉").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("➡️").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -305,7 +304,7 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithContentDescription("Ranked attribute score list").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Score list, 3 attributes").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Top Speed").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("10 / 10").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Comfort").performScrollTo().assertIsDisplayed()
@@ -597,6 +596,107 @@ class ItemDetailScreenTest {
             .onNodeWithContentDescription("Skin Type swatch Type I, very light")
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewRendersJuzgonScoreBarList() {
+        setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
+
+        composeRule.onNodeWithContentDescription("Score list, 2 attributes").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewMovementIndicatorsUseEmoji() {
+        setContent(
+            loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
+                rankedAttributes =
+                    listOf(
+                        RankedAttributeCardUiModel(
+                            rank = 1,
+                            label = "Speed",
+                            valueText = "8",
+                            maxText = "10",
+                            progressPercent = 80,
+                            progressFraction = 0.8f,
+                            sizeVariant = AttributeRankSizeVariant.Rank1,
+                            movement =
+                                AttributeMovement(
+                                    rank = AttributeMovementDirection.Improved,
+                                    value = AttributeMovementDirection.Declined,
+                                ),
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("📈").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("📉").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewBottomNavBarIsIntegrated() {
+        setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
+
+        composeRule.onNodeWithText("Home").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Collection").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewPreservesScoreAndRankInfo() {
+        setContent(
+            loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
+                rankedAttributes =
+                    listOf(
+                        RankedAttributeCardUiModel(
+                            rank = 1,
+                            label = "Speed",
+                            valueText = "8",
+                            maxText = "10",
+                            progressPercent = 80,
+                            progressFraction = 0.8f,
+                            sizeVariant = AttributeRankSizeVariant.Rank1,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Speed").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("8 / 10").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun barsViewGradientBarHeightVariesByRank() {
+        setContent(
+            loadedState().copy(
+                viewMode = ItemDetailViewMode.BARS,
+                rankedAttributes =
+                    listOf(
+                        RankedAttributeCardUiModel(
+                            rank = 1,
+                            label = "Rank1 Attr",
+                            valueText = "8",
+                            maxText = "10",
+                            progressPercent = 80,
+                            progressFraction = 0.8f,
+                            sizeVariant = AttributeRankSizeVariant.Rank1,
+                        ),
+                        RankedAttributeCardUiModel(
+                            rank = 5,
+                            label = "Rank5 Attr",
+                            valueText = "6",
+                            maxText = "10",
+                            progressPercent = 60,
+                            progressFraction = 0.6f,
+                            sizeVariant = AttributeRankSizeVariant.Rank5,
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Rank1 Attr").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Rank5 Attr").performScrollTo().assertIsDisplayed()
     }
 
     private fun setContent(
