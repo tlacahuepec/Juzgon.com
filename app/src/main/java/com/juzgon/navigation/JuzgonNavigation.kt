@@ -3,12 +3,13 @@
 package com.juzgon.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,19 +36,28 @@ private const val CATEGORY_NAME_ARGUMENT = "categoryName"
 private const val ITEM_ID_ARGUMENT = "itemId"
 private const val PROFILE_ID_ARGUMENT = "profileId"
 private const val ACTIVE_PROFILE_ID_ARGUMENT = "activeProfileId"
-private const val HOME_TAB_INDEX = 0
-private const val COLLECTION_TAB_INDEX = 1
+private const val DISCOVER_TAB_INDEX = 0
+private const val CATALOGS_TAB_INDEX = 1
+private const val SETTINGS_TAB_INDEX = 2
+
+private val TopLevelRoutes =
+    setOf(
+        JuzgonRoutes.HOME,
+        JuzgonRoutes.CATALOGS,
+        JuzgonRoutes.SETTINGS,
+    )
 
 private val BottomNavItems =
     listOf(
         BottomNavItem(Icons.Filled.Home, "Discover"),
-        BottomNavItem(Icons.AutoMirrored.Filled.List, "Collection"),
-        BottomNavItem(Icons.Filled.Favorite, "Favorites", enabled = false),
-        BottomNavItem(Icons.Filled.Person, "Profile", enabled = false),
+        BottomNavItem(Icons.AutoMirrored.Filled.List, "Catalogs"),
+        BottomNavItem(Icons.Filled.Settings, "Settings"),
     )
 
 object JuzgonRoutes {
     const val HOME = "home"
+    const val CATALOGS = "catalogs"
+    const val SETTINGS = "settings"
     const val GEMINI_KEY_SETTINGS = "settings/gemini-key"
     const val CREATE_CATEGORY = "category/create"
     const val EDIT_CATEGORY = "category/edit/{$CATEGORY_NAME_ARGUMENT}"
@@ -97,43 +107,64 @@ object JuzgonRoutes {
 }
 
 @Composable
-fun JuzgonApp(modifier: Modifier = Modifier) {
-    val navController = rememberNavController()
+fun JuzgonApp(
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+    navHost: @Composable (NavHostController, Modifier) -> Unit = { controller, hostModifier ->
+        JuzgonNavHost(
+            navController = controller,
+            modifier = hostModifier,
+        )
+    },
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     val selectedIndex =
-        when {
-            currentRoute?.startsWith("category/") == true -> COLLECTION_TAB_INDEX
-            else -> HOME_TAB_INDEX
+        when (currentRoute) {
+            JuzgonRoutes.CATALOGS -> CATALOGS_TAB_INDEX
+            JuzgonRoutes.SETTINGS -> SETTINGS_TAB_INDEX
+            else -> DISCOVER_TAB_INDEX
         }
+
+    val isTopLevelRoute = currentRoute in TopLevelRoutes
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
-            JuzgonBottomNavBar(
-                items = BottomNavItems,
-                selectedIndex = selectedIndex,
-                onItemSelected = { index ->
-                    when (index) {
-                        HOME_TAB_INDEX ->
-                            navController.navigate(JuzgonRoutes.HOME) {
-                                popUpTo(JuzgonRoutes.HOME) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        COLLECTION_TAB_INDEX ->
-                            navController.navigate(JuzgonRoutes.HOME) {
-                                popUpTo(JuzgonRoutes.HOME) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                    }
-                },
-            )
+            if (isTopLevelRoute) {
+                JuzgonBottomNavBar(
+                    items = BottomNavItems,
+                    selectedIndex = selectedIndex,
+                    onItemSelected = { index ->
+                        when (index) {
+                            DISCOVER_TAB_INDEX ->
+                                navController.navigate(JuzgonRoutes.HOME) {
+                                    popUpTo(JuzgonRoutes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            CATALOGS_TAB_INDEX ->
+                                navController.navigate(JuzgonRoutes.CATALOGS) {
+                                    popUpTo(JuzgonRoutes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            SETTINGS_TAB_INDEX ->
+                                navController.navigate(JuzgonRoutes.SETTINGS) {
+                                    popUpTo(JuzgonRoutes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
-        JuzgonNavHost(
-            navController = navController,
-            modifier = modifier.padding(innerPadding),
+        navHost(
+            navController,
+            modifier.padding(innerPadding),
         )
     }
 }
@@ -152,6 +183,17 @@ internal fun JuzgonNavHost(
             onNavigateToCategory = onOpenCategory,
             onNavigateToAiSettings = onAiSettings,
         )
+    },
+    catalogsContent: @Composable (
+        onOpenCategory: (String) -> Unit,
+    ) -> Unit = { _ ->
+        Box(modifier = Modifier.fillMaxSize())
+    },
+    settingsContent: @Composable (
+        onBack: () -> Unit,
+        onNavigateToGeminiSettings: () -> Unit,
+    ) -> Unit = { _, _ ->
+        Box(modifier = Modifier.fillMaxSize())
     },
     createCategoryContent: @Composable (
         onBack: () -> Unit,
@@ -234,6 +276,11 @@ internal fun JuzgonNavHost(
             onDeleteCompleted = onDeleteCompleted,
         )
     },
+    geminiKeySettingsContent: @Composable (
+        onBack: () -> Unit,
+    ) -> Unit = { onBack ->
+        GeminiKeySettingsRoute(onBackClick = onBack)
+    },
 ) {
     NavHost(
         navController = navController,
@@ -259,6 +306,28 @@ internal fun JuzgonNavHost(
                 },
             )
         }
+        composable(JuzgonRoutes.CATALOGS) {
+            catalogsContent { categoryName ->
+                navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                    launchSingleTop = true
+                }
+            }
+        }
+        composable(JuzgonRoutes.SETTINGS) {
+            val returnBack = {
+                if (!navController.navigateUp()) {
+                    navController.navigate(JuzgonRoutes.HOME) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            val openGeminiSettings = {
+                navController.navigate(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
+                    launchSingleTop = true
+                }
+            }
+            settingsContent(returnBack, openGeminiSettings)
+        }
         composable(JuzgonRoutes.CREATE_CATEGORY) {
             val returnToHome = {
                 if (!navController.popBackStack(JuzgonRoutes.HOME, inclusive = false)) {
@@ -273,15 +342,14 @@ internal fun JuzgonNavHost(
             )
         }
         composable(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
-            GeminiKeySettingsRoute(
-                onBackClick = {
-                    if (!navController.navigateUp()) {
-                        navController.navigate(JuzgonRoutes.HOME) {
-                            launchSingleTop = true
-                        }
+            val returnBack = {
+                if (!navController.navigateUp()) {
+                    navController.navigate(JuzgonRoutes.HOME) {
+                        launchSingleTop = true
                     }
-                },
-            )
+                }
+            }
+            geminiKeySettingsContent(returnBack)
         }
         composable(
             route = JuzgonRoutes.EDIT_CATEGORY,

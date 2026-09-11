@@ -9,6 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -277,6 +279,216 @@ class JuzgonNavigationTest {
         composeRule.onNodeWithText("Detail route Fast Cars / SUVs").assertIsDisplayed()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun navRoutesContainCatalogsAndSettings() {
+        assertEquals("catalogs", JuzgonRoutes.CATALOGS)
+        assertEquals("settings", JuzgonRoutes.SETTINGS)
+    }
+
+    @Test
+    fun navHostSupportsCatalogsAndSettingsDestinations() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, _, _ -> Text("Home route") },
+                    catalogsContent = { onOpenCategory ->
+                        Button(onClick = { onOpenCategory("Cars") }) {
+                            Text("Catalogs route")
+                        }
+                    },
+                    settingsContent = { _, onGeminiSettings ->
+                        Button(onClick = onGeminiSettings) {
+                            Text("Settings route")
+                        }
+                    },
+                    categoryDetailContent = { categoryName, _, _, _, _, _, _ -> Text("Detail route $categoryName") },
+                    geminiKeySettingsContent = { _ -> Text("Gemini key settings route") },
+                )
+            }
+        }
+
+        // Navigate to Catalogs
+        composeRule.runOnIdle {
+            navController.navigate(JuzgonRoutes.CATALOGS)
+        }
+        composeRule.onNodeWithText("Catalogs route").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATALOGS, navController.currentDestination?.route)
+        }
+
+        // Catalogs opens category detail
+        composeRule.onNodeWithText("Catalogs route").performClick()
+        composeRule.onNodeWithText("Detail route Cars").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
+        }
+
+        // Navigate to Settings
+        composeRule.runOnIdle {
+            navController.navigate(JuzgonRoutes.SETTINGS)
+        }
+        composeRule.onNodeWithText("Settings route").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.SETTINGS, navController.currentDestination?.route)
+        }
+
+        // Settings opens Gemini key settings
+        composeRule.onNodeWithText("Settings route").performClick()
+        composeRule.onNodeWithText("Gemini key settings route").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.GEMINI_KEY_SETTINGS, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun juzgonAppNavigatesBetweenTopLevelTabs() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonApp(
+                    navController = navController,
+                    navHost = { controller, modifier ->
+                        JuzgonNavHost(
+                            navController = controller,
+                            modifier = modifier,
+                            homeContent = { _, _, _ -> Text("Home content") },
+                            catalogsContent = { _ -> Text("Catalogs content") },
+                            settingsContent = { _, _ -> Text("Settings content") },
+                        )
+                    },
+                )
+            }
+        }
+
+        // Initially Home is displayed and Discover tab is selected
+        composeRule.onNodeWithText("Home content").assertIsDisplayed()
+        composeRule.onNodeWithText("Discover").assertIsSelected()
+        composeRule.onNodeWithText("Catalogs").assertIsNotSelected()
+        composeRule.onNodeWithText("Settings").assertIsNotSelected()
+
+        // Tap Catalogs tab
+        composeRule.onNodeWithText("Catalogs").performClick()
+        composeRule.onNodeWithText("Catalogs content").assertIsDisplayed()
+        composeRule.onNodeWithText("Catalogs").assertIsSelected()
+        composeRule.onNodeWithText("Discover").assertIsNotSelected()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATALOGS, navController.currentDestination?.route)
+        }
+
+        // Tap Settings tab
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Settings content").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsSelected()
+        composeRule.onNodeWithText("Catalogs").assertIsNotSelected()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.SETTINGS, navController.currentDestination?.route)
+        }
+
+        // Tap Discover tab to return Home
+        composeRule.onNodeWithText("Discover").performClick()
+        composeRule.onNodeWithText("Home content").assertIsDisplayed()
+        composeRule.onNodeWithText("Discover").assertIsSelected()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun juzgonAppHidesBottomNavOnSubRoutes() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonApp(
+                    navController = navController,
+                    navHost = { controller, modifier ->
+                        JuzgonNavHost(
+                            navController = controller,
+                            modifier = modifier,
+                            homeContent = { onCreate, _, _ ->
+                                Button(onClick = onCreate) { Text("Create Category") }
+                            },
+                            createCategoryContent = { onBack, _ ->
+                                Button(onClick = onBack) { Text("Back From Create") }
+                            },
+                        )
+                    },
+                )
+            }
+        }
+
+        // On Home route: bottom bar is visible
+        composeRule.onNodeWithText("Discover").assertIsDisplayed()
+        composeRule.onNodeWithText("Catalogs").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+
+        // Navigate to sub-route (Create Category)
+        composeRule.onNodeWithText("Create Category").performClick()
+        composeRule.onNodeWithText("Back From Create").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CREATE_CATEGORY, navController.currentDestination?.route)
+        }
+
+        // Bottom bar items are hidden
+        composeRule.onNodeWithText("Discover").assertDoesNotExist()
+        composeRule.onNodeWithText("Catalogs").assertDoesNotExist()
+        composeRule.onNodeWithText("Settings").assertDoesNotExist()
+
+        // Pop back to Home
+        composeRule.onNodeWithText("Back From Create").performClick()
+        composeRule.onNodeWithText("Create Category").assertIsDisplayed()
+
+        // Bottom bar is visible again
+        composeRule.onNodeWithText("Discover").assertIsDisplayed()
+        composeRule.onNodeWithText("Catalogs").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+    }
+
+    @Test
+    fun juzgonAppBottomNavPreservesHomeAsRootOnBack() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonApp(
+                    navController = navController,
+                    navHost = { controller, modifier ->
+                        JuzgonNavHost(
+                            navController = controller,
+                            modifier = modifier,
+                            homeContent = { _, _, _ -> Text("Home content") },
+                            catalogsContent = { _ -> Text("Catalogs content") },
+                            settingsContent = { _, _ -> Text("Settings content") },
+                        )
+                    },
+                )
+            }
+        }
+
+        // Tap Catalogs tab
+        composeRule.onNodeWithText("Catalogs").performClick()
+        composeRule.onNodeWithText("Catalogs content").assertIsDisplayed()
+
+        // Press Back
+        composeRule.runOnIdle {
+            navController.popBackStack()
+        }
+
+        // Returns to Home
+        composeRule.onNodeWithText("Home content").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
         }
     }
 
