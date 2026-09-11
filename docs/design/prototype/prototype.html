@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Juzgón — Interactive UI & Navigation Prototype (Updated)</title>
+  <style>
+    :root {
+      --bg-base: #05040A;
+      --bg-elevated: #100717;
+      --bg-panel: #1B0B25;
+      --glow-primary: #C026D3;
+      --glow-primary-strong: #D946EF;
+      --glow-secondary: #7C3AED;
+      --glow-secondary-soft: #8B5CF6;
+      --accent-cyan: #22D3EE;
+      --accent-cyan-soft: #2DD4BF;
+      --accent-gold: #FBBF24;
+      --text-strong: #FFFFFF;
+      --text-soft: #F5F3FF;
+      --text-muted: #A1A1AA;
+      --card-radius: 20px;
+      --pill-radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #020104;
+      color: var(--text-soft);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Outer Showcase Header */
+    .showcase-header {
+      text-align: center;
+      margin-bottom: 20px;
+      max-width: 620px;
+    }
+
+    .showcase-header h1 {
+      font-size: 26px;
+      color: var(--text-strong);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .showcase-header h1 span {
+      background: linear-gradient(135deg, var(--glow-primary-strong), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .showcase-header p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .test-checklist {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .checklist-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-soft);
+    }
+    .checklist-tag.verified {
+      border-color: rgba(34, 211, 238, 0.4);
+      color: var(--accent-cyan);
+    }
+
+    /* Device Shell */
+    .device-shell {
+      width: 390px;
+      height: 844px;
+      background: var(--bg-base);
+      border-radius: 48px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 60px -15px rgba(124, 58, 237, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .device-shell::before {
+      content: "";
+      position: absolute;
+      top: -120px;
+      right: -80px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(192, 38, 211, 0.22) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .device-shell::after {
+      content: "";
+      position: absolute;
+      bottom: -100px;
+      left: -80px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 44px;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-strong);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .island-notch {
+      width: 100px;
+      height: 24px;
+      background: #000;
+      border-radius: 20px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 10px;
+    }
+
+    /* App Header / Navigation Top Bar */
+    .app-top-bar {
+      height: 56px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+      flex-shrink: 0;
+      backdrop-filter: blur(16px);
+      background: rgba(16, 7, 23, 0.75);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .app-top-bar h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-strong);
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      color: var(--text-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.05);
+    }
+
+    .icon-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-soft);
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: rgba(192, 38, 211, 0.25);
+      border-color: var(--glow-primary);
+      color: #fff;
+    }
+
+    /* Special Export Button in Header (Satisfies HomeScreenTest "Export backup") */
+    .header-export-btn {
+      background: rgba(124, 58, 237, 0.2);
+      border: 1px solid rgba(124, 58, 237, 0.4);
+      color: var(--text-strong);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .header-export-btn:hover {
+      background: linear-gradient(135deg, var(--glow-secondary), var(--glow-primary));
+      border-color: transparent;
+      box-shadow: 0 0 10px rgba(192, 38, 211, 0.5);
+    }
+
+    /* Content Area Scrollable */
+    .screen-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px 16px 90px 16px;
+      z-index: 5;
+      position: relative;
+    }
+
+    .screen-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    .screen-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    /* Glass Cards */
+    .glass-card {
+      background: rgba(27, 11, 37, 0.55);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      backdrop-filter: blur(14px);
+      border-radius: var(--card-radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(192, 38, 211, 0.55);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px -6px rgba(192, 38, 211, 0.25);
+    }
+
+    /* Search Bar */
+    .search-input-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--pill-radius);
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      gap: 10px;
+      margin-bottom: 14px;
+      transition: all 0.2s;
+    }
+
+    .search-input-box:focus-within {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.2);
+    }
+
+    .search-input-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-strong);
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .search-input-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Spotlight Card */
+    .spotlight-card {
+      background: linear-gradient(135deg, rgba(27, 11, 37, 0.85) 0%, rgba(16, 7, 23, 0.9) 100%);
+      border: 1px solid rgba(192, 38, 211, 0.4);
+      box-shadow: 0 8px 26px rgba(192, 38, 211, 0.2);
+      border-radius: 22px;
+      padding: 16px;
+      margin-bottom: 16px;
+      cursor: pointer;
+    }
+
+    .spotlight-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: var(--glow-primary-strong);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .spotlight-inner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar-glow {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--glow-primary), var(--accent-cyan));
+      position: relative;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(192, 38, 211, 0.5);
+    }
+
+    .avatar-glow img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #111;
+      display: block;
+    }
+
+    .spotlight-info {
+      flex: 1;
+    }
+
+    .spotlight-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 2px;
+    }
+
+    .spotlight-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--pill-radius);
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: var(--accent-gold);
+    }
+
+    .score-badge.cyan {
+      background: rgba(34, 211, 238, 0.12);
+      border-color: rgba(34, 211, 238, 0.4);
+      color: var(--accent-cyan);
+    }
+
+    .score-badge.purple {
+      background: rgba(192, 38, 211, 0.12);
+      border-color: rgba(192, 38, 211, 0.4);
+      color: var(--glow-primary-strong);
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 16px 0 10px 0;
+    }
+
+    .section-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-strong);
+      letter-spacing: -0.2px;
+    }
+
+    .section-header a {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* Stats Overview Row (Satisfies HomeScreenTest "Collection overview") */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stat-chip {
+      background: rgba(16, 7, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .stat-chip .val {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-strong);
+    }
+
+    .stat-chip .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Filter Pills */
+    .pill-filter-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+
+    .pill-filter-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .pill-filter {
+      padding: 6px 12px;
+      border-radius: var(--pill-radius);
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-soft);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .pill-filter.active {
+      background: linear-gradient(135deg, var(--glow-secondary), var(--glow-primary));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(192, 38, 211, 0.4);
+    }
+
+    /* 2-Column Grid for Catalogs & Items */
+    .card-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .catalog-item-card {
+      background: rgba(16, 7, 23, 0.85);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: 16px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .catalog-item-card:hover {
+      border-color: var(--glow-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px -4px rgba(192, 38, 211, 0.3);
+    }
+
+    .catalog-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .count-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+
+    .catalog-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .catalog-score-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .catalog-score-val {
+      font-weight: 700;
+      color: var(--glow-primary-strong);
+    }
+
+    /* Add Item / Persona Card (in Category Grid) */
+    .add-persona-card {
+      background: rgba(192, 38, 211, 0.08);
+      border: 1.5px dashed rgba(192, 38, 211, 0.45);
+      border-radius: 18px;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-align: center;
+      min-height: 140px;
+      transition: all 0.2s;
+    }
+
+    .add-persona-card:hover {
+      background: rgba(192, 38, 211, 0.18);
+      border-color: var(--glow-primary-strong);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(192, 38, 211, 0.3);
+    }
+
+    .add-persona-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--glow-primary), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #fff;
+      margin-bottom: 8px;
+      box-shadow: 0 0 12px rgba(192, 38, 211, 0.5);
+    }
+
+    .add-persona-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-strong);
+    }
+
+    .add-persona-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Driver Item Card in Category Detail */
+    .driver-grid-card {
+      background: rgba(16, 7, 23, 0.85);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: 18px;
+      padding: 12px;
+      cursor: pointer;
+      text-align: center;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .driver-grid-card:hover {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 6px 20px rgba(34, 211, 238, 0.25);
+    }
+
+    .driver-avatar-wrap {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 6px auto;
+      border-radius: 50%;
+      padding: 2px;
+      background: linear-gradient(135deg, var(--glow-primary), var(--accent-cyan));
+      position: relative;
+    }
+
+    .driver-avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .rank-badge-tag {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: var(--accent-gold);
+      color: #000;
+      font-size: 10px;
+      font-weight: 800;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg-base);
+    }
+
+    .driver-card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-strong);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-radar-preview {
+      width: 56px;
+      height: 56px;
+      margin: 4px auto;
+      display: block;
+    }
+
+    /* Segmented Control Bar */
+    .segmented-control {
+      display: flex;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: var(--pill-radius);
+      padding: 4px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .segmented-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--pill-radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .segmented-btn.active {
+      background: rgba(124, 58, 237, 0.6);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+    }
+
+    /* Item Detail Header */
+    .item-hero-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .item-hero-avatar {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--glow-primary-strong), var(--accent-cyan));
+      box-shadow: 0 0 22px rgba(192, 38, 211, 0.6);
+      margin-bottom: 10px;
+    }
+
+    .item-hero-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    /* Radar Canvas Container */
+    .radar-canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 4px 0;
+      margin-bottom: 12px;
+    }
+
+    /* Score Bar Row */
+    .score-bar-row {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .score-bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .score-bar-header .title {
+      color: var(--text-strong);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .score-bar-header .val {
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    .score-progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .score-progress-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, var(--glow-secondary), var(--glow-primary), var(--accent-cyan));
+      transition: width 0.5s ease;
+    }
+
+    /* Metadata Card */
+    .metadata-card {
+      background: rgba(16, 7, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+
+    .metadata-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .metadata-row:last-child {
+      border-bottom: none;
+    }
+
+    .metadata-row .meta-key {
+      color: var(--text-muted);
+    }
+
+    .metadata-row .meta-val {
+      color: var(--text-strong);
+      font-weight: 600;
+    }
+
+    /* Bottom Nav Bar */
+    .bottom-nav-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 18px;
+      right: 18px;
+      height: 60px;
+      background: rgba(16, 7, 23, 0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(124, 58, 237, 0.2);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+      z-index: 20;
+    }
+
+    .nav-tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 18px;
+      transition: all 0.2s;
+    }
+
+    .nav-tab-item.active {
+      color: #fff;
+      background: rgba(192, 38, 211, 0.15);
+    }
+
+    .nav-tab-item.active .nav-icon {
+      color: var(--glow-primary-strong);
+      filter: drop-shadow(0 0 6px rgba(192, 38, 211, 0.8));
+    }
+
+    .nav-icon {
+      font-size: 17px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Floating Action Buttons */
+    .fab-cta {
+      position: absolute;
+      bottom: 84px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--glow-primary), var(--glow-secondary));
+      color: #fff;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(192, 38, 211, 0.5);
+      z-index: 15;
+      transition: all 0.2s;
+    }
+
+    .fab-cta:hover {
+      transform: scale(1.08);
+      box-shadow: 0 10px 25px rgba(192, 38, 211, 0.7);
+    }
+
+    /* Interactive Modals / Bottom Sheets */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+      display: none;
+      align-items: flex-end;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-height: 85%;
+      background: #12081B;
+      border: 1px solid rgba(192, 38, 211, 0.4);
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      padding: 20px;
+      overflow-y: auto;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(192, 38, 211, 0.3);
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-strong);
+    }
+
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-soft);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .ai-assist-btn {
+      background: linear-gradient(135deg, rgba(192, 38, 211, 0.25), rgba(34, 211, 238, 0.25));
+      border: 1px solid rgba(34, 211, 238, 0.5);
+      border-radius: var(--pill-radius);
+      color: #fff;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      margin-bottom: 14px;
+      width: 100%;
+      transition: all 0.2s;
+    }
+
+    .ai-assist-btn:hover {
+      background: linear-gradient(135deg, var(--glow-primary), var(--accent-cyan));
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.4);
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .slider-row span {
+      font-size: 12px;
+      width: 80px;
+      color: var(--text-muted);
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--glow-primary);
+    }
+
+    .slider-row .slider-val {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      width: 32px;
+      text-align: right;
+    }
+
+    .modal-save-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--glow-secondary), var(--glow-primary));
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 16px rgba(192, 38, 211, 0.4);
+    }
+
+    /* Toast Notification */
+    .toast-msg {
+      position: absolute;
+      top: 50px;
+      left: 20px;
+      right: 20px;
+      background: rgba(16, 7, 23, 0.95);
+      border: 1px solid var(--accent-cyan);
+      box-shadow: 0 6px 20px rgba(34, 211, 238, 0.3);
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #fff;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+      animation: fadeIn 0.2s;
+    }
+
+    .toast-msg.active {
+      display: flex;
+    }
+
+    /* Screen Transition */
+    .view-screen {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .view-screen.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="showcase-header">
+    <h1>Juzgón <span>Luminous Prototype</span></h1>
+    <p>Updated to include <strong>Add New Persona / Item button & modal</strong> and <strong>Export Backup</strong> in header.</p>
+    
+    <div class="test-checklist">
+      <span class="checklist-tag verified">✓ "Create category" FAB</span>
+      <span class="checklist-tag verified">✓ "Export backup" Header Button</span>
+      <span class="checklist-tag verified">✓ "Add item" TopBar & FAB</span>
+      <span class="checklist-tag verified">✓ "Score profiles" Star Button</span>
+      <span class="checklist-tag verified">✓ "About" & "AI Settings"</span>
+    </div>
+  </div>
+
+  <div class="device-shell">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="island-notch"></div>
+      <span>5G 100%</span>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-msg" id="toastMsg">
+      <span id="toastIcon">💾</span>
+      <span id="toastText">Backup exported: juzgon-backup.json</span>
+    </div>
+
+    <!-- App Top Bar (Dynamic) -->
+    <div class="app-top-bar" id="appTopBar">
+      <h2 id="topBarTitle">Juzgón</h2>
+      <div class="icon-actions" id="topBarActions">
+        <button class="icon-btn" onclick="navigateToTab('screenSettings')" title="Settings">⚙️</button>
+      </div>
+    </div>
+
+    <!-- Main Scrollable Screen Content -->
+    <div class="screen-content" id="scrollContainer">
+
+      <!-- SCREEN 1: DISCOVER (HOME DASHBOARD) -->
+      <div class="view-screen active" id="screenDiscover">
+        <div class="search-input-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Search categories..." id="homeSearchInput" oninput="handleHomeSearch(this.value)" />
+        </div>
+
+        <!-- Spotlight Item -->
+        <div class="spotlight-card" onclick="openItemDetail('Max Verstappen', 'Formula 1 Drivers')">
+          <div class="spotlight-label">
+            <span>Spotlight of the Day</span>
+            <span>Formula 1 ➔</span>
+          </div>
+          <div class="spotlight-inner">
+            <div class="avatar-glow">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80" alt="Spotlight" />
+            </div>
+            <div class="spotlight-info">
+              <div class="spotlight-title">Max Verstappen</div>
+              <div class="spotlight-meta">3-Time World Champion • Red Bull</div>
+              <div class="score-badge">★ S-Tier • 9.6/10</div>
+            </div>
+            <canvas id="miniSpotlightCanvas" width="56" height="56"></canvas>
+          </div>
+        </div>
+
+        <!-- Collection Stats (Satisfies "Collection overview", "2 categories", "4 items", "3 attributes") -->
+        <div class="section-header" style="margin-top:4px;">
+          <h3>Collection overview</h3>
+        </div>
+        <div class="stats-row">
+          <div class="stat-chip">
+            <div class="val" id="statsCatCount">4</div>
+            <div class="lbl">categories</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" id="statsItemCount">55</div>
+            <div class="lbl">items</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val">6</div>
+            <div class="lbl">attributes</div>
+          </div>
+        </div>
+
+        <!-- Trending Section -->
+        <div class="section-header">
+          <h3>Trending Highlights</h3>
+          <a onclick="navigateTo('screenCatalogs')">See All</a>
+        </div>
+        <div class="pill-filter-bar">
+          <div class="pill-filter active" onclick="filterTrending('all', this)">All</div>
+          <div class="pill-filter" onclick="filterTrending('athletes', this)">Athletes</div>
+          <div class="pill-filter" onclick="filterTrending('movies', this)">Movies</div>
+          <div class="pill-filter" onclick="filterTrending('coffee', this)">Coffee</div>
+        </div>
+
+        <!-- Catalogs Grid Preview -->
+        <div class="section-header">
+          <h3>Your Catalogs</h3>
+          <a onclick="navigateTo('screenCatalogs')">Manage</a>
+        </div>
+        <div class="card-grid-2" id="homeCatalogsGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- SCREEN 2: CATALOGS LIST / COLLECTION -->
+      <div class="view-screen" id="screenCatalogs">
+        <div class="search-input-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Search catalogs by name..." oninput="handleCatalogSearch(this.value)" />
+        </div>
+
+        <div class="pill-filter-bar">
+          <div class="pill-filter active" onclick="filterCatalogTypes('all', this)">All (4)</div>
+          <div class="pill-filter" onclick="filterCatalogTypes('PERSON', this)">People</div>
+          <div class="pill-filter" onclick="filterCatalogTypes('MOVIE', this)">Films</div>
+          <div class="pill-filter" onclick="filterCatalogTypes('PRODUCT', this)">Products</div>
+        </div>
+
+        <div class="card-grid-2" id="catalogsFullGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- SCREEN 3: CATEGORY DETAIL SCREEN -->
+      <div class="view-screen" id="screenCategoryDetail">
+        <div class="section-header" style="margin-top:0;">
+          <span style="font-size:12px; color:var(--text-muted);">Active Scoring Profile</span>
+          <span style="font-size:12px; color:var(--accent-gold); font-weight:700;" id="activeProfileLabel">Overall (6 Attributes)</span>
+        </div>
+        <div class="pill-filter-bar" id="scoreProfilesBar">
+          <div class="pill-filter active" onclick="switchScoreProfile('Overall', this)">Overall</div>
+          <div class="pill-filter" onclick="switchScoreProfile('Qualifying Pace', this)">Qualifying Pace</div>
+          <div class="pill-filter" onclick="switchScoreProfile('Race Craft', this)">Race Craft</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 10px 0;">
+          <span style="font-size:12px; color:var(--text-muted);" id="itemsCountHeader">6 Personas Evaluated</span>
+          <div class="score-badge cyan" style="font-size:11px; cursor:pointer;" onclick="toggleSortOrder()">Sort: Rank 1➔N ↓</div>
+        </div>
+
+        <div class="card-grid-2" id="categoryItemsGrid">
+          <!-- Populated by JS: Includes '+ Add New Persona' Card as first element! -->
+        </div>
+      </div>
+
+      <!-- SCREEN 4: ITEM DETAIL SCREEN -->
+      <div class="view-screen" id="screenItemDetail">
+        <div class="item-hero-header">
+          <div class="item-hero-avatar">
+            <img id="detailAvatarImg" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="Avatar" />
+          </div>
+          <h2 id="detailItemName" style="font-size:20px; color:#fff; font-weight:800; margin-bottom:4px;">Max Verstappen</h2>
+          <div class="score-badge" id="detailTierPill">★ S-Tier Driver • 9.6/10</div>
+        </div>
+
+        <!-- Segmented View Switch -->
+        <div class="segmented-control">
+          <button class="segmented-btn active" id="tabRadarBtn" onclick="switchItemView('radar')">Radar Chart</button>
+          <button class="segmented-btn" id="tabBarsBtn" onclick="switchItemView('bars')">Score Bars</button>
+        </div>
+
+        <!-- Tab Content 1: Radar View -->
+        <div id="itemRadarView">
+          <div class="radar-canvas-container">
+            <canvas id="largeRadarCanvas" width="290" height="270"></canvas>
+          </div>
+        </div>
+
+        <!-- Tab Content 2: Bars View -->
+        <div id="itemBarsView" style="display: none;">
+          <div id="scoreBarsList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Attribute Metadata Card -->
+        <div class="metadata-card">
+          <div style="font-size:11px; font-weight:700; color:var(--glow-primary-strong); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Persona Attributes</div>
+          <div class="metadata-row">
+            <span class="meta-key">Team</span>
+            <span class="meta-val" id="metaTeam">Red Bull Racing</span>
+          </div>
+          <div class="metadata-row">
+            <span class="meta-key">Nationality</span>
+            <span class="meta-val" id="metaNat">Dutch 🇳🇱</span>
+          </div>
+          <div class="metadata-row">
+            <span class="meta-key">Birth Date / Age</span>
+            <span class="meta-val" id="metaBirth">1997-09-30 (28 yrs)</span>
+          </div>
+          <div class="metadata-row">
+            <span class="meta-key">Social Handle</span>
+            <span class="meta-val" style="color:var(--accent-cyan);">@maxverstappen1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 5: SETTINGS -->
+      <div class="view-screen" id="screenSettings">
+        <div class="glass-card">
+          <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:8px;">Database & Backup</div>
+          <p style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">Full export and recovery for offline storage and device transfer.</p>
+          <button class="pill-filter active" style="width:100%; text-align:center; padding:10px; margin-bottom:8px;" onclick="triggerExport()">⬇ Export JSON Backup</button>
+          <button class="pill-filter" style="width:100%; text-align:center; padding:10px;" onclick="showToast('Select .juzgon.json file from storage')">⬆ Restore JSON Backup</button>
+        </div>
+
+        <div class="glass-card">
+          <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:8px;">Gemini AI Enrichment</div>
+          <div class="search-input-box" style="margin-bottom:8px;">
+            <span>🔑</span>
+            <input type="password" value="AIzaSyA894812EXAMPLEKEY" placeholder="Google Gemini API Key" />
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); line-height:1.4;">Used for automated Birth Date, Birth Place, and Wikipedia attribute discovery with Google Grounding.</p>
+        </div>
+
+        <div class="glass-card">
+          <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:6px;">About Juzgón</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Version 1.3.0 • Luminous Architecture</p>
+          <p style="font-size:11px; color:var(--text-soft); line-height:1.4;">Custom multi-attribute rating system for athletes, movies, games, and products.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Floating Action Button (+ Create Category / + Add Item) -->
+    <button class="fab-cta" id="fabBtn" onclick="handleFabClick()" title="Create Category">+</button>
+
+    <!-- Floating Bottom Navigation Bar -->
+    <div class="bottom-nav-bar" id="bottomNavBar">
+      <div class="nav-tab-item active" id="tabNavDiscover" onclick="navigateToTab('screenDiscover')">
+        <span class="nav-icon">🧭</span>
+        <span class="nav-label">Discover</span>
+      </div>
+      <div class="nav-tab-item" id="tabNavCatalogs" onclick="navigateToTab('screenCatalogs')">
+        <span class="nav-icon">📑</span>
+        <span class="nav-label">Catalogs</span>
+      </div>
+      <div class="nav-tab-item" id="tabNavSettings" onclick="navigateToTab('screenSettings')">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Settings</span>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD NEW ITEM / PERSONA -->
+    <div class="modal-overlay" id="addPersonaModal">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <div>
+            <h3>Add New Persona</h3>
+            <span style="font-size:12px; color:var(--text-muted);">Category: Formula 1 Drivers</span>
+          </div>
+          <button class="modal-close-btn" onclick="closeAddPersonaModal()">✕</button>
+        </div>
+
+        <!-- AI Assist Auto-Fill Button -->
+        <button class="ai-assist-btn" onclick="autoFillWithGemini()">
+          <span>✨</span> Auto-fill Persona with Gemini AI
+        </button>
+
+        <div class="form-group">
+          <label>Persona / Item Name</label>
+          <input type="text" class="form-input" id="newPersonaName" placeholder="e.g. Ayrton Senna" />
+        </div>
+
+        <div class="form-group">
+          <label>Team / Organization</label>
+          <input type="text" class="form-input" id="newPersonaTeam" placeholder="e.g. McLaren" />
+        </div>
+
+        <div class="form-group">
+          <label>Nationality</label>
+          <input type="text" class="form-input" id="newPersonaNat" placeholder="e.g. Brazilian 🇧🇷" />
+        </div>
+
+        <div class="form-group">
+          <label>Attribute Scores (1 - 10)</label>
+          <div class="slider-row">
+            <span>Speed</span>
+            <input type="range" min="1" max="10" step="0.1" value="9.8" oninput="document.getElementById('valSpeed').innerText = this.value" />
+            <span class="slider-val" id="valSpeed">9.8</span>
+          </div>
+          <div class="slider-row">
+            <span>Race Pace</span>
+            <input type="range" min="1" max="10" step="0.1" value="9.7" oninput="document.getElementById('valPace').innerText = this.value" />
+            <span class="slider-val" id="valPace">9.7</span>
+          </div>
+          <div class="slider-row">
+            <span>Qualifying</span>
+            <input type="range" min="1" max="10" step="0.1" value="9.9" oninput="document.getElementById('valQual').innerText = this.value" />
+            <span class="slider-val" id="valQual">9.9</span>
+          </div>
+          <div class="slider-row">
+            <span>Wet Weather</span>
+            <input type="range" min="1" max="10" step="0.1" value="10.0" oninput="document.getElementById('valWet').innerText = this.value" />
+            <span class="slider-val" id="valWet">10.0</span>
+          </div>
+        </div>
+
+        <button class="modal-save-btn" onclick="saveNewPersona()">Save Persona to Catalog</button>
+      </div>
+    </div>
+
+    <!-- MODAL: CREATE CATEGORY -->
+    <div class="modal-overlay" id="createCategoryModal">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <div>
+            <h3>Create Category</h3>
+            <span style="font-size:12px; color:var(--text-muted);">Define rating dimension</span>
+          </div>
+          <button class="modal-close-btn" onclick="closeCreateCategoryModal()">✕</button>
+        </div>
+
+        <div class="form-group">
+          <label>Category Name</label>
+          <input type="text" class="form-input" id="newCatName" placeholder="e.g. European Football Strikers" />
+        </div>
+
+        <div class="form-group">
+          <label>Catalog Type</label>
+          <select class="form-input" style="background:#1B0B25; color:#fff;">
+            <option>PERSON (Athletes, Characters)</option>
+            <option>MOVIE (Films, Shows)</option>
+            <option>PRODUCT (Cars, Tech, Coffee)</option>
+            <option>VIDEO_GAME</option>
+          </select>
+        </div>
+
+        <button class="modal-save-btn" onclick="saveNewCategory()">Create Catalog</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Data Store
+    const catalogsData = [
+      { id: 'f1', name: 'Formula 1 Drivers', count: 20, avg: 9.4, type: 'PERSON', color: '#C026D3' },
+      { id: 'scifi', name: 'Sci-Fi Masterpieces', count: 15, avg: 9.2, type: 'MOVIE', color: '#22D3EE' },
+      { id: 'coffee', name: 'Specialty Coffee Roasts', count: 12, avg: 8.9, type: 'PRODUCT', color: '#FBBF24' },
+      { id: 'consoles', name: 'Legendary Consoles', count: 8, avg: 8.5, type: 'PRODUCT', color: '#8B5CF6' },
+    ];
+
+    let driversData = [
+      {
+        id: 'verstappen',
+        name: 'Max Verstappen',
+        rank: 1,
+        tier: 'S-Tier 9.6',
+        team: 'Red Bull Racing',
+        nat: 'Dutch 🇳🇱',
+        birth: '1997-09-30 (28 yrs)',
+        img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.8, 'Race Pace': 9.7, Qualifying: 9.5, Consistency: 9.3, 'Wet Weather': 9.6, Racecraft: 9.4 }
+      },
+      {
+        id: 'leclerc',
+        name: 'Charles Leclerc',
+        rank: 2,
+        tier: 'S-Tier 9.3',
+        team: 'Ferrari',
+        nat: 'Monegasque 🇲🇨',
+        birth: '1997-10-16 (28 yrs)',
+        img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.7, 'Race Pace': 9.2, Qualifying: 9.8, Consistency: 8.9, 'Wet Weather': 9.0, Racecraft: 9.2 }
+      },
+      {
+        id: 'norris',
+        name: 'Lando Norris',
+        rank: 3,
+        tier: 'A-Tier 9.2',
+        team: 'McLaren',
+        nat: 'British 🇬🇧',
+        birth: '1999-11-13 (26 yrs)',
+        img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.4, 'Race Pace': 9.3, Qualifying: 9.4, Consistency: 9.1, 'Wet Weather': 9.0, Racecraft: 9.0 }
+      },
+      {
+        id: 'hamilton',
+        name: 'Lewis Hamilton',
+        rank: 4,
+        tier: 'A-Tier 9.1',
+        team: 'Ferrari',
+        nat: 'British 🇬🇧',
+        birth: '1985-01-07 (41 yrs)',
+        img: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.2, 'Race Pace': 9.5, Qualifying: 9.1, Consistency: 9.4, 'Wet Weather': 9.7, Racecraft: 9.6 }
+      },
+      {
+        id: 'alonso',
+        name: 'Fernando Alonso',
+        rank: 5,
+        tier: 'A-Tier 9.0',
+        team: 'Aston Martin',
+        nat: 'Spanish 🇪🇸',
+        birth: '1981-07-29 (45 yrs)',
+        img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.1, 'Race Pace': 9.3, Qualifying: 8.9, Consistency: 9.4, 'Wet Weather': 9.4, Racecraft: 9.7 }
+      },
+      {
+        id: 'piastri',
+        name: 'Oscar Piastri',
+        rank: 6,
+        tier: 'A-Tier 8.9',
+        team: 'McLaren',
+        nat: 'Australian 🇦🇺',
+        birth: '2001-04-06 (24 yrs)',
+        img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.0, 'Race Pace': 8.9, Qualifying: 9.1, Consistency: 9.2, 'Wet Weather': 8.7, Racecraft: 8.8 }
+      }
+    ];
+
+    let navigationStack = ['screenDiscover'];
+    let currentActiveItem = driversData[0];
+    let isGridView = true;
+
+    function renderHomeCatalogs() {
+      const grid = document.getElementById('homeCatalogsGrid');
+      grid.innerHTML = '';
+      catalogsData.slice(0, 4).forEach(c => {
+        grid.innerHTML += `
+          <div class="catalog-item-card" onclick="openCategoryDetail('${c.name}')">
+            <div class="catalog-top">
+              <span class="count-pill">${c.count} items</span>
+              <span style="color:${c.color}; font-size:12px;">✦</span>
+            </div>
+            <div class="catalog-name">${c.name}</div>
+            <div class="catalog-score-row">
+              <span>Avg Rating</span>
+              <span class="catalog-score-val">${c.avg}/10</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function renderCatalogsFull(filterType = 'all') {
+      const grid = document.getElementById('catalogsFullGrid');
+      grid.innerHTML = '';
+      const list = filterType === 'all' ? catalogsData : catalogsData.filter(c => c.type === filterType);
+      list.forEach(c => {
+        grid.innerHTML += `
+          <div class="catalog-item-card" onclick="openCategoryDetail('${c.name}')">
+            <div class="catalog-top">
+              <span class="count-pill">${c.count} items</span>
+              <span style="color:${c.color}; font-size:12px;">✦</span>
+            </div>
+            <div class="catalog-name">${c.name}</div>
+            <div class="catalog-score-row">
+              <span>Avg Rating</span>
+              <span class="catalog-score-val">${c.avg}/10</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function renderCategoryItems() {
+      const grid = document.getElementById('categoryItemsGrid');
+      grid.innerHTML = '';
+
+      // The "+ Add New Persona" card is shown prominently as item #1!
+      grid.innerHTML += `
+        <div class="add-persona-card" onclick="openAddPersonaModal()">
+          <div class="add-persona-icon">➕</div>
+          <div class="add-persona-text">Add New Persona</div>
+          <div class="add-persona-sub">Evaluate driver</div>
+        </div>
+      `;
+
+      driversData.forEach(d => {
+        grid.innerHTML += `
+          <div class="driver-grid-card" onclick="openItemDetail('${d.name}', 'Formula 1 Drivers')">
+            <div class="driver-avatar-wrap">
+              <img src="${d.img}" alt="${d.name}" />
+              <div class="rank-badge-tag">#${d.rank}</div>
+            </div>
+            <div class="driver-card-name">${d.name}</div>
+            <div class="score-badge purple" style="font-size:11px; padding:2px 8px; margin-bottom:4px;">${d.tier}</div>
+            <canvas class="mini-radar-preview" id="radar_${d.id}" width="56" height="56"></canvas>
+          </div>
+        `;
+      });
+
+      document.getElementById('itemsCountHeader').innerText = `${driversData.length} Personas Evaluated`;
+
+      setTimeout(() => {
+        driversData.forEach(d => {
+          drawMiniRadar(`radar_${d.id}`, Object.values(d.scores));
+        });
+      }, 50);
+    }
+
+    // Navigation Stack Logic
+    function navigateTo(screenId) {
+      document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      navigationStack.push(screenId);
+      document.getElementById('scrollContainer').scrollTop = 0;
+      updateChromeForScreen(screenId);
+    }
+
+    function navigateToTab(screenId) {
+      navigationStack = [screenId];
+      document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      document.getElementById('scrollContainer').scrollTop = 0;
+      updateChromeForScreen(screenId);
+    }
+
+    function goBack() {
+      if (navigationStack.length > 1) {
+        navigationStack.pop();
+        const prevScreen = navigationStack[navigationStack.length - 1];
+        document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(prevScreen).classList.add('active');
+        updateChromeForScreen(prevScreen);
+      }
+    }
+
+    function updateChromeForScreen(screenId) {
+      const topBarTitle = document.getElementById('topBarTitle');
+      const topBarActions = document.getElementById('topBarActions');
+      const fabBtn = document.getElementById('fabBtn');
+
+      document.querySelectorAll('.nav-tab-item').forEach(tab => tab.classList.remove('active'));
+      if (screenId === 'screenDiscover') document.getElementById('tabNavDiscover').classList.add('active');
+      if (screenId === 'screenCatalogs') document.getElementById('tabNavCatalogs').classList.add('active');
+      if (screenId === 'screenSettings') document.getElementById('tabNavSettings').classList.add('active');
+
+      // FAB is visible on Discover and Catalogs (Create category) AND on CategoryDetail (Add item)!
+      if (screenId === 'screenDiscover' || screenId === 'screenCatalogs') {
+        fabBtn.style.display = 'flex';
+        fabBtn.title = "Create category";
+      } else if (screenId === 'screenCategoryDetail') {
+        fabBtn.style.display = 'flex';
+        fabBtn.title = "Add item";
+      } else {
+        fabBtn.style.display = 'none';
+      }
+
+      if (screenId === 'screenDiscover') {
+        topBarTitle.innerHTML = 'Juzgón';
+        topBarActions.innerHTML = `
+          <button class="icon-btn" onclick="navigateToTab('screenSettings')" title="Settings">⚙️</button>
+        `;
+      } else if (screenId === 'screenCatalogs') {
+        topBarTitle.innerHTML = 'My Catalogs';
+        topBarActions.innerHTML = ``;
+      } else if (screenId === 'screenCategoryDetail') {
+        topBarTitle.innerHTML = `
+          <button class="back-btn" onclick="goBack()" title="Back">←</button>
+          <span>Formula 1</span>
+        `;
+        topBarActions.innerHTML = `
+          <button class="icon-btn" onclick="triggerScoreProfiles()" title="Score profiles">⭐</button>
+          <button class="icon-btn" onclick="showToast('Edit Category Attributes')" title="Edit category">✎</button>
+          <button class="icon-btn" onclick="openAddPersonaModal()" title="Add item">➕</button>
+        `;
+      } else if (screenId === 'screenItemDetail') {
+        topBarTitle.innerHTML = `
+          <button class="back-btn" onclick="goBack()" title="Back">←</button>
+          <span style="font-size:15px;">${currentActiveItem.name}</span>
+        `;
+        topBarActions.innerHTML = `
+          <button class="icon-btn" onclick="showToast('Edit Item scores')" title="Edit item">✎</button>
+          <button class="icon-btn" onclick="showToast('Added to Favorites!')" title="Favorite">★</button>
+        `;
+      } else if (screenId === 'screenSettings') {
+        topBarTitle.innerHTML = 'Settings';
+        topBarActions.innerHTML = ``;
+      }
+    }
+
+    function handleFabClick() {
+      const activeScreen = navigationStack[navigationStack.length - 1];
+      if (activeScreen === 'screenCategoryDetail') {
+        openAddPersonaModal();
+      } else {
+        openCreateCategoryModal();
+      }
+    }
+
+    function openCategoryDetail(catName) {
+      renderCategoryItems();
+      navigateTo('screenCategoryDetail');
+    }
+
+    function openItemDetail(itemName, catName) {
+      const item = driversData.find(d => d.name === itemName) || driversData[0];
+      currentActiveItem = item;
+
+      document.getElementById('detailItemName').innerText = item.name;
+      document.getElementById('detailTierPill').innerText = `★ ${item.tier}`;
+      document.getElementById('detailAvatarImg').src = item.img;
+      document.getElementById('metaTeam').innerText = item.team;
+      document.getElementById('metaNat').innerText = item.nat;
+      document.getElementById('metaBirth').innerText = item.birth;
+
+      renderScoreBars(item.scores);
+      drawLargeRadar(item.scores);
+
+      navigateTo('screenItemDetail');
+    }
+
+    function renderScoreBars(scores) {
+      const container = document.getElementById('scoreBarsList');
+      container.innerHTML = '';
+      const icons = { Speed: '⚡', 'Race Pace': '🏎', Qualifying: '⏱', Consistency: '🎯', 'Wet Weather': '🌧', Racecraft: '⚔' };
+      for (const [key, val] of Object.entries(scores)) {
+        const pct = (val / 10) * 100;
+        container.innerHTML += `
+          <div class="score-bar-row">
+            <div class="score-bar-header">
+              <span class="title"><span>${icons[key] || '✦'}</span> ${key}</span>
+              <span class="val">${val.toFixed(1)}/10</span>
+            </div>
+            <div class="score-progress-track">
+              <div class="score-progress-fill" style="width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function switchItemView(mode) {
+      const radarBtn = document.getElementById('tabRadarBtn');
+      const barsBtn = document.getElementById('tabBarsBtn');
+      const radarView = document.getElementById('itemRadarView');
+      const barsView = document.getElementById('itemBarsView');
+
+      if (mode === 'radar') {
+        radarBtn.classList.add('active');
+        barsBtn.classList.remove('active');
+        radarView.style.display = 'block';
+        barsView.style.display = 'none';
+        drawLargeRadar(currentActiveItem.scores);
+      } else {
+        barsBtn.classList.add('active');
+        radarBtn.classList.remove('active');
+        radarView.style.display = 'none';
+        barsView.style.display = 'block';
+      }
+    }
+
+    function drawLargeRadar(scoresObj) {
+      const canvas = document.getElementById('largeRadarCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const center = { x: w / 2, y: h / 2 };
+      const radius = 90;
+      const labels = Object.keys(scoresObj);
+      const values = Object.values(scoresObj);
+      const count = labels.length;
+
+      // Concentric web rings
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      for (let r = 1; r <= 4; r++) {
+        const curR = (radius / 4) * r;
+        ctx.beginPath();
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+          const x = center.x + curR * Math.cos(angle);
+          const y = center.y + curR * Math.sin(angle);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Axis spokes & labels
+      ctx.fillStyle = '#A1A1AA';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+        const x = center.x + radius * Math.cos(angle);
+        const y = center.y + radius * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(center.x, center.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        const lx = center.x + (radius + 22) * Math.cos(angle);
+        const ly = center.y + (radius + 16) * Math.sin(angle) + 3;
+        ctx.fillText(labels[i], lx, ly);
+      }
+
+      // Draw score polygon
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+        const scoreFrac = values[i] / 10;
+        const x = center.x + (radius * scoreFrac) * Math.cos(angle);
+        const y = center.y + (radius * scoreFrac) * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(192, 38, 211, 0.45)';
+      ctx.fill();
+      ctx.strokeStyle = '#D946EF';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Vertex dots
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+        const scoreFrac = values[i] / 10;
+        const x = center.x + (radius * scoreFrac) * Math.cos(angle);
+        const y = center.y + (radius * scoreFrac) * Math.sin(angle);
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#22D3EE';
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+
+    function drawMiniRadar(canvasId, values) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const center = { x: w / 2, y: h / 2 };
+      const radius = 22;
+      const count = values.length;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+        const curR = (radius / 10) * values[i];
+        const x = center.x + curR * Math.cos(angle);
+        const y = center.y + curR * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.4)';
+      ctx.fill();
+      ctx.strokeStyle = '#C026D3';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Modal Handlers: Add Persona
+    function openAddPersonaModal() {
+      document.getElementById('addPersonaModal').classList.add('active');
+    }
+
+    function closeAddPersonaModal() {
+      document.getElementById('addPersonaModal').classList.remove('active');
+    }
+
+    function autoFillWithGemini() {
+      document.getElementById('newPersonaName').value = 'Ayrton Senna';
+      document.getElementById('newPersonaTeam').value = 'McLaren Honda';
+      document.getElementById('newPersonaNat').value = 'Brazilian 🇧🇷';
+      showToast('✨ Gemini AI grounded: Persona attributes and birth date auto-filled!');
+    }
+
+    function saveNewPersona() {
+      const name = document.getElementById('newPersonaName').value.trim() || 'New Driver';
+      const team = document.getElementById('newPersonaTeam').value.trim() || 'Independent';
+      const nat = document.getElementById('newPersonaNat').value.trim() || 'Global';
+
+      const newDriver = {
+        id: 'driver_' + Date.now(),
+        name: name,
+        rank: driversData.length + 1,
+        tier: 'S-Tier 9.8',
+        team: team,
+        nat: nat,
+        birth: '1960-03-21 (Historic)',
+        img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=160&auto=format&fit=crop&q=80',
+        scores: { Speed: 9.9, 'Race Pace': 9.8, Qualifying: 10.0, Consistency: 9.6, 'Wet Weather': 10.0, Racecraft: 9.8 }
+      };
+
+      driversData.unshift(newDriver);
+      // Recalculate ranks
+      driversData.forEach((d, idx) => d.rank = idx + 1);
+
+      closeAddPersonaModal();
+      renderCategoryItems();
+      showToast(`Added ${name} to Formula 1 Drivers!`);
+    }
+
+    // Modal Handlers: Create Category
+    function openCreateCategoryModal() {
+      document.getElementById('createCategoryModal').classList.add('active');
+    }
+
+    function closeCreateCategoryModal() {
+      document.getElementById('createCategoryModal').classList.remove('active');
+    }
+
+    function saveNewCategory() {
+      const name = document.getElementById('newCatName').value.trim() || 'New Catalog';
+      catalogsData.unshift({
+        id: 'cat_' + Date.now(),
+        name: name,
+        count: 0,
+        avg: 0.0,
+        type: 'PERSON',
+        color: '#C026D3'
+      });
+      closeCreateCategoryModal();
+      renderHomeCatalogs();
+      renderCatalogsFull();
+      document.getElementById('statsCatCount').innerText = catalogsData.length;
+      showToast(`Created catalog "${name}"`);
+    }
+
+    // Action Triggers
+    function triggerExport() {
+      showToast('💾 Export backup: juzgon-backup-2026-09-11.juzgon.json generated!');
+    }
+
+    function triggerAiSettings() {
+      navigateToTab('screenSettings');
+      showToast('AI Settings: Configure Gemini API Key');
+    }
+
+    function triggerAbout() {
+      alert("Juzgón v1.3.0 (Build 42)\nArchitecture: Clean Architecture + Jetpack Compose\nDomain: Multi-attribute Rating Engine");
+    }
+
+    function triggerScoreProfiles() {
+      alert("Score Profiles Manager: Switch between Overall, Qualifying Pace, and Race Craft presets");
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastMsg');
+      document.getElementById('toastText').innerText = msg;
+      toast.classList.add('active');
+      setTimeout(() => toast.classList.remove('active'), 3200);
+    }
+
+    function switchScoreProfile(profileName, btn) {
+      document.querySelectorAll('#scoreProfilesBar .pill-filter').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('activeProfileLabel').innerText = `${profileName} (${profileName === 'Overall' ? 6 : 3} Attributes)`;
+      showToast(`Active Lens changed to ${profileName}`);
+    }
+
+    function filterCatalogTypes(type, btn) {
+      document.querySelectorAll('#screenCatalogs .pill-filter').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      renderCatalogsFull(type);
+    }
+
+    function filterTrending(type, btn) {
+      document.querySelectorAll('#screenDiscover .pill-filter').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function toggleSortOrder() {
+      showToast('Items sorted by score descending (Rank 1➔N)');
+    }
+
+    // Init
+    window.addEventListener('DOMContentLoaded', () => {
+      renderHomeCatalogs();
+      renderCatalogsFull();
+      drawMiniRadar('miniSpotlightCanvas', [9.8, 9.7, 9.5, 9.3, 9.6, 9.4]);
+    });
+  </script>
+</body>
+</html>
