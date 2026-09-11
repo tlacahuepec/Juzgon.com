@@ -29,6 +29,7 @@ import com.juzgon.feature.item.ItemFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileFormRoute
 import com.juzgon.feature.scoreprofile.ScoreProfileListRoute
 import com.juzgon.feature.settings.GeminiKeySettingsRoute
+import com.juzgon.feature.settings.SettingsRoute
 import com.juzgon.ui.components.BottomNavItem
 import com.juzgon.ui.components.JuzgonBottomNavBar
 
@@ -192,8 +193,11 @@ internal fun JuzgonNavHost(
     settingsContent: @Composable (
         onBack: () -> Unit,
         onNavigateToGeminiSettings: () -> Unit,
-    ) -> Unit = { _, _ ->
-        Box(modifier = Modifier.fillMaxSize())
+    ) -> Unit = { onBack, onNavigateToGeminiSettings ->
+        SettingsRoute(
+            onBackClick = onBack,
+            onNavigateToGeminiKey = onNavigateToGeminiSettings,
+        )
     },
     createCategoryContent: @Composable (
         onBack: () -> Unit,
