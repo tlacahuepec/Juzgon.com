@@ -727,6 +727,7 @@ private fun PrimaryImageSection(
     }
 }
 
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun RankedAttributeProgressCards(rankedAttributes: List<RankedAttributeCardUiModel>) {
     val tokens = JuzgonVisualTheme.tokens
