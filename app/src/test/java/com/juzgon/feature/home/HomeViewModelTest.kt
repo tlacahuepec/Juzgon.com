@@ -5,6 +5,7 @@ import com.juzgon.domain.Attribute
 import com.juzgon.domain.Category
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
+import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import kotlinx.coroutines.Dispatchers
@@ -168,6 +169,78 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun itemClickEmitsNavigationEvent() =
+        runTest {
+            viewModel.navigationEvents.test {
+                viewModel.onItemClick("Formula 1", "Max Verstappen")
+
+                assertEquals(
+                    HomeNavigationEvent.OpenItem("Formula 1", "Max Verstappen"),
+                    awaitItem(),
+                )
+            }
+        }
+
+    @Test
+    fun topItemsFlowDerivesHeroAndTrendingWithRadarPointsAndTieBreaking() =
+        runTest {
+            val scoreEntries =
+                listOf(
+                    ScoreEntry(Attribute("speed"), 10),
+                    ScoreEntry(Attribute("consistency"), 9),
+                    ScoreEntry(Attribute("overtaking"), 9),
+                )
+            val topItem =
+                RankedRatedItem(
+                    item = RatedItem(id = "Max Verstappen", scores = scoreEntries),
+                    aggregateScore = 9.6,
+                )
+            val tiedItemA =
+                RankedRatedItem(
+                    item = RatedItem(id = "Charles Leclerc", scores = emptyList()),
+                    aggregateScore = 9.2,
+                )
+            val tiedItemB =
+                RankedRatedItem(
+                    item = RatedItem(id = "Lando Norris", scores = emptyList()),
+                    aggregateScore = 9.2,
+                )
+
+            val categoryRepo = FakeCategoryRepository()
+            categoryRepo.categories.value = listOf(Category(name = "F1", attributes = listOf(Attribute("speed"))))
+            val ratedRepo =
+                FakeRatedItemRepository(
+                    rankedItemsByCat =
+                        mapOf(
+                            "F1" to flowOf(listOf(tiedItemB, topItem, tiedItemA)),
+                        ),
+                )
+            val vm = HomeViewModel(categoryRepo, ratedRepo)
+
+            vm.state.test {
+                var state = awaitItem()
+                while (state.heroItem == null) {
+                    state = awaitItem()
+                }
+
+                val hero = state.heroItem
+                assertNotNull(hero)
+                assertEquals("Max Verstappen", hero?.name)
+                assertEquals("Max Verstappen", hero?.itemId)
+                assertEquals("F1", hero?.categoryName)
+                assertEquals("S-Tier", hero?.tierLabel)
+                assertEquals("9.6/10", hero?.scoreText)
+                assertEquals(3, hero?.radarPoints?.size)
+
+                // Trending items are sorted by score descending, then by id ascending ("Charles Leclerc" before "Lando Norris")
+                assertEquals(3, state.trendingItems.size)
+                assertEquals("Max Verstappen", state.trendingItems[0].name)
+                assertEquals("Charles Leclerc", state.trendingItems[1].name)
+                assertEquals("Lando Norris", state.trendingItems[2].name)
+            }
+        }
+
+    @Test
     fun initialStateIsLoading() {
         assertTrue(viewModel.state.value.isLoading)
     }
@@ -291,12 +364,15 @@ class HomeViewModelTest {
 
     private class RepositoryUnavailableException : Exception("DB error")
 
-    private class FakeRatedItemRepository : RatedItemRepository {
+    private class FakeRatedItemRepository(
+        private val rankedItemsByCat: Map<String, Flow<List<RankedRatedItem>>> = emptyMap(),
+    ) : RatedItemRepository {
         override fun observeRatedItems(): Flow<List<RatedItem>> = flowOf(emptyList())
 
         override fun observeRatedItem(id: String): Flow<RatedItem?> = flowOf(null)
 
-        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> = flowOf(emptyList())
+        override fun observeRankedItems(categoryName: String): Flow<List<RankedRatedItem>> =
+            rankedItemsByCat[categoryName] ?: flowOf(emptyList())
 
         override suspend fun saveRatedItem(ratedItem: RatedItem) {
             error("not used")

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.juzgon.ui.theme.JuzgonVisualTheme
 
@@ -43,7 +44,12 @@ internal fun JuzgonHeroCard(
 ) {
     val tokens = JuzgonVisualTheme.tokens
     val cardShape = RoundedCornerShape(tokens.shapes.cardCornerRadius)
-    val description = "$title, $tierLabel $scoreText"
+    val description =
+        if (!categoryTag.isNullOrBlank()) {
+            "$title, $categoryTag, $tierLabel $scoreText"
+        } else {
+            "$title, $tierLabel $scoreText"
+        }
 
     Box(
         modifier =
@@ -106,6 +112,8 @@ private fun HeroCardTitle(
             color = tokens.palette.textStrong,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         if (!categoryTag.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
@@ -114,6 +122,8 @@ private fun HeroCardTitle(
                 color = tokens.palette.textMuted,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

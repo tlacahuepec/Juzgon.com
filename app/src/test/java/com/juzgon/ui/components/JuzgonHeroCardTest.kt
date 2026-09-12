@@ -140,4 +140,44 @@ class JuzgonHeroCardTest {
         composeRule.onNodeWithText("B-Tier").assertIsDisplayed()
         composeRule.onNodeWithText("6.0/10").assertIsDisplayed()
     }
+
+    @Test
+    fun rendersCategoryTagAndIncludesInSemanticDescription() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonHeroCard(
+                    title = "Max Verstappen",
+                    categoryTag = "Formula 1",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.6/10",
+                    onClick = {},
+                    image = { Text("MV") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Max Verstappen").assertIsDisplayed()
+        composeRule.onNodeWithText("Formula 1").assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("Max Verstappen, Formula 1, S-Tier 9.6/10")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun radarPreviewSlotIsDisplayed() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonHeroCard(
+                    title = "Top Ranked",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.4/10",
+                    onClick = {},
+                    radarPreview = { Text("RADAR_CANVAS") },
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("RADAR_CANVAS").assertIsDisplayed()
+    }
 }
