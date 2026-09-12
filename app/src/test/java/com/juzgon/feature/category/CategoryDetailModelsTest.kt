@@ -643,5 +643,40 @@ class CategoryDetailModelsTest {
         )
     }
 
+    @Test
+    fun reduce_withRankableAttributes_populatesRadarValuesOnItems() {
+        val power = Attribute("Power")
+        val category =
+            Category(
+                name = "Cars",
+                attributes = listOf(speed, brakes, power),
+            )
+        val item =
+            RankedRatedItem(
+                item =
+                    RatedItem(
+                        id = "Supercar",
+                        scores =
+                            listOf(
+                                ScoreEntry(speed, 9),
+                                ScoreEntry(brakes, 8),
+                                ScoreEntry(power, 10),
+                            ),
+                    ),
+                aggregateScore = 9.0,
+            )
+
+        val state =
+            CategoryDetailReducer.reduce(
+                categoryName = "Cars",
+                category = category,
+                rankedItems = listOf(item),
+                sortOption = CategoryDetailSortOption.Score,
+            )
+
+        assertEquals(1, state.items.size)
+        assertEquals(listOf(9.0f, 8.0f, 10.0f), state.items[0].radarValues)
+    }
+
     // endregion
 }

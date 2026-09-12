@@ -99,6 +99,7 @@ class CategoryDetailViewModelTest {
                             averageScoreText = "8.7",
                             tierLabel = "A-Tier",
                             gridAttributes = listOf(GridCardAttribute(emoji = "S", label = "Speed", scoreText = "8/10")),
+                            radarValues = listOf(8.0f),
                         ),
                         CategoryDetailItemUiModel(
                             rank = 2,
@@ -106,6 +107,7 @@ class CategoryDetailViewModelTest {
                             averageScoreText = "8.3",
                             tierLabel = "A-Tier",
                             gridAttributes = listOf(GridCardAttribute(emoji = "S", label = "Speed", scoreText = "8/10")),
+                            radarValues = listOf(8.0f),
                         ),
                     ),
                     state.items,

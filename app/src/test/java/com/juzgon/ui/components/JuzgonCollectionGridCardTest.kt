@@ -237,4 +237,23 @@ class JuzgonCollectionGridCardTest {
 
         composeRule.onNodeWithContentDescription("Mini radar chart").assertIsDisplayed()
     }
+
+    @Test
+    fun rendersRankBadgeForDoubleDigitRankWithoutClipping() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonCollectionGridCard(
+                    name = "Hamilton",
+                    rank = 44,
+                    tierLabel = "S-Tier",
+                    scoreText = "9.8/10",
+                    onClick = {},
+                    onFavoriteClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("#44").assertIsDisplayed()
+    }
 }

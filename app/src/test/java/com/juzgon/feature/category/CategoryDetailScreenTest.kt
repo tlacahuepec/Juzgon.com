@@ -1314,6 +1314,31 @@ class CategoryDetailScreenTest {
         assertTrue(addItemClicked)
     }
 
+    @Test
+    fun rendersMiniRadarCanvasOnGridCardWhenItemHasRadarValues() {
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "3 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(
+                                rank = 1,
+                                id = "sedan",
+                                averageScoreText = "8.7",
+                                tierLabel = "A-Tier",
+                                radarValues = listOf(8.0f, 9.0f, 8.5f),
+                            ),
+                        ),
+                    isLoading = false,
+                    viewMode = CategoryDetailViewMode.GRID,
+                ),
+        )
+
+        composeRule.onNodeWithContentDescription("Mini radar chart").assertIsDisplayed()
+    }
+
     // endregion
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {

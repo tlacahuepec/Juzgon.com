@@ -71,6 +71,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -637,7 +639,7 @@ private fun CategoryDetailGridLayout(
                 )
             }
         }
-        item {
+        item(key = "add_new_persona_card") {
             AddNewPersonaGridCard(onAddItemClick = onAddItemClick)
         }
         items(
@@ -665,15 +667,21 @@ private fun AddNewPersonaGridCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .sizeIn(minWidth = 48.dp, minHeight = 100.dp)
+                .sizeIn(minWidth = 48.dp, minHeight = 140.dp)
                 .clip(cardShape)
                 .background(tokens.palette.primaryGlow.copy(alpha = 0.08f))
                 .drawBehind {
+                    val strokeWidth = 1.5.dp.toPx()
+                    val halfStroke = strokeWidth / 2f
+                    val radiusPx =
+                        (tokens.shapes.cardCornerRadius.toPx() - halfStroke).coerceAtLeast(0f)
                     drawRoundRect(
                         color = borderColor,
+                        topLeft = Offset(halfStroke, halfStroke),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
                         style =
                             Stroke(
-                                width = 1.5.dp.toPx(),
+                                width = strokeWidth,
                                 pathEffect =
                                     PathEffect.dashPathEffect(
                                         floatArrayOf(DASH_ON_INTERVAL, DASH_OFF_INTERVAL),
@@ -681,7 +689,7 @@ private fun AddNewPersonaGridCard(
                                     ),
                                 cap = StrokeCap.Round,
                             ),
-                        cornerRadius = CornerRadius(tokens.shapes.cardCornerRadius.toPx()),
+                        cornerRadius = CornerRadius(radiusPx),
                     )
                 }.clickable(
                     role = Role.Button,

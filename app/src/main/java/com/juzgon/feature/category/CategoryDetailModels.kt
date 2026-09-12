@@ -353,6 +353,7 @@ object CategoryDetailReducer {
             metricColorHex = metric.colorHex,
             tierLabel = tierFromScore(rankedItem.aggregateScore),
             gridAttributes = rankedItem.item.toGridAttributes(),
+            radarValues = rankedItem.item.toRadarValues(category),
         )
     }
 
@@ -697,3 +698,16 @@ private fun RatedItem.toGridAttributes(): List<GridCardAttribute> =
                 scoreText = "${entry.score}/$SCORE_FORMAT_MAX",
             )
         }
+
+private fun RatedItem.toRadarValues(category: Category): List<Float> {
+    val scoreByAttributeId = scores.associate { it.attribute.id to it.score.toFloat() }
+    val categoryRankableScores =
+        category.attributes
+            .filter { it.isRankable }
+            .mapNotNull { scoreByAttributeId[it.id] }
+    return if (categoryRankableScores.isNotEmpty()) {
+        categoryRankableScores
+    } else {
+        scores.map { it.score.toFloat() }
+    }
+}
