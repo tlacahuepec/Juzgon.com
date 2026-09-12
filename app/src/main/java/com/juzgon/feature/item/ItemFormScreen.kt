@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -47,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,6 +79,8 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValue
 import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.enrichment.EnrichmentSupportRules
+import com.juzgon.ui.components.JuzgonGlowRing
+import com.juzgon.ui.theme.JuzgonVisualTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -166,6 +170,7 @@ fun ItemFormRoute(
         onSuggestionDismissed = viewModel::onSuggestionDismissed,
         onSuggestionRetry = viewModel::onSuggestionRetry,
         onNavigateToGeminiSettings = onNavigateToGeminiSettings,
+        onEnrichWithAiClick = viewModel::onEnrichWithAiClick,
     )
 }
 
@@ -193,6 +198,7 @@ fun ItemFormScreen(
     onSuggestionDismissed: () -> Unit = {},
     onSuggestionRetry: () -> Unit = {},
     onNavigateToGeminiSettings: () -> Unit = {},
+    onEnrichWithAiClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val titleError = if (state.showValidationErrors) state.titleError else null
@@ -309,6 +315,7 @@ fun ItemFormScreen(
                     onSuggestClick = onSuggestClick,
                     enrichmentLoading = state.enrichmentSheet is EnrichmentSheetState.Loading,
                     onSaveClick = onSaveClick,
+                    onEnrichWithAiClick = onEnrichWithAiClick,
                     modifier = Modifier.padding(innerPadding),
                 )
         }
@@ -333,20 +340,39 @@ private fun ItemFormContent(
     onSuggestClick: (String) -> Unit,
     enrichmentLoading: Boolean,
     onSaveClick: () -> Unit,
+    onEnrichWithAiClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier =
             modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Text(
-            text = state.categoryName,
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            JuzgonGlowRing(
+                contentDescription = "Avatar preview",
+                modifier = Modifier.size(44.dp),
+                ringThickness = 2.dp,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            Text(
+                text = state.categoryName,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
 
         OutlinedTextField(
             value = state.title,
@@ -410,6 +436,19 @@ private fun ItemFormContent(
         }
 
         Button(
+            onClick = onEnrichWithAiClick,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Auto-fill with Gemini AI"
+                        role = Role.Button
+                    },
+        ) {
+            Text("\u2728 Auto-fill with Gemini AI")
+        }
+
+        Button(
             onClick = onSaveClick,
             enabled = state.saveEnabled,
             modifier =
@@ -438,11 +477,29 @@ private fun ItemScoreField(
     val sliderValue = scoreInput.scoreText.toIntOrNull()?.toFloat() ?: SCORE_MIN.toFloat()
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (scoreInput.scoreText.isNotBlank()) {
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "★ ${scoreInput.scoreText}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
         Slider(
             value = sliderValue,
             onValueChange = { onScoreChange(attributeId, it.toInt().toString()) },
             valueRange = SCORE_MIN.toFloat()..SCORE_MAX.toFloat(),
             steps = SCORE_MAX - SCORE_MIN - 1,
+            colors =
+                SliderDefaults.colors(
+                    thumbColor = JuzgonVisualTheme.tokens.palette.contrastAccent,
+                    activeTrackColor = JuzgonVisualTheme.tokens.palette.primaryGlow,
+                    inactiveTrackColor = JuzgonVisualTheme.tokens.palette.panelBackground,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()

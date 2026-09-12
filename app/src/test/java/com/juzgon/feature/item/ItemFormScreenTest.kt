@@ -454,6 +454,8 @@ class ItemFormScreenTest {
         onImageSelectClick: (String) -> Unit = {},
         onImageRemoveClick: (String, String) -> Unit = { _, _ -> },
         onSuggestClick: (String) -> Unit = {},
+        onSaveClick: () -> Unit = {},
+        onEnrichWithAiClick: () -> Unit = {},
     ) {
         composeRule.setContent {
             MaterialTheme {
@@ -468,12 +470,13 @@ class ItemFormScreenTest {
                     onDateSelected = onDateSelected,
                     onImageSelectClick = onImageSelectClick,
                     onImageRemoveClick = onImageRemoveClick,
-                    onSaveClick = {},
+                    onSaveClick = onSaveClick,
                     onBackClick = onBackClick,
                     onDeleteClick = onDeleteClick,
                     onDeleteCancel = onDeleteCancel,
                     onDeleteConfirm = onDeleteConfirm,
                     onSuggestClick = onSuggestClick,
+                    onEnrichWithAiClick = onEnrichWithAiClick,
                 )
             }
         }
@@ -555,5 +558,72 @@ class ItemFormScreenTest {
             .assertHasClickAction()
         // The lambda is wired; actual invocation tested in ItemFormViewModelTest for onDateSelected
         assertTrue(true)
+    }
+
+    // --- Issue #317 Luminous Item Form & Gradient Sliders Tests ---
+
+    @Test
+    fun rendersLuminousScoreSlidersWithRangeAndValueBadges() {
+        setContent(
+            loadedState().copy(
+                scores =
+                    listOf(
+                        ItemScoreInput(Attribute("Speed"), "8"),
+                        ItemScoreInput(Attribute("Brakes"), "6"),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Speed score").assertIsDisplayed()
+        composeRule.onNodeWithText("★ 8").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Speed slider").assertIsDisplayed()
+        composeRule.onNodeWithText("Brakes score").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("★ 6").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Brakes slider").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun autoFillWithAiButtonIsDisplayedAndInvokesEnrichment() {
+        var autoFillClicked = false
+        setContent(
+            loadedState(),
+            onEnrichWithAiClick = { autoFillClicked = true },
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Auto-fill with Gemini AI")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+
+        assertTrue(autoFillClicked)
+    }
+
+    @Test
+    fun avatarPreviewSlotRendersGlowRing() {
+        setContent(loadedState())
+
+        composeRule
+            .onNodeWithContentDescription("Avatar preview")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun validItemFormSavesSuccessfully() {
+        var saveClicked = false
+        setContent(
+            loadedState().copy(
+                title = "Roadster",
+                scores =
+                    listOf(
+                        ItemScoreInput(Attribute("Speed"), "8"),
+                        ItemScoreInput(Attribute("Brakes"), "9"),
+                    ),
+            ),
+            onSaveClick = { saveClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Save item").performScrollTo().performClick()
+        assertTrue(saveClicked)
     }
 }
