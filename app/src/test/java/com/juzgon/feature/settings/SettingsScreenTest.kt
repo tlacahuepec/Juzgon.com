@@ -4,13 +4,21 @@ package com.juzgon.feature.settings
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.juzgon.domain.BuildMetadata
+import com.juzgon.domain.backup.BackupService
+import com.juzgon.domain.backup.BackupValidationResult
+import com.juzgon.domain.backup.BackupValidator
+import com.juzgon.domain.enrichment.SecureApiKeyStore
+import com.juzgon.feature.about.AboutViewModel
+import com.juzgon.feature.backup.ExportBackupViewModel
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -218,5 +226,107 @@ class SettingsScreenTest {
 
         composeRule.onNodeWithContentDescription("Back").assertIsDisplayed().performClick()
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun doesNotRenderBackButtonWhenOnBackClickIsNull() {
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    buildMetadata = testMetadata,
+                    geminiKeyState = GeminiKeyState.NO_KEY,
+                    maskedGeminiKey = null,
+                    isExporting = false,
+                    onExportBackup = {},
+                    onNavigateToGeminiKey = {},
+                    onBackClick = null,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Back").assertDoesNotExist()
+    }
+
+    @Test
+    fun buttonsSatisfyAccessibilityTouchTargets() {
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    buildMetadata = testMetadata,
+                    geminiKeyState = GeminiKeyState.CONFIGURED,
+                    maskedGeminiKey = "AIzaSy...7890",
+                    isExporting = false,
+                    onExportBackup = {},
+                    onNavigateToGeminiKey = {},
+                    onBackClick = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Back").assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithContentDescription("Export backup").assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithContentDescription("Configure Gemini Key").assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun settingsRouteRendersAndRefreshesGeminiKey() {
+        val fakeKeyStore = FakeKeyStore()
+        val geminiVm = GeminiKeySettingsViewModel(fakeKeyStore)
+        val exportVm = ExportBackupViewModel(FakeTestBackupService, FakeTestBackupValidator)
+        val aboutVm = AboutViewModel { testMetadata }
+
+        var navigatedToGemini = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsRoute(
+                    onNavigateToGeminiKey = { navigatedToGemini = true },
+                    onBackClick = {},
+                    exportViewModel = exportVm,
+                    aboutViewModel = aboutVm,
+                    geminiViewModel = geminiVm,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeRule
+            .onNodeWithText("No API key configured. AI autofill and scoring features are unavailable.")
+            .assertIsDisplayed()
+
+        fakeKeyStore.key = "AIzaSyNewKey1234"
+        geminiVm.refresh()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Key configured (••••••••1234)").assertIsDisplayed()
+
+        composeRule.onNodeWithContentDescription("Configure Gemini Key").performClick()
+        assertTrue(navigatedToGemini)
+    }
+
+    private class FakeKeyStore(
+        var key: String? = null,
+    ) : SecureApiKeyStore {
+        override suspend fun saveGeminiApiKey(apiKey: String) {
+            key = apiKey
+        }
+
+        override suspend fun getGeminiApiKey(): String? = key
+
+        override suspend fun deleteGeminiApiKey() {
+            key = null
+        }
+
+        override suspend fun hasGeminiApiKey(): Boolean = key != null
+    }
+
+    private object FakeTestBackupService : BackupService {
+        override suspend fun export(): String = "{}"
+
+        override suspend fun import(json: String) = Unit
+    }
+
+    private object FakeTestBackupValidator : BackupValidator {
+        override fun validate(json: String) = BackupValidationResult()
     }
 }

@@ -23,6 +23,10 @@ class GeminiKeySettingsViewModel
             loadKeyState()
         }
 
+        fun refresh() {
+            loadKeyState()
+        }
+
         fun onKeyInputChanged(key: String) {
             mutableState.update { it.copy(inputKey = key, errorMessage = null) }
         }
