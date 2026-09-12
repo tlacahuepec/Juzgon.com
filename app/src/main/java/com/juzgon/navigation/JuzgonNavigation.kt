@@ -3,8 +3,6 @@
 package com.juzgon.navigation
 
 import android.net.Uri
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -21,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.juzgon.feature.category.CatalogsRoute
 import com.juzgon.feature.category.CategoryDetailRoute
 import com.juzgon.feature.category.CategoryFormRoute
 import com.juzgon.feature.home.HomeRoute
@@ -187,8 +186,12 @@ internal fun JuzgonNavHost(
     },
     catalogsContent: @Composable (
         onOpenCategory: (String) -> Unit,
-    ) -> Unit = { _ ->
-        Box(modifier = Modifier.fillMaxSize())
+        onCreateCategory: () -> Unit,
+    ) -> Unit = { onOpenCategory, onCreateCategory ->
+        CatalogsRoute(
+            onNavigateToCategory = onOpenCategory,
+            onNavigateToCreateCategory = onCreateCategory,
+        )
     },
     settingsContent: @Composable (
         onBack: () -> Unit,
@@ -311,11 +314,18 @@ internal fun JuzgonNavHost(
             )
         }
         composable(JuzgonRoutes.CATALOGS) {
-            catalogsContent { categoryName ->
-                navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
-                    launchSingleTop = true
-                }
-            }
+            catalogsContent(
+                { categoryName ->
+                    navController.navigate(JuzgonRoutes.categoryDetail(categoryName)) {
+                        launchSingleTop = true
+                    }
+                },
+                {
+                    navController.navigate(JuzgonRoutes.CREATE_CATEGORY) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
         composable(JuzgonRoutes.SETTINGS) {
             val returnBack = {
