@@ -199,4 +199,42 @@ class JuzgonCollectionGridCardTest {
             .onNodeWithContentDescription("Sora, A-Tier 8.7/10")
             .assertIsDisplayed()
     }
+
+    @Test
+    fun rendersRankBadgeWhenProvided() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonCollectionGridCard(
+                    name = "Max",
+                    rank = 1,
+                    tierLabel = "S-Tier",
+                    scoreText = "9.6/10",
+                    onClick = {},
+                    onFavoriteClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("#1").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersMiniRadarCanvasWhenProvided() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonCollectionGridCard(
+                    name = "Max",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.6/10",
+                    radarValues = listOf(9.5f, 9.0f, 9.8f),
+                    onClick = {},
+                    onFavoriteClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Mini radar chart").assertIsDisplayed()
+    }
 }

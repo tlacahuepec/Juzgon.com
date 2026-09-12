@@ -6,6 +6,8 @@ import android.content.ContentResolver
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,6 +28,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -40,6 +45,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +68,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -69,6 +84,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
@@ -78,8 +94,11 @@ import com.juzgon.ui.components.JuzgonCollectionCardMetadata
 import com.juzgon.ui.components.JuzgonCollectionCardMetric
 import com.juzgon.ui.components.JuzgonCollectionGridCard
 import com.juzgon.ui.components.JuzgonSegmentedFilter
+import com.juzgon.ui.theme.JuzgonVisualTheme
 
-private const val GRID_COLUMN_COUNT = 3
+private const val GRID_COLUMN_COUNT = 2
+private const val DASH_ON_INTERVAL = 12f
+private const val DASH_OFF_INTERVAL = 8f
 
 @Composable
 fun CategoryDetailRoute(
@@ -157,6 +176,8 @@ fun CategoryDetailScreen(
             onDismiss = onDeleteDialogDismissed,
         )
     }
+
+    val tokens = JuzgonVisualTheme.tokens
 
     Scaffold(
         topBar = {
@@ -250,6 +271,24 @@ fun CategoryDetailScreen(
                 },
             )
         },
+        floatingActionButton = {
+            if (!state.isLoading && state.errorMessage == null) {
+                FloatingActionButton(
+                    onClick = onAddItemClick,
+                    containerColor = tokens.palette.primaryGlow,
+                    contentColor = tokens.palette.textStrong,
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Add item FAB"
+                        },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                    )
+                }
+            }
+        },
         modifier = modifier,
     ) { innerPadding ->
         CategoryDetailContent(
@@ -332,6 +371,7 @@ private fun CategoryDetailContent(
                 state = state,
                 onSortOptionSelected = onSortOptionSelected,
                 onSearchQueryChanged = onSearchQueryChanged,
+                onAddItemClick = onAddItemClick,
                 onEditItemClick = onEditItemClick,
                 onProfileSelected = onProfileSelected,
                 onFilterSelected = onFilterSelected,
@@ -399,6 +439,7 @@ private fun CategoryDetailItemList(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
+    onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
     onFilterSelected: (AttributeFilter) -> Unit,
@@ -412,6 +453,7 @@ private fun CategoryDetailItemList(
             state = state,
             onSortOptionSelected = onSortOptionSelected,
             onSearchQueryChanged = onSearchQueryChanged,
+            onAddItemClick = onAddItemClick,
             onEditItemClick = onEditItemClick,
             onProfileSelected = onProfileSelected,
             onFilterSelected = onFilterSelected,
@@ -525,6 +567,7 @@ private fun CategoryDetailGridLayout(
     state: CategoryDetailUiState,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
+    onAddItemClick: () -> Unit,
     onEditItemClick: (String) -> Unit,
     onProfileSelected: (String?) -> Unit,
     onFilterSelected: (AttributeFilter) -> Unit,
@@ -535,9 +578,9 @@ private fun CategoryDetailGridLayout(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(GRID_COLUMN_COUNT),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
         modifier = modifier.fillMaxSize(),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -594,6 +637,9 @@ private fun CategoryDetailGridLayout(
                 )
             }
         }
+        item {
+            AddNewPersonaGridCard(onAddItemClick = onAddItemClick)
+        }
         items(
             items = state.items,
             key = { item -> item.id },
@@ -603,6 +649,85 @@ private fun CategoryDetailGridLayout(
                 onEditItemClick = onEditItemClick,
             )
         }
+    }
+}
+
+@Composable
+private fun AddNewPersonaGridCard(
+    onAddItemClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+    val cardShape = RoundedCornerShape(tokens.shapes.cardCornerRadius)
+    val borderColor = tokens.palette.primaryGlow.copy(alpha = 0.5f)
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .sizeIn(minWidth = 48.dp, minHeight = 100.dp)
+                .clip(cardShape)
+                .background(tokens.palette.primaryGlow.copy(alpha = 0.08f))
+                .drawBehind {
+                    drawRoundRect(
+                        color = borderColor,
+                        style =
+                            Stroke(
+                                width = 1.5.dp.toPx(),
+                                pathEffect =
+                                    PathEffect.dashPathEffect(
+                                        floatArrayOf(DASH_ON_INTERVAL, DASH_OFF_INTERVAL),
+                                        0f,
+                                    ),
+                                cap = StrokeCap.Round,
+                            ),
+                        cornerRadius = CornerRadius(tokens.shapes.cardCornerRadius.toPx()),
+                    )
+                }.clickable(
+                    role = Role.Button,
+                    onClick = onAddItemClick,
+                ).semantics(mergeDescendants = true) {
+                    contentDescription = "Add new persona"
+                    role = Role.Button
+                }.padding(tokens.spacing.small),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(36.dp)
+                    .background(
+                        brush =
+                            Brush.linearGradient(
+                                listOf(tokens.palette.primaryGlow, tokens.palette.contrastAccent),
+                            ),
+                        shape = CircleShape,
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = tokens.palette.textStrong,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
+        Text(
+            text = "Add New Persona",
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Tap to evaluate or generate with AI",
+            color = tokens.palette.textMuted,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -626,10 +751,12 @@ private fun CategoryDetailGridCard(
 ) {
     JuzgonCollectionGridCard(
         name = item.id,
+        rank = item.rank,
         tierLabel = item.tierLabel,
         scoreText = item.averageScoreText,
         onClick = { onEditItemClick(item.id) },
         onFavoriteClick = {},
+        radarValues = item.radarValues,
         attributes = item.gridAttributes,
         image = { CategoryDetailItemVisual(item = item) },
     )
@@ -1032,6 +1159,7 @@ private fun ProfileSelector(
     activeProfileLabel: String?,
     onProfileSelected: (String?) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     Column {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1039,10 +1167,25 @@ private fun ProfileSelector(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
         ) {
             profiles.forEach { profile ->
+                val isSelected = profile.id == activeProfileId
                 FilterChip(
-                    selected = profile.id == activeProfileId,
+                    selected = isSelected,
                     onClick = { onProfileSelected(profile.id) },
                     label = { Text(profile.name) },
+                    colors =
+                        FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = tokens.palette.secondaryGlow,
+                            selectedLabelColor = tokens.palette.textStrong,
+                            containerColor = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                            labelColor = tokens.palette.textMuted,
+                        ),
+                    border =
+                        FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = if (isSelected) tokens.palette.primaryGlowStrong else Color.Transparent,
+                        ),
+                    shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
                     modifier =
                         Modifier
                             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
@@ -1055,7 +1198,9 @@ private fun ProfileSelector(
         if (activeProfileLabel != null) {
             Text(
                 text = activeProfileLabel,
+                color = tokens.palette.ratingAccent,
                 style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
