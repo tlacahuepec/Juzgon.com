@@ -2,7 +2,12 @@
 
 package com.juzgon.feature.item
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
@@ -15,6 +20,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.AttributeType
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -69,7 +76,7 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Persona Attributes").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Photo").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("content://images/roadster").assertDoesNotExist()
     }
@@ -111,7 +118,7 @@ class ItemDetailScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Persona Attributes").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Details").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Very fast car").performScrollTo().assertIsDisplayed()
     }
@@ -635,11 +642,89 @@ class ItemDetailScreenTest {
     }
 
     @Test
-    fun barsViewBottomNavBarIsIntegrated() {
+    fun barsViewDoesNotDisplayBottomNav() {
         setContent(loadedState().copy(viewMode = ItemDetailViewMode.BARS))
 
-        composeRule.onNodeWithText("Home").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Collection").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Home").assertDoesNotExist()
+        composeRule.onNodeWithText("Collection").assertDoesNotExist()
+    }
+
+    @Test
+    fun metadataCardDisplaysNonNumericAttributeValues() {
+        setContent(
+            loadedState().copy(
+                attributeValues =
+                    listOf(
+                        ItemDetailAttributeValue(
+                            label = "Team",
+                            value = "Red Bull Racing",
+                            type = AttributeType.NOTES,
+                        ),
+                        ItemDetailAttributeValue(
+                            label = "Nationality",
+                            value = "NL",
+                            type = AttributeType.NATIONALITY,
+                            displayValue = "Dutch 🇳🇱",
+                        ),
+                        ItemDetailAttributeValue(
+                            label = "Birth Date",
+                            value = "1997-09-30",
+                            type = AttributeType.DATE,
+                            displayValue = "1997-09-30",
+                            ageText = "Age: 28",
+                        ),
+                    ),
+            ),
+        )
+
+        composeRule.onNodeWithText("Persona Attributes").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Team").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Red Bull Racing").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Nationality").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Dutch 🇳🇱").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Birth Date").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("1997-09-30").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun radarAndBarsViewTogglePreservesScrollPosition() {
+        var currentMode by mutableStateOf(ItemDetailViewMode.DIAMOND)
+        lateinit var testScrollState: ScrollState
+        composeRule.setContent {
+            MaterialTheme {
+                testScrollState = rememberScrollState()
+                ItemDetailScreen(
+                    state =
+                        loadedState().copy(
+                            viewMode = currentMode,
+                            attributeValues =
+                                listOf(
+                                    ItemDetailAttributeValue(
+                                        label = "Team",
+                                        value = "Red Bull Racing",
+                                        type = AttributeType.NOTES,
+                                    ),
+                                ),
+                        ),
+                    onBackClick = {},
+                    onEditClick = {},
+                    onViewModeChanged = { currentMode = it },
+                    scrollState = testScrollState,
+                )
+            }
+        }
+
+        composeRule.runOnIdle {
+            runBlocking { testScrollState.scrollTo(50) }
+        }
+        assertEquals(50, testScrollState.value)
+
+        composeRule.runOnIdle {
+            currentMode = ItemDetailViewMode.BARS
+        }
+        composeRule.runOnIdle {
+            assertEquals(50, testScrollState.value)
+        }
     }
 
     @Test

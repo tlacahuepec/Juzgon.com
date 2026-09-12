@@ -590,6 +590,48 @@ class JuzgonNavigationTest {
         }
     }
 
+    @Test
+    fun itemDetailBackReturnsToCategoryDetail() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, onOpenCategory, _ ->
+                        Button(onClick = { onOpenCategory("Formula 1") }) {
+                            Text("Open category")
+                        }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                    categoryDetailContent = { categoryName, _, _, onItemClick, _, _, _ ->
+                        Button(onClick = { onItemClick("Max Verstappen", null) }) {
+                            Text("Detail route $categoryName")
+                        }
+                    },
+                    itemDetailContent = { itemId, categoryName, _, onBackClick, _, _ ->
+                        Button(onClick = onBackClick) {
+                            Text("Back from $itemId in $categoryName")
+                        }
+                    },
+                    itemFormContent = { _, _, _, _, _, _ -> Text("Form") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open category").performClick()
+        composeRule.onNodeWithText("Detail route Formula 1").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.ITEM_DETAIL, navController.currentDestination?.route)
+        }
+
+        composeRule.onNodeWithText("Back from Max Verstappen in Formula 1").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATEGORY_DETAIL, navController.currentDestination?.route)
+        }
+    }
+
     @Composable
     private fun rememberTestNavController(): TestNavHostController {
         val context = LocalContext.current
