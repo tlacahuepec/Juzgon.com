@@ -66,6 +66,9 @@ class CatalogsViewModel
                                                     items.map { it.aggregateScore }.average()
                                                 }
                                             category to avg
+                                        }.catch { throwable ->
+                                            Timber.w(throwable, "Failed to load ranked items for ${category.name}")
+                                            emit(category to null)
                                         }
                                 }
                             combine(itemFlows) { it.toList() }
@@ -101,7 +104,7 @@ class CatalogsViewModel
         }
 
         fun onTypeFilterSelected(type: CatalogType?) {
-            selectedType.value = type
+            selectedType.value = if (selectedType.value == type) null else type
         }
 
         fun onRetry() {

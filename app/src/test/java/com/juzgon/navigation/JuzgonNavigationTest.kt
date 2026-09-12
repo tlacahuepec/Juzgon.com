@@ -523,6 +523,44 @@ class JuzgonNavigationTest {
     }
 
     @Test
+    fun createCategoryCanReturnCleanlyToCatalogsWhenOpenedFromCatalogs() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, _, _ -> Text("Home route") },
+                    catalogsContent = { _, onCreateCategory ->
+                        Button(onClick = onCreateCategory) {
+                            Text("Create from Catalogs")
+                        }
+                    },
+                    createCategoryContent = { onBack, onSaveCompleted ->
+                        Button(onClick = onSaveCompleted) {
+                            Text("Save Category")
+                        }
+                    },
+                )
+            }
+        }
+
+        composeRule.runOnIdle {
+            navController.navigate(JuzgonRoutes.CATALOGS)
+        }
+        composeRule.onNodeWithText("Create from Catalogs").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CREATE_CATEGORY, navController.currentDestination?.route)
+        }
+
+        composeRule.onNodeWithText("Save Category").performClick()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CATALOGS, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
     fun homeRouteCanOpenItemDetailRoute() {
         lateinit var navController: TestNavHostController
 

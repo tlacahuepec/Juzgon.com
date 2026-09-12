@@ -220,6 +220,101 @@ class CatalogsViewModelTest {
             }
         }
 
+    @Test
+    fun typeFilterTogglesOffWhenAlreadySelectedChipIsClicked() =
+        runTest {
+            fakeCategoryRepository.categories.value = listOf(f1Category, scifiCategory, coffeeCategory)
+
+            viewModel.state.test {
+                val initial = awaitItem()
+                assertEquals(3, initial.categories.size)
+
+                // Select PRODUCT
+                viewModel.onTypeFilterSelected(CatalogType.PRODUCT)
+                val filtered = awaitItem()
+                assertEquals(CatalogType.PRODUCT, filtered.selectedType)
+                assertEquals(1, filtered.categories.size)
+
+                // Click PRODUCT again -> toggles off to All (null)
+                viewModel.onTypeFilterSelected(CatalogType.PRODUCT)
+                val toggledOff = awaitItem()
+                assertNull(toggledOff.selectedType)
+                assertEquals(3, toggledOff.categories.size)
+            }
+        }
+
+    @Test
+    fun searchHandlesRegexSpecialCharactersEmojisAndPunctuation() =
+        runTest {
+            val specialCategory = Category(name = "Sci-Fi [4K] (v2.0) *", attributes = emptyList())
+            val emojiCategory = Category(name = "Specialty Coffee ☕ & Matcha 🍵", attributes = emptyList())
+            fakeCategoryRepository.categories.value = listOf(specialCategory, emojiCategory)
+
+            viewModel.state.test {
+                val initial = awaitItem()
+                assertEquals(2, initial.categories.size)
+
+                // Substring with brackets and asterisks
+                viewModel.onSearchQueryChanged("[4K]")
+                val bracketSearch = awaitItem()
+                assertEquals(1, bracketSearch.categories.size)
+                assertEquals("Sci-Fi [4K] (v2.0) *", bracketSearch.categories[0].name)
+
+                // Substring with parentheses and dots
+                viewModel.onSearchQueryChanged("(v2.0)")
+                val parenSearch = awaitItem()
+                assertEquals(1, parenSearch.categories.size)
+                assertEquals("Sci-Fi [4K] (v2.0) *", parenSearch.categories[0].name)
+
+                // Substring with emoji
+                viewModel.onSearchQueryChanged("🍵")
+                val emojiSearch = awaitItem()
+                assertEquals(1, emojiSearch.categories.size)
+                assertEquals("Specialty Coffee ☕ & Matcha 🍵", emojiSearch.categories[0].name)
+
+                // Substring with leading/trailing spaces
+                viewModel.onSearchQueryChanged("   Coffee   ")
+                val spaceSearch = awaitItem()
+                assertEquals(1, spaceSearch.categories.size)
+                assertEquals("Specialty Coffee ☕ & Matcha 🍵", spaceSearch.categories[0].name)
+            }
+        }
+
+    @Test
+    fun singleCategoryRankedItemsFailureGracefullyFallsBackToUnrated() =
+        runTest {
+            val f1Item =
+                RankedRatedItem(
+                    item = RatedItem(id = "Max Verstappen", scores = listOf(ScoreEntry(Attribute("speed"), 10))),
+                    aggregateScore = 9.8,
+                )
+
+            fakeCategoryRepository.categories.value = listOf(f1Category, scifiCategory)
+            fakeRatedItemRepository.rankedItemsByCat =
+                mapOf(
+                    "Formula 1 Drivers" to flowOf(listOf(f1Item)),
+                    "Sci-Fi Movies" to flow { throw IllegalStateException("Database read failure") },
+                )
+
+            val vm = CatalogsViewModel(fakeCategoryRepository, fakeRatedItemRepository)
+
+            vm.state.test {
+                var state = awaitItem()
+                while (state.categories.isEmpty() || state.categories[0].averageRating == null) {
+                    state = awaitItem()
+                }
+
+                assertNull(state.errorMessage)
+                assertEquals(2, state.categories.size)
+                val f1Card = state.categories.first { it.name == "Formula 1 Drivers" }
+                val scifiCard = state.categories.first { it.name == "Sci-Fi Movies" }
+
+                assertEquals("★ 9.8", f1Card.averageRatingText)
+                assertNull(scifiCard.averageRating)
+                assertEquals("★ —", scifiCard.averageRatingText)
+            }
+        }
+
     private class FakeCategoryRepository : CategoryRepository {
         val categories = MutableStateFlow(emptyList<Category>())
 

@@ -11,7 +11,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.juzgon.domain.CatalogType
+import com.juzgon.domain.Category
+import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.ui.theme.JuzgonTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -301,5 +306,84 @@ class CatalogsScreenTest {
         composeRule.onNodeWithText("Retry").performClick()
 
         assertTrue(retryClicked)
+    }
+
+    @Test
+    fun searchFieldClearButtonClearsQuery() {
+        var queryChanged = "Formula"
+
+        composeRule.setContent {
+            MaterialTheme {
+                CatalogsScreen(
+                    state =
+                        CatalogsUiState(
+                            searchQuery = "Formula",
+                            categories =
+                                listOf(
+                                    CatalogCardUiModel(name = "Formula 1 Drivers", itemCount = 20),
+                                ),
+                        ),
+                    actions =
+                        CatalogsScreenActions(
+                            onSearchQueryChange = { queryChanged = it },
+                            onFilterSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Clear search").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Clear search").performClick()
+
+        assertEquals("", queryChanged)
+    }
+
+    @Test
+    fun catalogsRouteCollectsNavigationEvents() {
+        var navigatedCategory: String? = null
+        var navigatedCreate = false
+
+        val fakeRepo = FakeCategoryRepository()
+        fakeRepo.categories.value = listOf(Category(name = "Formula 1", attributes = emptyList()))
+        val vm = CatalogsViewModel(fakeRepo)
+
+        composeRule.setContent {
+            MaterialTheme {
+                CatalogsRoute(
+                    onNavigateToCategory = { navigatedCategory = it },
+                    onNavigateToCreateCategory = { navigatedCreate = true },
+                    viewModel = vm,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Create category").performClick()
+        composeRule.waitForIdle()
+        assertTrue(navigatedCreate)
+
+        composeRule.onNodeWithText("Formula 1").performClick()
+        composeRule.waitForIdle()
+        assertEquals("Formula 1", navigatedCategory)
+    }
+
+    private class FakeCategoryRepository : CategoryRepository {
+        val categories = MutableStateFlow(emptyList<Category>())
+
+        override fun observeCategories(): Flow<List<Category>> = categories
+
+        override fun observeCategory(name: String): Flow<Category?> = flowOf(null)
+
+        override suspend fun saveCategory(category: Category) = Unit
+
+        override suspend fun renameCategory(
+            originalName: String,
+            category: Category,
+            renamedAttributeIds: Map<String, String>,
+        ) = Unit
+
+        override suspend fun deleteCategory(name: String) = Unit
     }
 }

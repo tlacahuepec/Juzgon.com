@@ -343,16 +343,16 @@ internal fun JuzgonNavHost(
             settingsContent(returnBack, openGeminiSettings)
         }
         composable(JuzgonRoutes.CREATE_CATEGORY) {
-            val returnToHome = {
-                if (!navController.popBackStack(JuzgonRoutes.HOME, inclusive = false)) {
+            val returnBack = {
+                if (!navController.navigateUp()) {
                     navController.navigate(JuzgonRoutes.HOME) {
                         launchSingleTop = true
                     }
                 }
             }
             createCategoryContent(
-                returnToHome,
-                returnToHome,
+                returnBack,
+                returnBack,
             )
         }
         composable(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
