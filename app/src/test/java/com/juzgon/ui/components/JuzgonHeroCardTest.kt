@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -179,5 +180,43 @@ class JuzgonHeroCardTest {
         }
 
         composeRule.onNodeWithText("RADAR_CANVAS").assertIsDisplayed()
+    }
+
+    @Test
+    fun cardMeetsMinimum48dpTouchTarget() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonHeroCard(
+                    title = "Featured",
+                    tierLabel = "A-Tier",
+                    scoreText = "8.0/10",
+                    onClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("Featured, A-Tier 8.0/10")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun decorativeGlowRingNotAnnouncedSeparately() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonHeroCard(
+                    title = "Blade Runner",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.5/10",
+                    onClick = {},
+                    image = { Text("AVATAR") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Blade Runner glow ring").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("glow ring", substring = true).assertDoesNotExist()
     }
 }

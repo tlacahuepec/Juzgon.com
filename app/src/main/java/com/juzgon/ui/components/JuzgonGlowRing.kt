@@ -25,32 +25,44 @@ private const val MIDDLE_GLOW_ALPHA = 0.5f
 private const val OUTER_WIDTH_FACTOR = 3f
 private const val MIDDLE_WIDTH_FACTOR = 2f
 
+@Suppress("LongParameterList")
 @Composable
 internal fun JuzgonGlowRing(
-    contentDescription: String,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
     ringThickness: Dp = DefaultRingThickness,
     glowColors: List<Color>? = null,
+    glowEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colors = glowColors ?: JuzgonVisualTheme.tokens.gradients.glowBorder
-    val primaryColor = colors.first()
+    val primaryColor = colors.firstOrNull() ?: Color.Transparent
     val accentColor = colors.getOrElse(1) { primaryColor }
 
-    val glowSpread = ringThickness * GLOW_SPREAD_RATIO
-    val totalPadding = ringThickness + glowSpread
+    val actualThickness = if (glowEnabled) ringThickness else 0.dp
+    val glowSpread = actualThickness * GLOW_SPREAD_RATIO
+    val totalPadding = actualThickness + glowSpread
+
+    val semanticsModifier =
+        if (!contentDescription.isNullOrBlank()) {
+            Modifier.semantics { this.contentDescription = contentDescription }
+        } else {
+            Modifier
+        }
 
     Box(
         modifier =
             Modifier
                 .sizeIn(minWidth = MinTouchTarget, minHeight = MinTouchTarget)
                 .then(modifier)
-                .semantics { this.contentDescription = contentDescription }
+                .then(semanticsModifier)
                 .drawBehind {
+                    if (!glowEnabled || actualThickness <= 0.dp) return@drawBehind
+
                     val center = this.center
                     val radius = (size.minDimension / 2f)
 
-                    val outerStrokeWidth = ringThickness.toPx() * OUTER_WIDTH_FACTOR
+                    val outerStrokeWidth = actualThickness.toPx() * OUTER_WIDTH_FACTOR
                     drawCircle(
                         color = primaryColor.copy(alpha = OUTER_GLOW_ALPHA),
                         radius = radius,
@@ -58,7 +70,7 @@ internal fun JuzgonGlowRing(
                         style = Stroke(width = outerStrokeWidth),
                     )
 
-                    val middleStrokeWidth = ringThickness.toPx() * MIDDLE_WIDTH_FACTOR
+                    val middleStrokeWidth = actualThickness.toPx() * MIDDLE_WIDTH_FACTOR
                     drawCircle(
                         color = accentColor.copy(alpha = MIDDLE_GLOW_ALPHA),
                         radius = radius,
@@ -66,7 +78,7 @@ internal fun JuzgonGlowRing(
                         style = Stroke(width = middleStrokeWidth),
                     )
 
-                    val innerStrokeWidth = ringThickness.toPx()
+                    val innerStrokeWidth = actualThickness.toPx()
                     drawCircle(
                         color = primaryColor,
                         radius = radius,
