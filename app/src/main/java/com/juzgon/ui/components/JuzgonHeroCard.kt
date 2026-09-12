@@ -5,7 +5,10 @@ package com.juzgon.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +37,8 @@ internal fun JuzgonHeroCard(
     scoreText: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    categoryTag: String? = null,
+    radarPreview: (@Composable () -> Unit)? = null,
     image: @Composable () -> Unit,
 ) {
     val tokens = JuzgonVisualTheme.tokens
@@ -57,11 +62,9 @@ internal fun JuzgonHeroCard(
             image()
         }
 
-        Text(
-            text = title,
-            color = tokens.palette.textStrong,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+        HeroCardTitle(
+            title = title,
+            categoryTag = categoryTag,
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
@@ -76,5 +79,42 @@ internal fun JuzgonHeroCard(
                     .align(Alignment.BottomStart)
                     .padding(tokens.spacing.large),
         )
+
+        if (radarPreview != null) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(tokens.spacing.large),
+            ) {
+                radarPreview()
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroCardTitle(
+    title: String,
+    categoryTag: String?,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+    Column(modifier = modifier) {
+        Text(
+            text = title,
+            color = tokens.palette.textStrong,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        if (!categoryTag.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
+            Text(
+                text = categoryTag,
+                color = tokens.palette.textMuted,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }

@@ -14,6 +14,11 @@ sealed interface HomeNavigationEvent {
     data class OpenCategory(
         val categoryName: String,
     ) : HomeNavigationEvent
+
+    data class OpenItem(
+        val categoryName: String,
+        val itemId: String,
+    ) : HomeNavigationEvent
 }
 
 data class HomeCategoryUiModel(
@@ -33,6 +38,8 @@ data class HomeHeroUiModel(
     val tierLabel: String,
     val scoreText: String,
     val categoryName: String,
+    val itemId: String = name,
+    val radarPoints: List<com.juzgon.ui.components.RadarChartPoint> = emptyList(),
 )
 
 data class HomeTrendingItemUiModel(
@@ -40,6 +47,7 @@ data class HomeTrendingItemUiModel(
     val scoreText: String,
     val contentDescription: String,
     val categoryName: String,
+    val itemId: String = name,
 )
 
 data class HomeScreenActions(
@@ -48,6 +56,7 @@ data class HomeScreenActions(
     val onCreateCategoryClick: () -> Unit,
     val onCategoryClick: (String) -> Unit,
     val onRetry: () -> Unit,
+    val onNavigateToItem: (String, String) -> Unit = { _, _ -> },
     val onExportClick: () -> Unit = {},
     val onAboutClick: () -> Unit = {},
     val onAiSettingsClick: () -> Unit = {},

@@ -177,12 +177,12 @@ internal fun JuzgonNavHost(
     homeContent: @Composable (
         onCreateCategory: () -> Unit,
         onOpenCategory: (String) -> Unit,
-        onAiSettings: () -> Unit,
-    ) -> Unit = { onCreateCategory, onOpenCategory, onAiSettings ->
+        onOpenItem: (String, String) -> Unit,
+    ) -> Unit = { onCreateCategory, onOpenCategory, onOpenItem ->
         HomeRoute(
             onNavigateToCreateCategory = onCreateCategory,
             onNavigateToCategory = onOpenCategory,
-            onNavigateToAiSettings = onAiSettings,
+            onNavigateToItem = onOpenItem,
         )
     },
     catalogsContent: @Composable (
@@ -303,8 +303,8 @@ internal fun JuzgonNavHost(
                         launchSingleTop = true
                     }
                 },
-                {
-                    navController.navigate(JuzgonRoutes.GEMINI_KEY_SETTINGS) {
+                { categoryName, itemId ->
+                    navController.navigate(JuzgonRoutes.itemDetail(categoryName, itemId)) {
                         launchSingleTop = true
                     }
                 },
