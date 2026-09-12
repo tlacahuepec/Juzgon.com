@@ -74,4 +74,30 @@ class ArchitectureDocTest {
             readme.contains("docs/architecture.md"),
         )
     }
+
+    @Test
+    fun `architecture document covers top level navigation routes`() {
+        val content = File(projectRoot, "docs/architecture.md").readText()
+        assertTrue(
+            "Document must reference top-level routes CATALOGS and SETTINGS",
+            content.contains("CATALOGS") &&
+                content.contains("catalogs") &&
+                content.contains("SETTINGS") &&
+                content.contains("settings"),
+        )
+    }
+
+    @Test
+    fun `architecture document and readme link to prototype`() {
+        val arch = File(projectRoot, "docs/architecture.md").readText()
+        val readme = File(projectRoot, "README.md").readText()
+        assertTrue(
+            "docs/architecture.md must link to prototype",
+            arch.contains("docs/design/prototype"),
+        )
+        assertTrue(
+            "README.md must link to prototype",
+            readme.contains("docs/design/prototype"),
+        )
+    }
 }

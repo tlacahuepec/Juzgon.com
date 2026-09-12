@@ -176,20 +176,28 @@ The user interface is crafted using Jetpack Compose with Material 3 foundations 
 
 ### Navigation Architecture
 
-The navigation graph is centralized in [`JuzgonNavigation.kt`](../app/src/main/java/com/juzgon/navigation/JuzgonNavigation.kt):
+The navigation graph is centralized in [`JuzgonNavigation.kt`](../app/src/main/java/com/juzgon/navigation/JuzgonNavigation.kt). The top-level shell uses a bottom navigation bar (`JuzgonBottomNavBar`) decoupled into three primary destinations (`Discover`, `Catalogs`, and `Settings`), with auto-hiding behavior on deep sub-screens:
 
 | Route Constant | Path Pattern | Description |
 |---|---|---|
-| `HOME` | `home` | Discovery dashboard & category collections |
+| `HOME` | `home` | Discovery dashboard with Spotlight Hero card, 3-stat overview & collections |
+| `CATALOGS` | `catalogs` | Dedicated catalog collection management with search & category type filters |
+| `SETTINGS` | `settings` | System preferences, database backup/restore & Gemini API key configuration |
+| `GEMINI_KEY_SETTINGS`| `settings/gemini-key` | Dedicated Gemini API key input and validation screen |
 | `CREATE_CATEGORY` | `category/create` | New category definition form |
 | `EDIT_CATEGORY` | `category/edit/{categoryName}` | Edit existing category & attributes |
-| `CATEGORY_DETAIL` | `category/{categoryName}` | Ranked items list, filters, profile picker |
-| `CREATE_ITEM` | `item/create/{categoryName}` | Create item and score attributes |
-| `EDIT_ITEM` | `item/edit/{categoryName}/{itemId}` | Edit item scores and metadata |
-| `ITEM_DETAIL` | `item/detail/{categoryName}/{itemId}` | Item profile, radar chart, score breakdown |
+| `CATEGORY_DETAIL` | `category/{categoryName}` | Ranked items list, filters, profile picker & add persona card |
+| `CREATE_ITEM` | `item/create/{categoryName}` | Create item and score attributes with AI auto-fill |
+| `EDIT_ITEM` | `item/edit/{categoryName}/{itemId}` | Edit item scores and metadata with gradient sliders |
+| `ITEM_DETAIL` | `item/detail/{categoryName}/{itemId}` | Profile hero, interactive radar chart, score bars & metadata card |
 | `SCORE_PROFILES` | `score-profiles/{categoryName}` | Manage category scoring profiles |
 | `SCORE_PROFILE_FORM`| `score-profile/edit/{categoryName}` | Add/edit attributes in a score profile |
-| `GEMINI_KEY_SETTINGS`| `settings/gemini-key` | Manage secure Gemini API key |
+
+### Interactive Prototype & Redesign Specification
+
+For interactive prototypes, component demos, and high-fidelity mockups of the luminous interface, consult:
+- **Interactive Browser Prototype**: [`docs/design/prototype/README.md`](design/prototype/README.md) and [`docs/design/prototype/prototype.html`](design/prototype/prototype.html).
+- **Luminous UI Redesign Specification**: [`docs/design/luminous-ui-redesign-specification.md`](design/luminous-ui-redesign-specification.md).
 
 ---
 
