@@ -80,6 +80,7 @@ internal fun JuzgonCollectionGridCard(
     Column(
         modifier =
             modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 .clip(cardShape)
                 .background(tokens.palette.elevatedBackground)
                 .clickable(onClick = onClick)
@@ -255,12 +256,13 @@ private fun GridCardFavoriteButton(onFavoriteClick: () -> Unit) {
     ) {
         IconButton(
             onClick = onFavoriteClick,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Icon(
                 imageVector = Icons.Outlined.FavoriteBorder,
                 contentDescription = "Toggle favorite",
                 tint = tokens.palette.textMuted,
+                modifier = Modifier.size(24.dp),
             )
         }
     }

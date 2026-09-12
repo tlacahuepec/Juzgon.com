@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -90,8 +91,8 @@ class JuzgonSegmentedFilterTest {
             }
         }
 
-        composeRule.onNodeWithText("A").assertHeightIsAtLeast(48.dp)
-        composeRule.onNodeWithText("B").assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithText("A").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        composeRule.onNodeWithText("B").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
     }
 
     @Test

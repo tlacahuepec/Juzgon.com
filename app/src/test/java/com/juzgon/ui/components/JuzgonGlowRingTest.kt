@@ -117,4 +117,37 @@ class JuzgonGlowRingTest {
 
         composeRule.onNodeWithContentDescription("Profile avatar").assertIsDisplayed()
     }
+
+    @Test
+    fun glowRingWithoutContentDescriptionIsDecorativeAndNotAnnounced() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonGlowRing {
+                    Text("AvatarContent")
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("AvatarContent").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("AvatarContent").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Avatar").assertDoesNotExist()
+    }
+
+    @Test
+    fun glowRingDegradesGracefullyWhenGlowDisabled() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonGlowRing(
+                    contentDescription = "Degraded ring",
+                    glowEnabled = false,
+                ) {
+                    Text("DegradedContent")
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("DegradedContent").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Degraded ring").assertWidthIsAtLeast(48.dp)
+        composeRule.onNodeWithContentDescription("Degraded ring").assertHeightIsAtLeast(48.dp)
+    }
 }

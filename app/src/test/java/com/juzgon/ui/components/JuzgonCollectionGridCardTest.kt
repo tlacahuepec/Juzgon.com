@@ -4,11 +4,14 @@ package com.juzgon.ui.components
 
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.juzgon.ui.theme.JuzgonTheme
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -255,5 +258,47 @@ class JuzgonCollectionGridCardTest {
         }
 
         composeRule.onNodeWithText("#44").assertIsDisplayed()
+    }
+
+    @Test
+    fun cardMeetsMinimum48dpTouchTarget() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonCollectionGridCard(
+                    name = "Luna",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.3/10",
+                    onClick = {},
+                    onFavoriteClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("Luna, S-Tier 9.3/10")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun favoriteButtonMeetsMinimum48dpTouchTarget() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                JuzgonCollectionGridCard(
+                    name = "Luna",
+                    tierLabel = "S-Tier",
+                    scoreText = "9.3/10",
+                    onClick = {},
+                    onFavoriteClick = {},
+                    image = { Text("IMG") },
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("Toggle favorite")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
     }
 }
