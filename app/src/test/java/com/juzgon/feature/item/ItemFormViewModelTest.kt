@@ -1469,4 +1469,28 @@ class ItemFormViewModelTest {
             // For now we test the happy path is already covered; this documents the error path exists
             assertNotNull(currentState)
         }
+
+    @Test
+    fun onEnrichWithAiClick_triggersEnrichmentCoordinator() =
+        runTest {
+            fakeApiKeyStore.savedKey = "test-key"
+            val birthDateAttr = Attribute("People/Birth Date", type = AttributeType.DATE, isRequired = false)
+            val personCategory =
+                Category(
+                    name = "People",
+                    description = "Notable people",
+                    type = CatalogType.PERSON,
+                    attributes = listOf(birthDateAttr),
+                )
+            categoryRepository.categories.value = listOf(personCategory)
+            viewModel.loadCategory("People")
+            advanceUntilIdle()
+
+            viewModel.onTitleChanged("Alan Turing")
+            viewModel.onEnrichWithAiClick()
+            advanceUntilIdle()
+
+            assertEquals("People/Birth Date", fakeProvider.lastRequest?.targetAttributeKey)
+            assertEquals("Alan Turing", fakeProvider.lastRequest?.itemName)
+        }
 }

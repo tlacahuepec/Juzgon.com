@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
+import com.juzgon.domain.enrichment.EnrichmentSupportRules
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
@@ -411,6 +412,25 @@ class ItemFormViewModel
                 category = category,
                 currentState = current,
                 targetAttributeId = attributeId,
+            ) { sheetState ->
+                mutableState.update { it.copy(enrichmentSheet = sheetState) }
+            }
+        }
+
+        fun onEnrichWithAiClick() {
+            val category = loadedCategory ?: return
+            val current = mutableState.value
+
+            val targetAttribute =
+                current.values.firstOrNull { EnrichmentSupportRules.isSupported(it.attribute) }
+                    ?: current.values.firstOrNull { it.attribute.type == AttributeType.DATE }
+                    ?: current.values.firstOrNull()
+                    ?: return
+
+            enrichmentCoordinator.requestSuggestion(
+                category = category,
+                currentState = current,
+                targetAttributeId = targetAttribute.attribute.id,
             ) { sheetState ->
                 mutableState.update { it.copy(enrichmentSheet = sheetState) }
             }
