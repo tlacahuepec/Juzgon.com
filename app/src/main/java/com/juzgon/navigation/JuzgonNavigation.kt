@@ -3,6 +3,7 @@
 package com.juzgon.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -131,6 +132,7 @@ fun JuzgonApp(
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (isTopLevelRoute) {
                 JuzgonBottomNavBar(
@@ -164,7 +166,7 @@ fun JuzgonApp(
     ) { innerPadding ->
         navHost(
             navController,
-            modifier.padding(innerPadding),
+            modifier.padding(bottom = innerPadding.calculateBottomPadding()),
         )
     }
 }

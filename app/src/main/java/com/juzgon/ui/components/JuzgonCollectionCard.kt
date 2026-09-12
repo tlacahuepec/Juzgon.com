@@ -2,6 +2,7 @@
 
 package com.juzgon.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,7 @@ internal fun JuzgonCollectionCard(
         color = tokens.palette.elevatedBackground,
         contentColor = tokens.palette.textStrong,
         shape = shape,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         modifier =
             modifier
                 .fillMaxWidth()
