@@ -63,7 +63,6 @@ fun HomeRoute(
     onNavigateToCreateCategory: () -> Unit,
     onNavigateToCategory: (String) -> Unit,
     onNavigateToItem: (String, String) -> Unit = { _, _ -> },
-    onNavigateToAiSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -87,8 +86,7 @@ fun HomeRoute(
                 onCreateCategoryClick = viewModel::onCreateCategoryClick,
                 onCategoryClick = viewModel::onCategoryClick,
                 onRetry = viewModel::onRetry,
-                onNavigateToItem = onNavigateToItem,
-                onAiSettingsClick = onNavigateToAiSettings,
+                onNavigateToItem = viewModel::onItemClick,
             ),
     )
 }
@@ -560,7 +558,7 @@ private fun HomeTrendingRow(
             horizontalArrangement = Arrangement.spacedBy(tokens.spacing.small),
             contentPadding = PaddingValues(horizontal = tokens.spacing.extraSmall),
         ) {
-            items(items = items, key = { it.name }) { item ->
+            items(items = items, key = { "${it.categoryName}:${it.itemId}" }) { item ->
                 JuzgonItemThumbnail(
                     scoreText = item.scoreText,
                     contentDescription = item.contentDescription,

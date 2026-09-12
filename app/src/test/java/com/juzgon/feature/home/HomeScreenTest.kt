@@ -111,9 +111,6 @@ class HomeScreenTest {
     fun homeVisualSummaryShowsDerivedStatsAndKeepsActionsReachable() {
         var createClicked = false
         var openedCategory = ""
-        var exportClicked = false
-        var aboutClicked = false
-        var settingsClicked = false
 
         composeRule.setContent {
             JuzgonTheme(darkTheme = true, dynamicColor = false) {
@@ -139,9 +136,6 @@ class HomeScreenTest {
                             onCreateCategoryClick = { createClicked = true },
                             onCategoryClick = { openedCategory = it },
                             onRetry = {},
-                            onExportClick = { exportClicked = true },
-                            onAboutClick = { aboutClicked = true },
-                            onAiSettingsClick = { settingsClicked = true },
                         ),
                 )
             }
@@ -658,6 +652,47 @@ class HomeScreenTest {
 
         composeRule.onNodeWithText("No categories yet").assertIsDisplayed()
         composeRule.onNodeWithText("Create category").assertIsDisplayed()
+    }
+
+    @Test
+    fun trendingRowWithSameItemNameInDifferentCategoriesRendersWithoutCrash() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            trendingItems =
+                                listOf(
+                                    HomeTrendingItemUiModel(
+                                        name = "Dune",
+                                        itemId = "dune",
+                                        scoreText = "9.5/10",
+                                        contentDescription = "Dune in Books, score 9.5/10",
+                                        categoryName = "Books",
+                                    ),
+                                    HomeTrendingItemUiModel(
+                                        name = "Dune",
+                                        itemId = "dune",
+                                        scoreText = "9.2/10",
+                                        contentDescription = "Dune in Movies, score 9.2/10",
+                                        categoryName = "Movies",
+                                    ),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Dune in Books, score 9.5/10").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Dune in Movies, score 9.2/10").assertIsDisplayed()
     }
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {

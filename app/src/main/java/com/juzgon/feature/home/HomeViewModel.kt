@@ -61,7 +61,11 @@ class HomeViewModel
                         combine(itemFlows) { arrays ->
                             arrays
                                 .flatMap { it.toList() }
-                                .sortedByDescending { it.first.aggregateScore }
+                                .sortedWith(
+                                    compareByDescending<Pair<RankedRatedItem, String>> { it.first.aggregateScore }
+                                        .thenBy { it.first.item.id }
+                                        .thenBy { it.second },
+                                )
                         }
                     }
                 }.catch { emit(emptyList()) }
@@ -117,6 +121,15 @@ class HomeViewModel
         fun onCategoryClick(categoryName: String) {
             viewModelScope.launch {
                 mutableNavigationEvents.emit(HomeNavigationEvent.OpenCategory(categoryName))
+            }
+        }
+
+        fun onItemClick(
+            categoryName: String,
+            itemId: String,
+        ) {
+            viewModelScope.launch {
+                mutableNavigationEvents.emit(HomeNavigationEvent.OpenItem(categoryName, itemId))
             }
         }
     }
