@@ -188,3 +188,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+tasks.withType<Test>().configureEach {
+    jvmArgs("-XX:CICompilerCount=2", "-Xmx2048m")
+}

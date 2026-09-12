@@ -1,10 +1,11 @@
-@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions", "MagicNumber")
 
 package com.juzgon.feature.category
 
 import android.content.ContentResolver
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,12 +53,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +94,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValues
+import com.juzgon.ui.components.JuzgonAvatar
 import com.juzgon.ui.components.JuzgonCollectionCard
 import com.juzgon.ui.components.JuzgonCollectionCardMetadata
 import com.juzgon.ui.components.JuzgonCollectionCardMetric
@@ -101,6 +105,7 @@ import com.juzgon.ui.theme.JuzgonVisualTheme
 private const val GRID_COLUMN_COUNT = 2
 private const val DASH_ON_INTERVAL = 12f
 private const val DASH_OFF_INTERVAL = 8f
+private val GlassBorderColor = Color(0x1FFFFFFF)
 
 @Composable
 fun CategoryDetailRoute(
@@ -187,7 +192,9 @@ fun CategoryDetailScreen(
                 title = {
                     Text(
                         text = state.categoryName.ifBlank { "Category" },
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = tokens.palette.textStrong,
                     )
                 },
                 navigationIcon = {
@@ -204,6 +211,7 @@ fun CategoryDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
+                            tint = tokens.palette.textStrong,
                         )
                     }
                 },
@@ -222,6 +230,7 @@ fun CategoryDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = null,
+                                tint = tokens.palette.ratingAccent,
                             )
                         }
                         IconButton(
@@ -237,6 +246,7 @@ fun CategoryDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = null,
+                                tint = tokens.palette.textMuted,
                             )
                         }
                         IconButton(
@@ -252,6 +262,7 @@ fun CategoryDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Delete,
                                 contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
                             )
                         }
                         IconButton(
@@ -267,10 +278,15 @@ fun CategoryDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = null,
+                                tint = tokens.palette.primaryGlow,
                             )
                         }
                     }
                 },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = tokens.palette.baseBackground,
+                    ),
             )
         },
         floatingActionButton = {
@@ -507,6 +523,7 @@ private fun CategoryDetailListLayout(
                 Text(
                     text = state.attributeSummary,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = JuzgonVisualTheme.tokens.palette.primaryGlow,
                 )
                 ViewModeToggle(state = state, onViewModeToggled = onViewModeToggled)
             }
@@ -594,6 +611,7 @@ private fun CategoryDetailGridLayout(
                 Text(
                     text = state.attributeSummary,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = JuzgonVisualTheme.tokens.palette.primaryGlow,
                 )
                 ViewModeToggle(state = state, onViewModeToggled = onViewModeToggled)
             }
@@ -770,24 +788,79 @@ private fun CategoryDetailGridCard(
     )
 }
 
+@Suppress("UnusedParameter")
+@Composable
+private fun categoryChipColors(isSelected: Boolean) =
+    FilterChipDefaults.filterChipColors(
+        selectedContainerColor =
+            JuzgonVisualTheme.tokens.palette.primaryGlow
+                .copy(alpha = 0.2f),
+        selectedLabelColor = JuzgonVisualTheme.tokens.palette.textStrong,
+        containerColor =
+            JuzgonVisualTheme.tokens.palette.panelBackground
+                .copy(alpha = 0.6f),
+        labelColor = JuzgonVisualTheme.tokens.palette.textMuted,
+    )
+
+@Composable
+private fun categoryChipBorder(isSelected: Boolean) =
+    FilterChipDefaults.filterChipBorder(
+        enabled = true,
+        selected = isSelected,
+        borderColor =
+            if (isSelected) {
+                JuzgonVisualTheme.tokens.palette.primaryGlow
+            } else {
+                GlassBorderColor
+            },
+    )
+
 @Composable
 private fun CategoryDetailSearchBar(
     query: String,
     onQueryChanged: (String) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChanged,
-        placeholder = { Text("Search items…") },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+        placeholder = {
+            Text(
+                text = "Search items…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.palette.textMuted,
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = "Search",
+                tint = tokens.palette.primaryGlow,
+            )
+        },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChanged("") }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Clear search",
+                        tint = tokens.palette.textMuted,
+                    )
                 }
             }
         },
         singleLine = true,
+        shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = tokens.palette.panelBackground,
+                unfocusedContainerColor = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                focusedBorderColor = tokens.palette.primaryGlow,
+                unfocusedBorderColor = GlassBorderColor,
+                focusedTextColor = tokens.palette.textStrong,
+                unfocusedTextColor = tokens.palette.textStrong,
+                cursorColor = tokens.palette.primaryGlow,
+            ),
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -800,6 +873,7 @@ private fun AttributeFilterChipRow(
     onFilterCleared: (String) -> Unit,
 ) {
     var activeSheet by remember { mutableStateOf<FilterChipUiModel?>(null) }
+    val tokens = JuzgonVisualTheme.tokens
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -817,6 +891,9 @@ private fun AttributeFilterChipRow(
                     }
                 },
                 label = { Text(chip.activeLabel ?: chip.label) },
+                colors = categoryChipColors(chip.isActive),
+                border = categoryChipBorder(chip.isActive),
+                shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
                 trailingIcon = {
                     if (chip.isActive) {
                         Icon(
@@ -1135,20 +1212,43 @@ private fun FilterOptionRow(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     Surface(
         onClick = onClick,
+        color =
+            if (isSelected) {
+                tokens.palette.primaryGlow.copy(alpha = 0.2f)
+            } else {
+                tokens.palette.panelBackground
+            },
+        shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+        border =
+            if (isSelected) {
+                BorderStroke(1.dp, tokens.palette.primaryGlow)
+            } else {
+                BorderStroke(1.dp, GlassBorderColor)
+            },
         modifier =
             Modifier
                 .fillMaxWidth()
+                .padding(vertical = 4.dp)
                 .sizeIn(minHeight = 48.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(text = label, modifier = Modifier.weight(1f))
+            Text(
+                text = label,
+                color = if (isSelected) tokens.palette.textStrong else tokens.palette.textMuted,
+                modifier = Modifier.weight(1f),
+            )
             if (isSelected) {
-                Icon(Icons.Filled.Check, contentDescription = "Selected")
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = "Selected",
+                    tint = tokens.palette.primaryGlow,
+                )
             }
         }
     }
@@ -1221,16 +1321,21 @@ private fun VisibleRangeChips(
     options: List<CategoryDetailVisibleRange>,
     onRangeSelected: (CategoryDetailVisibleRange) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
         options.forEach { range ->
+            val isSelected = selectedRange == range
             FilterChip(
-                selected = selectedRange == range,
+                selected = isSelected,
                 onClick = { onRangeSelected(range) },
                 label = { Text(range.label()) },
+                colors = categoryChipColors(isSelected),
+                border = categoryChipBorder(isSelected),
+                shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             )
         }
@@ -1264,16 +1369,21 @@ private fun InlineSortChips(
     sortOptions: List<CategoryDetailSortOptionUiModel>,
     onSortOptionSelected: (CategoryDetailSortOption) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
         sortOptions.forEach { sortOption ->
+            val isSelected = selectedOption == sortOption.option
             FilterChip(
-                selected = selectedOption == sortOption.option,
+                selected = isSelected,
                 onClick = { onSortOptionSelected(sortOption.option) },
                 label = { Text(sortOption.label) },
+                colors = categoryChipColors(isSelected),
+                border = categoryChipBorder(isSelected),
+                shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
                 modifier =
                     Modifier
                         .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
@@ -1295,11 +1405,15 @@ private fun CompactSortTrigger(
     var showSheet by remember { mutableStateOf(false) }
     val selectedLabel =
         sortOptions.firstOrNull { it.option == selectedOption }?.label ?: "Score"
+    val tokens = JuzgonVisualTheme.tokens
 
     FilterChip(
         selected = true,
         onClick = { showSheet = true },
         label = { Text("Sorted by: $selectedLabel") },
+        colors = categoryChipColors(true),
+        border = categoryChipBorder(true),
+        shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
         trailingIcon = {
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowDown,
@@ -1405,18 +1519,26 @@ private fun SortOptionRow(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     Surface(
         onClick = onClick,
         color =
             if (isSelected) {
-                MaterialTheme.colorScheme.secondaryContainer
+                tokens.palette.primaryGlow.copy(alpha = 0.2f)
             } else {
-                MaterialTheme.colorScheme.surface
+                tokens.palette.panelBackground
             },
-        shape = MaterialTheme.shapes.small,
+        border =
+            if (isSelected) {
+                BorderStroke(1.dp, tokens.palette.primaryGlow)
+            } else {
+                BorderStroke(1.dp, GlassBorderColor)
+            },
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
         modifier =
             Modifier
                 .fillMaxWidth()
+                .padding(vertical = 4.dp)
                 .sizeIn(minHeight = 48.dp)
                 .semantics {
                     contentDescription = sortOption.contentDescription
@@ -1429,18 +1551,19 @@ private fun SortOptionRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
             Text(
                 text = sortOption.label,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isSelected) tokens.palette.textStrong else tokens.palette.textMuted,
             )
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Filled.Check,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = tokens.palette.primaryGlow,
                 )
             }
         }
@@ -1498,57 +1621,37 @@ private fun buildItemCardContentDescription(item: CategoryDetailItemUiModel): St
 @Composable
 private fun CategoryDetailItemVisual(item: CategoryDetailItemUiModel) {
     val imageValue = item.imageValue
-    if (imageValue.isNullOrBlank()) {
-        CategoryDetailItemImagePlaceholder(
-            text = "No image",
-            contentDescription = "${item.id} image placeholder",
-        )
-        return
-    }
+    val cd =
+        if (imageValue.isNullOrBlank()) {
+            "${item.id} image placeholder"
+        } else {
+            "${item.id} image preview"
+        }
 
     val context = LocalContext.current
     val bitmap =
         remember(imageValue) {
-            imageBitmapFromValue(context.contentResolver, imageValue)
+            if (!imageValue.isNullOrBlank()) {
+                imageBitmapFromValue(context.contentResolver, imageValue)
+            } else {
+                null
+            }
         }
+
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
-            contentDescription = "${item.id} image preview",
+            contentDescription = cd,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
     } else {
-        CategoryDetailItemImagePlaceholder(
-            text = "Image selected",
-            contentDescription = "${item.id} image preview",
-        )
-    }
-}
-
-@Composable
-private fun CategoryDetailItemImagePlaceholder(
-    text: String,
-    contentDescription: String,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .semantics { this.contentDescription = contentDescription },
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
+        JuzgonAvatar(
+            name = item.id,
+            contentDescription = cd,
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxSize(),
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        )
     }
 }
 

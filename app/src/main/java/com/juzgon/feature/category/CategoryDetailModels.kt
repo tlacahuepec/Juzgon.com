@@ -689,12 +689,10 @@ private fun RatedItem.toGridAttributes(): List<GridCardAttribute> =
         .sortedByDescending { it.score }
         .take(MAX_GRID_ATTRIBUTES)
         .map { entry ->
+            val cleanLabel = entry.attribute.id.substringAfterLast('/')
             GridCardAttribute(
-                emoji =
-                    entry.attribute.id
-                        .take(1)
-                        .uppercase(Locale.US),
-                label = entry.attribute.id,
+                emoji = cleanLabel.take(1).uppercase(Locale.US),
+                label = cleanLabel,
                 scoreText = "${entry.score}/$SCORE_FORMAT_MAX",
             )
         }
