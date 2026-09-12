@@ -6,11 +6,13 @@ Juzgón is a modern Android app where users create custom rating systems for any
 
 ## Key features
 
+- **Luminous UI & navigation redesign**: Pitch-black canvas with neon accents, glowing avatars, and decoupled top-level destinations (`Discover` spotlight dashboard, `Catalogs` collection grid with type filters, and `Settings` preferences).
 - **Custom rating categories**: Define any evaluation subject with heterogeneous attribute types (numeric ratings, dates, booleans, dropdowns, URLs, notes, nationalities, and social platforms).
 - **Multi-perspective score profiles**: Score the same items through different attribute weighting profiles (e.g., evaluating a player as a "Striker" vs "Playmaker").
-- **Visual ranking & radar charts**: Canvas-rendered diamond/radar charts, glowing cards, and real-time aggregate score calculations.
+- **Visual ranking & radar charts**: Canvas-rendered diamond/radar charts, gradient score bars, glowing cards, and real-time aggregate score calculations.
 - **AI-powered attribute enrichment**: Google Gemini API integration with Google Search Grounding to automatically discover and suggest metadata values (birth dates, positions, nationalities).
 - **Data integrity & portable backups**: Room database (v17) with incremental migrations, automated foreign-key integrity repairs, and versioned JSON export/import.
+- **Interactive UI prototype**: Interactive web prototype located in **[docs/design/prototype](docs/design/prototype/README.md)** simulating the complete luminous user experience.
 
 ## Architecture
 
