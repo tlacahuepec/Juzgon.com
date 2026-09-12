@@ -298,7 +298,7 @@ class JuzgonNavigationTest {
                 JuzgonNavHost(
                     navController = navController,
                     homeContent = { _, _, _ -> Text("Home route") },
-                    catalogsContent = { onOpenCategory ->
+                    catalogsContent = { onOpenCategory, _ ->
                         Button(onClick = { onOpenCategory("Cars") }) {
                             Text("Catalogs route")
                         }
@@ -361,7 +361,7 @@ class JuzgonNavigationTest {
                             navController = controller,
                             modifier = modifier,
                             homeContent = { _, _, _ -> Text("Home content") },
-                            catalogsContent = { _ -> Text("Catalogs content") },
+                            catalogsContent = { _, _ -> Text("Catalogs content") },
                             settingsContent = { _, _ -> Text("Settings content") },
                         )
                     },
@@ -468,7 +468,7 @@ class JuzgonNavigationTest {
                             navController = controller,
                             modifier = modifier,
                             homeContent = { _, _, _ -> Text("Home content") },
-                            catalogsContent = { _ -> Text("Catalogs content") },
+                            catalogsContent = { _, _ -> Text("Catalogs content") },
                             settingsContent = { _, _ -> Text("Settings content") },
                         )
                     },
@@ -489,6 +489,36 @@ class JuzgonNavigationTest {
         composeRule.onNodeWithText("Home content").assertIsDisplayed()
         composeRule.runOnIdle {
             assertEquals(JuzgonRoutes.HOME, navController.currentDestination?.route)
+        }
+    }
+
+    @Test
+    fun catalogsCanOpenCreateCategoryRoute() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, _, _ -> Text("Home route") },
+                    catalogsContent = { _, onCreateCategory ->
+                        Button(onClick = onCreateCategory) {
+                            Text("Create from Catalogs")
+                        }
+                    },
+                    createCategoryContent = { _, _ -> Text("Create category route") },
+                )
+            }
+        }
+
+        composeRule.runOnIdle {
+            navController.navigate(JuzgonRoutes.CATALOGS)
+        }
+        composeRule.onNodeWithText("Create from Catalogs").performClick()
+        composeRule.onNodeWithText("Create category route").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.CREATE_CATEGORY, navController.currentDestination?.route)
         }
     }
 
