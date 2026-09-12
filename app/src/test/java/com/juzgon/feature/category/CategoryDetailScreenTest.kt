@@ -1179,6 +1179,141 @@ class CategoryDetailScreenTest {
         composeRule.onNodeWithContentDescription("sedan, A-Tier 8.7").performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun rendersAddNewPersonaCardAsFirstItemInGridView() {
+        setContent(
+            CategoryDetailUiState(
+                categoryName = "Cars",
+                attributeSummary = "2 attributes",
+                items =
+                    listOf(
+                        CategoryDetailItemUiModel(
+                            rank = 1,
+                            id = "sedan",
+                            averageScoreText = "8.7",
+                            tierLabel = "A-Tier",
+                        ),
+                    ),
+                isLoading = false,
+                viewMode = CategoryDetailViewMode.GRID,
+            ),
+        )
+
+        composeRule
+            .onNodeWithContentDescription("Add new persona")
+            .assertIsDisplayed()
+            .assertMinimumTouchTarget()
+        composeRule.onNodeWithText("Add New Persona").assertIsDisplayed()
+    }
+
+    @Test
+    fun clickingAddNewPersonaCardTriggersAddItemCallback() {
+        var addItemClicked = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(
+                                rank = 1,
+                                id = "sedan",
+                                averageScoreText = "8.7",
+                                tierLabel = "A-Tier",
+                            ),
+                        ),
+                    isLoading = false,
+                    viewMode = CategoryDetailViewMode.GRID,
+                ),
+            onAddItemClick = { addItemClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Add new persona").performClick()
+        assertTrue(addItemClicked)
+    }
+
+    @Test
+    fun topBarAddItemAndScoreProfilesButtonsRemainFunctional() {
+        var addItemClicked = false
+        var scoreProfilesClicked = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                ),
+            onAddItemClick = { addItemClicked = true },
+            onScoreProfilesClick = { scoreProfilesClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Add item").performClick()
+        assertTrue(addItemClicked)
+
+        composeRule.onNodeWithContentDescription("Score profiles").performClick()
+        assertTrue(scoreProfilesClicked)
+    }
+
+    @Test
+    fun scoreProfileSelectorPillsDisplayAndFilter() {
+        var selectedProfileId: String? = "initial"
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                    profiles =
+                        listOf(
+                            ProfileOption(id = null, name = "All Attributes"),
+                            ProfileOption(id = "p1", name = "Speed Focus"),
+                            ProfileOption(id = "p2", name = "Cornering"),
+                        ),
+                    activeProfileId = "p1",
+                    activeProfileLabel = "Ranking: Speed Focus",
+                ),
+            onProfileSelected = { selectedProfileId = it },
+        )
+
+        composeRule.onNodeWithContentDescription("Profile: All Attributes").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Profile: Speed Focus").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Profile: Cornering").assertIsDisplayed()
+        composeRule.onNodeWithText("Ranking: Speed Focus").assertIsDisplayed()
+
+        composeRule.onNodeWithContentDescription("Profile: Cornering").performClick()
+        assertEquals("p2", selectedProfileId)
+    }
+
+    @Test
+    fun fabTriggersAddItemCallback() {
+        var addItemClicked = false
+        setContent(
+            state =
+                CategoryDetailUiState(
+                    categoryName = "Cars",
+                    attributeSummary = "2 attributes",
+                    items =
+                        listOf(
+                            CategoryDetailItemUiModel(rank = 1, id = "sedan", averageScoreText = "8.7"),
+                        ),
+                    isLoading = false,
+                ),
+            onAddItemClick = { addItemClicked = true },
+        )
+
+        composeRule.onNodeWithContentDescription("Add item FAB").performClick()
+        assertTrue(addItemClicked)
+    }
+
     // endregion
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertMinimumTouchTarget() {

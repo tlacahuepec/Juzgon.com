@@ -112,6 +112,7 @@ data class CategoryDetailItemUiModel(
     val metricColorHex: String? = null,
     val tierLabel: String = "",
     val gridAttributes: List<GridCardAttribute> = emptyList(),
+    val radarValues: List<Float> = emptyList(),
 )
 
 data class ProfileOption(
