@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -219,6 +221,20 @@ private fun CatalogsLoadedState(
                     tint = tokens.palette.textMuted,
                 )
             },
+            trailingIcon = {
+                if (state.searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = { actions.onSearchQueryChange("") },
+                        modifier = Modifier.semantics { contentDescription = "Clear search" },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = tokens.palette.textMuted,
+                        )
+                    }
+                }
+            },
             singleLine = true,
             colors =
                 OutlinedTextFieldDefaults.colors(
@@ -256,7 +272,7 @@ private fun CatalogsLoadedState(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
                 verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
-                contentPadding = PaddingValues(bottom = tokens.spacing.large),
+                contentPadding = PaddingValues(bottom = 88.dp),
                 modifier =
                     Modifier
                         .weight(1f)
