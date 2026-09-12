@@ -5,7 +5,9 @@ package com.juzgon.feature.item
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,10 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,12 +68,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValue
 import com.juzgon.domain.SkinTypeValues
-import com.juzgon.ui.components.BottomNavItem
-import com.juzgon.ui.components.JuzgonBottomNavBar
 import com.juzgon.ui.components.JuzgonGlowRing
 import com.juzgon.ui.components.JuzgonGradientScoreBar
 import com.juzgon.ui.components.JuzgonRadarChart
@@ -128,6 +127,7 @@ fun ItemDetailScreen(
     onDeleteConfirmed: () -> Unit = {},
     onDeleteDialogDismissed: () -> Unit = {},
     onViewModeChanged: (ItemDetailViewMode) -> Unit = {},
+    scrollState: ScrollState = rememberScrollState(),
     modifier: Modifier = Modifier,
 ) {
     if (state.showDeleteConfirmDialog) {
@@ -228,6 +228,7 @@ fun ItemDetailScreen(
                 ItemDetailContent(
                     state = state,
                     onViewModeChanged = onViewModeChanged,
+                    scrollState = scrollState,
                     modifier = Modifier.padding(innerPadding),
                 )
         }
@@ -317,6 +318,7 @@ private fun FullImagePreviewDialog(
 private fun ItemDetailContent(
     state: ItemDetailUiState,
     onViewModeChanged: (ItemDetailViewMode) -> Unit = {},
+    scrollState: ScrollState = rememberScrollState(),
     modifier: Modifier = Modifier,
 ) {
     var selectedImageForPreview by remember { mutableStateOf<ItemImageReference?>(null) }
@@ -331,15 +333,16 @@ private fun ItemDetailContent(
         modifier =
             modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(24.dp),
     ) {
-        PrimaryImageSection(
+        ProfileHero(
             itemId = state.itemId,
             imageReference = state.primaryImage,
+            tierLabel = state.tierLabel,
+            overallScoreText = state.overallScoreText,
             onImageClick = { imageReference -> selectedImageForPreview = imageReference },
         )
-        OverallScoreSection(tierLabel = state.tierLabel, overallScoreText = state.overallScoreText)
         ProfileBreakdownSection(profileBreakdown = state.profileBreakdown)
         HorizontalDivider()
         ViewModeToggleSection(
@@ -351,15 +354,12 @@ private fun ItemDetailContent(
             AttributeGridSection(attributes = state.attributeGrid)
         } else {
             BarsViewContent(
-                state = state,
-                tierLabel = state.tierLabel,
-                overallScoreText = state.overallScoreText,
                 rankedAttributes = state.rankedAttributes,
             )
         }
         if (state.attributeValues.isNotEmpty()) {
             HorizontalDivider()
-            AttributeValuesSection(
+            ItemMetadataCard(
                 attributeValues = state.attributeValues,
                 onImageClick = { imageReference -> selectedImageForPreview = imageReference },
             )
@@ -372,20 +372,30 @@ private fun ItemDetailContent(
 }
 
 @Composable
-private fun OverallScoreSection(
+private fun ProfileHero(
+    itemId: String,
+    imageReference: ItemImageReference?,
     tierLabel: String,
     overallScoreText: String,
+    onImageClick: (ItemImageReference) -> Unit,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    val tokens = JuzgonVisualTheme.tokens
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(text = "Overall", style = MaterialTheme.typography.titleMedium)
-        JuzgonScorePill(
-            tierText = tierLabel,
-            scoreText = overallScoreText,
+        PrimaryImageSection(
+            itemId = itemId,
+            imageReference = imageReference,
+            onImageClick = onImageClick,
         )
+        if (tierLabel.isNotBlank() || overallScoreText.isNotBlank()) {
+            JuzgonScorePill(
+                tierText = tierLabel,
+                scoreText = overallScoreText,
+            )
+        }
     }
 }
 
@@ -454,51 +464,8 @@ private fun ViewModeToggleSection(
 }
 
 @Composable
-private fun BarsViewContent(
-    state: ItemDetailUiState,
-    tierLabel: String,
-    overallScoreText: String,
-    rankedAttributes: List<RankedAttributeCardUiModel>,
-) {
-    val tokens = JuzgonVisualTheme.tokens
-    Column(
-        verticalArrangement = Arrangement.spacedBy(tokens.spacing.large),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            JuzgonGlowRing(
-                contentDescription = "${state.itemId} avatar",
-                modifier = Modifier.sizeIn(minWidth = 100.dp, minHeight = 100.dp),
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-            JuzgonScorePill(
-                tierText = tierLabel,
-                scoreText = overallScoreText,
-            )
-        }
-
-        BarsScoreListContent(rankedAttributes = rankedAttributes)
-
-        BarsViewBottomNav()
-    }
+private fun BarsViewContent(rankedAttributes: List<RankedAttributeCardUiModel>) {
+    BarsScoreListContent(rankedAttributes = rankedAttributes)
 }
 
 @Composable
@@ -524,19 +491,6 @@ private fun BarsScoreListContent(rankedAttributes: List<RankedAttributeCardUiMod
             )
         }
     }
-}
-
-@Composable
-private fun BarsViewBottomNav() {
-    JuzgonBottomNavBar(
-        items =
-            listOf(
-                BottomNavItem(Icons.Filled.Home, "Home"),
-                BottomNavItem(Icons.AutoMirrored.Filled.List, "Collection"),
-            ),
-        selectedIndex = 0,
-        onItemSelected = { },
-    )
 }
 
 @Composable
@@ -848,51 +802,157 @@ private fun AttributeMovementIndicator(
 }
 
 @Composable
-private fun AttributeValuesSection(
+internal fun ItemMetadataCard(
     attributeValues: List<ItemDetailAttributeValue>,
-    onImageClick: (ItemImageReference) -> Unit,
+    onImageClick: (ItemImageReference) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(text = "Attributes", style = MaterialTheme.typography.titleSmall)
-        attributeValues.forEach { attributeValue ->
-            AttributeValueRow(
-                attributeValue = attributeValue,
-                onImageClick = onImageClick,
+    if (attributeValues.isEmpty()) return
+    val tokens = JuzgonVisualTheme.tokens
+
+    Surface(
+        color = tokens.palette.elevatedBackground,
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+        border = BorderStroke(1.dp, tokens.palette.panelBackground),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Persona Attributes" },
+    ) {
+        Column(
+            modifier = Modifier.padding(tokens.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+        ) {
+            Text(
+                text = "Persona Attributes",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = tokens.palette.primaryGlowStrong,
+                letterSpacing = 0.5.sp,
             )
+            attributeValues.forEachIndexed { index, attributeValue ->
+                ItemMetadataRow(
+                    attributeValue = attributeValue,
+                    onImageClick = onImageClick,
+                )
+                if (index < attributeValues.lastIndex) {
+                    HorizontalDivider(
+                        color = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                        thickness = 0.5.dp,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun AttributeValueRow(
+private fun ItemMetadataRow(
     attributeValue: ItemDetailAttributeValue,
     onImageClick: (ItemImageReference) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = attributeValue.label,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (attributeValue.type == AttributeType.IMAGE) {
-            ImageAttributeGallery(
-                label = attributeValue.label,
-                imageReferences = attributeValue.imageReferences,
-                onImageClick = onImageClick,
-            )
-        } else if (attributeValue.type == AttributeType.URL) {
-            UrlAttributeValue(attributeValue)
-        } else if (attributeValue.type == AttributeType.SOCIAL_NETWORK) {
-            SocialNetworkListSection(attributeValue.value)
-        } else if (attributeValue.type == AttributeType.SKIN_TYPE) {
-            SkinTypeAttributeValue(attributeValue)
-        } else {
-            Text(text = attributeValue.displayValue, style = MaterialTheme.typography.bodyMedium)
-            attributeValue.ageText?.let { age ->
+    val tokens = JuzgonVisualTheme.tokens
+    when (attributeValue.type) {
+        AttributeType.IMAGE -> {
+            Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.extraSmall)) {
                 Text(
-                    text = age,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                ImageAttributeGallery(
+                    label = attributeValue.label,
+                    imageReferences = attributeValue.imageReferences,
+                    onImageClick = onImageClick,
+                )
+            }
+        }
+        AttributeType.URL -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                UrlAttributeValue(attributeValue)
+            }
+        }
+        AttributeType.SOCIAL_NETWORK -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                SocialNetworkListSection(attributeValue.value)
+            }
+        }
+        AttributeType.SKIN_TYPE -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                SkinTypeAttributeValue(attributeValue)
+            }
+        }
+        AttributeType.DATE -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = attributeValue.displayValue,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tokens.palette.textStrong,
+                    )
+                    attributeValue.ageText?.let { age ->
+                        Text(
+                            text = age,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = tokens.palette.textMuted,
+                        )
+                    }
+                }
+            }
+        }
+        else -> {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = attributeValue.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.palette.textMuted,
+                )
+                Text(
+                    text = attributeValue.displayValue,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tokens.palette.textStrong,
                 )
             }
         }
@@ -929,7 +989,7 @@ private fun UrlAttributeValue(attributeValue: ItemDetailAttributeValue) {
     val uriHandler = LocalUriHandler.current
     Text(
         text = attributeValue.displayValue,
-        color = MaterialTheme.colorScheme.primary,
+        color = JuzgonVisualTheme.tokens.palette.contrastAccent,
         style = MaterialTheme.typography.bodyMedium,
         modifier =
             Modifier
