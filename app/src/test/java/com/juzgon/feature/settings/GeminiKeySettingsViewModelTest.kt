@@ -52,6 +52,21 @@ class GeminiKeySettingsViewModelTest {
         }
 
     @Test
+    fun refresh_reloadsKeyStateFromStore() =
+        runTest(testDispatcher) {
+            val viewModel = GeminiKeySettingsViewModel(fakeStore)
+            advanceUntilIdle()
+            assertEquals(GeminiKeyState.NO_KEY, viewModel.state.value.keyState)
+
+            fakeStore.savedKey = "AIzaSyUpdatedKey1234"
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(GeminiKeyState.CONFIGURED, viewModel.state.value.keyState)
+            assertEquals("••••••••1234", viewModel.state.value.maskedKey)
+        }
+
+    @Test
     fun onAddKey_transitionsToEntering() =
         runTest(testDispatcher) {
             val viewModel = GeminiKeySettingsViewModel(fakeStore)

@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +57,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.juzgon.domain.BuildMetadata
 import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
@@ -80,16 +84,36 @@ fun SettingsRoute(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    geminiViewModel.refresh()
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val safLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             if (uri != null) {
-                val json = exportState.exportedJson ?: return@rememberLauncherForActivityResult
+                val json = exportState.exportedJson
+                if (json == null) {
+                    exportViewModel.onExportConsumed()
+                    return@rememberLauncherForActivityResult
+                }
                 try {
-                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val stream =
+                        context.contentResolver.openOutputStream(uri)
+                            ?: throw IOException("Unable to open output stream for selected file")
+                    stream.use { outputStream ->
                         outputStream.write(json.toByteArray(Charsets.UTF_8))
                     }
-                    exportViewModel.onExportConsumed()
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Backup exported successfully")
                     }
@@ -97,6 +121,8 @@ fun SettingsRoute(
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Failed to export backup: ${e.message}")
                     }
+                } finally {
+                    exportViewModel.onExportConsumed()
                 }
             } else {
                 exportViewModel.onExportConsumed()
@@ -105,8 +131,8 @@ fun SettingsRoute(
 
     LaunchedEffect(exportState.isExportComplete) {
         if (exportState.isExportComplete && exportState.exportedJson != null) {
-            val dateStr = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
-            safLauncher.launch("juzgon-backup-$dateStr.json")
+            val dateStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            safLauncher.launch("juzgon-backup-$dateStr.juzgon.json")
         }
     }
 
