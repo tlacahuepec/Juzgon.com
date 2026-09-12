@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -134,9 +134,15 @@ private fun GridCardAvatarWithRank(
                 modifier =
                     Modifier
                         .offset(x = 2.dp, y = (-2).dp)
-                        .size(20.dp)
-                        .background(tokens.palette.ratingAccent, CircleShape)
-                        .border(1.5.dp, tokens.palette.baseBackground, CircleShape),
+                        .sizeIn(minWidth = 20.dp, minHeight = 20.dp)
+                        .background(
+                            tokens.palette.ratingAccent,
+                            RoundedCornerShape(tokens.shapes.pillCornerRadius),
+                        ).border(
+                            1.5.dp,
+                            tokens.palette.baseBackground,
+                            RoundedCornerShape(tokens.shapes.pillCornerRadius),
+                        ).padding(horizontal = 4.dp, vertical = 1.dp),
             ) {
                 Text(
                     text = "#$rank",
