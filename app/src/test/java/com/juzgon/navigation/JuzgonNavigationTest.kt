@@ -492,6 +492,36 @@ class JuzgonNavigationTest {
         }
     }
 
+    @Test
+    fun homeRouteCanOpenItemDetailRoute() {
+        lateinit var navController: TestNavHostController
+
+        composeRule.setContent {
+            MaterialTheme {
+                navController = rememberTestNavController()
+                JuzgonNavHost(
+                    navController = navController,
+                    homeContent = { _, _, onOpenItem ->
+                        Button(onClick = { onOpenItem("Formula 1", "Max Verstappen") }) {
+                            Text("Open Item")
+                        }
+                    },
+                    itemDetailContent = { itemId, categoryName, _, _, _, _ ->
+                        Text("Detail for $itemId in $categoryName")
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Open Item").performClick()
+        composeRule.onNodeWithText("Detail for Max Verstappen in Formula 1").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(JuzgonRoutes.ITEM_DETAIL, navController.currentDestination?.route)
+            assertEquals("Formula 1", navController.currentBackStackEntry?.arguments?.getString("categoryName"))
+            assertEquals("Max Verstappen", navController.currentBackStackEntry?.arguments?.getString("itemId"))
+        }
+    }
+
     @Composable
     private fun rememberTestNavController(): TestNavHostController {
         val context = LocalContext.current

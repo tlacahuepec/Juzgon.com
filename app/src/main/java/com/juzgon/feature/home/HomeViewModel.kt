@@ -124,11 +124,20 @@ class HomeViewModel
 private fun Pair<RankedRatedItem, String>.toHeroModel(): HomeHeroUiModel {
     val (ranked, categoryName) = this
     val score = ranked.aggregateScore
+    val radarPoints =
+        ranked.item.scores.map { scoreEntry ->
+            com.juzgon.ui.components.RadarChartPoint(
+                label = scoreEntry.attribute.displayName,
+                value = scoreEntry.score.toFloat(),
+            )
+        }
     return HomeHeroUiModel(
+        itemId = ranked.item.id,
         name = ranked.item.id,
         tierLabel = tierFromScore(score),
         scoreText = "${String.format(Locale.ROOT, "%.1f", score)}/$SCORE_FORMAT_MAX",
         categoryName = categoryName,
+        radarPoints = radarPoints,
     )
 }
 
@@ -137,6 +146,7 @@ private fun Pair<RankedRatedItem, String>.toTrendingModel(): HomeTrendingItemUiM
     val score = ranked.aggregateScore
     val scoreText = "${String.format(Locale.ROOT, "%.1f", score)}/$SCORE_FORMAT_MAX"
     return HomeTrendingItemUiModel(
+        itemId = ranked.item.id,
         name = ranked.item.id,
         scoreText = scoreText,
         contentDescription = "${ranked.item.id}, score $scoreText",

@@ -2,8 +2,7 @@
 
 package com.juzgon.feature.home
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,13 +23,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,13 +35,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -53,53 +49,31 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.juzgon.feature.about.AboutDialog
-import com.juzgon.feature.about.AboutViewModel
-import com.juzgon.feature.backup.ExportBackupViewModel
 import com.juzgon.ui.components.JuzgonHeroCard
 import com.juzgon.ui.components.JuzgonItemThumbnail
 import com.juzgon.ui.components.JuzgonSegmentedFilter
+import com.juzgon.ui.components.RadarChartPoint
 import com.juzgon.ui.theme.JuzgonVisualTheme
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun HomeRoute(
     onNavigateToCreateCategory: () -> Unit,
     onNavigateToCategory: (String) -> Unit,
+    onNavigateToItem: (String, String) -> Unit = { _, _ -> },
     onNavigateToAiSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
-    exportViewModel: ExportBackupViewModel = hiltViewModel(),
-    aboutViewModel: AboutViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val exportState by exportViewModel.state.collectAsState()
-    val context = LocalContext.current
-    var showAboutDialog by remember { mutableStateOf(false) }
 
-    val safLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-            if (uri != null) {
-                val json = exportState.exportedJson ?: return@rememberLauncherForActivityResult
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(json.toByteArray(Charsets.UTF_8))
-                }
-                exportViewModel.onExportConsumed()
-            }
-        }
-
-    LaunchedEffect(exportState.isExportComplete) {
-        if (exportState.isExportComplete && exportState.exportedJson != null) {
-            val fileName = "juzgon-backup-${LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)}.juzgon.json"
-            safLauncher.launch(fileName)
-        }
-    }
-
-    LaunchedEffect(viewModel, onNavigateToCreateCategory) {
+    LaunchedEffect(viewModel, onNavigateToCreateCategory, onNavigateToCategory, onNavigateToItem) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 HomeNavigationEvent.CreateCategory -> onNavigateToCreateCategory()
                 is HomeNavigationEvent.OpenCategory -> onNavigateToCategory(event.categoryName)
+                is HomeNavigationEvent.OpenItem -> onNavigateToItem(event.categoryName, event.itemId)
             }
         }
     }
@@ -113,18 +87,10 @@ fun HomeRoute(
                 onCreateCategoryClick = viewModel::onCreateCategoryClick,
                 onCategoryClick = viewModel::onCategoryClick,
                 onRetry = viewModel::onRetry,
-                onExportClick = exportViewModel::export,
-                onAboutClick = { showAboutDialog = true },
+                onNavigateToItem = onNavigateToItem,
                 onAiSettingsClick = onNavigateToAiSettings,
             ),
     )
-
-    if (showAboutDialog) {
-        AboutDialog(
-            metadata = aboutViewModel.metadata,
-            onDismiss = { showAboutDialog = false },
-        )
-    }
 }
 
 @Composable
@@ -208,25 +174,47 @@ private fun HomeCategoriesState(
     actions: HomeScreenActions,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    val tokens = JuzgonVisualTheme.tokens
+
+    LazyColumn(
         modifier =
             modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .testTag(HOME_CATEGORY_LIST_TAG),
+        contentPadding = PaddingValues(tokens.spacing.large),
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
     ) {
-        HomeHeader(actions = actions)
-        Spacer(modifier = Modifier.height(12.dp))
-        if (!state.isEmpty || state.hasSearchQuery) {
-            state.heroItem?.let { hero ->
-                HomeHeroSection(hero = hero, onCategoryClick = actions.onCategoryClick)
-                Spacer(modifier = Modifier.height(12.dp))
+        item(key = "home_header") {
+            HomeHeader()
+        }
+
+        state.heroItem?.let { hero ->
+            item(key = "home_hero") {
+                HomeHeroSection(hero = hero, onNavigateToItem = actions.onNavigateToItem)
             }
-            if (state.trendingItems.isNotEmpty()) {
-                HomeTrendingRow(items = state.trendingItems, onItemClick = actions.onCategoryClick)
-                Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (state.trendingItems.isNotEmpty()) {
+            item(key = "home_trending") {
+                HomeTrendingRow(items = state.trendingItems, onItemClick = actions.onNavigateToItem)
             }
+        }
+
+        item(key = "home_collection_summary") {
             HomeCollectionSummary(stats = state.collectionStats)
-            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        homeSearchAndSort(state, actions)
+        homeCategoryItems(state, actions)
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.homeSearchAndSort(
+    state: HomeUiState,
+    actions: HomeScreenActions,
+) {
+    if (!state.isEmpty || state.hasSearchQuery) {
+        item(key = "home_search") {
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = actions.onSearchQueryChange,
@@ -239,72 +227,54 @@ private fun HomeCategoriesState(
                             contentDescription = "Search categories"
                         },
             )
-            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        item(key = "home_sort_controls") {
             HomeSortControls(
                 selectedOption = state.sortOption,
                 onSortOptionSelected = actions.onSortOptionSelected,
             )
-            Spacer(modifier = Modifier.height(12.dp))
         }
-        HomeCategoryContent(
-            state = state,
-            onCreateCategoryClick = actions.onCreateCategoryClick,
-            onCategoryClick = actions.onCategoryClick,
-            modifier = Modifier.weight(1f),
-        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.homeCategoryItems(
+    state: HomeUiState,
+    actions: HomeScreenActions,
+) {
+    if (state.isEmpty) {
+        item(key = "home_empty_state") {
+            HomeEmptyState(
+                hasSearchQuery = state.hasSearchQuery,
+                onCreateCategoryClick = actions.onCreateCategoryClick,
+            )
+        }
+    } else {
+        items(
+            items = state.categories,
+            key = { category -> category.name },
+        ) { category ->
+            CategoryRow(
+                category = category,
+                onCategoryClick = actions.onCategoryClick,
+            )
+        }
     }
 }
 
 @Composable
-private fun HomeHeader(actions: HomeScreenActions) {
+private fun HomeHeader(modifier: Modifier = Modifier) {
+    val tokens = JuzgonVisualTheme.tokens
     Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "Diamond Home",
+            text = "Juzgón",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
+            color = tokens.palette.textStrong,
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = actions.onAiSettingsClick,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "AI Settings"
-                    },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                )
-            }
-            IconButton(
-                onClick = actions.onAboutClick,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "About"
-                    },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                )
-            }
-            Button(
-                onClick = actions.onExportClick,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Export backup"
-                    },
-            ) {
-                Text("Export")
-            }
-        }
     }
 }
 
@@ -412,40 +382,6 @@ private fun HomeSortControls(
 }
 
 @Composable
-private fun HomeCategoryContent(
-    state: HomeUiState,
-    onCreateCategoryClick: () -> Unit,
-    onCategoryClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (state.isEmpty) {
-        HomeEmptyState(
-            hasSearchQuery = state.hasSearchQuery,
-            onCreateCategoryClick = onCreateCategoryClick,
-            modifier = modifier,
-        )
-    } else {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .testTag(HOME_CATEGORY_LIST_TAG),
-        ) {
-            items(
-                items = state.categories,
-                key = { category -> category.name },
-            ) { category ->
-                CategoryRow(
-                    category = category,
-                    onCategoryClick = onCategoryClick,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun HomeEmptyState(
     hasSearchQuery: Boolean,
     onCreateCategoryClick: () -> Unit,
@@ -455,7 +391,7 @@ private fun HomeEmptyState(
         contentAlignment = Alignment.TopCenter,
         modifier =
             modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(top = 16.dp),
     ) {
         if (hasSearchQuery) {
@@ -545,15 +481,62 @@ private fun formatItemCount(count: Int): String = if (count == 1) "1 item" else 
 private fun formatAttributeCount(count: Int): String = if (count == 1) "1 attribute" else "$count attributes"
 
 @Composable
+internal fun MiniRadarPreview(
+    points: List<RadarChartPoint> = emptyList(),
+    modifier: Modifier = Modifier,
+) {
+    val tokens = JuzgonVisualTheme.tokens
+    val fillColor = tokens.palette.secondaryGlow.copy(alpha = MINI_RADAR_FILL_ALPHA)
+    val strokeColor = tokens.palette.primaryGlow
+    val effectivePoints =
+        if (points.size >= MINI_RADAR_MIN_POINTS) {
+            points
+        } else {
+            listOf(
+                RadarChartPoint("P1", RADAR_FALLBACK_VAL_1),
+                RadarChartPoint("P2", RADAR_FALLBACK_VAL_2),
+                RadarChartPoint("P3", RADAR_FALLBACK_VAL_3),
+                RadarChartPoint("P4", RADAR_FALLBACK_VAL_4),
+            )
+        }
+
+    Canvas(
+        modifier =
+            modifier
+                .size(MINI_RADAR_SIZE_DP.dp)
+                .semantics { contentDescription = "Mini radar canvas preview" },
+    ) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension * MINI_RADAR_RADIUS_FRACTION
+        val path = Path()
+        val count = effectivePoints.size
+        val angleStep = (2 * PI / count).toFloat()
+
+        effectivePoints.forEachIndexed { i, pt ->
+            val angle = angleStep * i - (PI / 2).toFloat()
+            val r = radius * pt.fraction
+            val x = center.x + r * cos(angle)
+            val y = center.y + r * sin(angle)
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        drawPath(path, color = fillColor)
+        drawPath(path, color = strokeColor, style = Stroke(width = MINI_RADAR_STROKE_WIDTH_DP.dp.toPx()))
+    }
+}
+
+@Composable
 private fun HomeHeroSection(
     hero: HomeHeroUiModel,
-    onCategoryClick: (String) -> Unit,
+    onNavigateToItem: (String, String) -> Unit,
 ) {
     JuzgonHeroCard(
         title = hero.name,
         tierLabel = hero.tierLabel,
         scoreText = hero.scoreText,
-        onClick = { onCategoryClick(hero.categoryName) },
+        categoryTag = hero.categoryName,
+        onClick = { onNavigateToItem(hero.categoryName, hero.itemId) },
+        radarPreview = { MiniRadarPreview(points = hero.radarPoints) },
         image = { Text(hero.name.take(1)) },
     )
 }
@@ -561,7 +544,7 @@ private fun HomeHeroSection(
 @Composable
 private fun HomeTrendingRow(
     items: List<HomeTrendingItemUiModel>,
-    onItemClick: (String) -> Unit,
+    onItemClick: (String, String) -> Unit,
 ) {
     val tokens = JuzgonVisualTheme.tokens
 
@@ -581,7 +564,7 @@ private fun HomeTrendingRow(
                 JuzgonItemThumbnail(
                     scoreText = item.scoreText,
                     contentDescription = item.contentDescription,
-                    onClick = { onItemClick(item.categoryName) },
+                    onClick = { onItemClick(item.categoryName, item.itemId) },
                     image = { Text(item.name.take(1)) },
                 )
             }
@@ -590,3 +573,13 @@ private fun HomeTrendingRow(
 }
 
 internal const val HOME_CATEGORY_LIST_TAG = "Home category list"
+
+private const val MINI_RADAR_SIZE_DP = 48
+private const val MINI_RADAR_MIN_POINTS = 3
+private const val MINI_RADAR_RADIUS_FRACTION = 0.45f
+private const val RADAR_FALLBACK_VAL_1 = 8f
+private const val RADAR_FALLBACK_VAL_2 = 9f
+private const val RADAR_FALLBACK_VAL_3 = 7f
+private const val RADAR_FALLBACK_VAL_4 = 8.5f
+private const val MINI_RADAR_STROKE_WIDTH_DP = 2
+private const val MINI_RADAR_FILL_ALPHA = 0.4f

@@ -44,7 +44,7 @@ private const val FULL_HEIGHT_DP = 280
 private const val LABEL_OFFSET_DP = 14
 
 @Immutable
-internal data class RadarChartPoint(
+data class RadarChartPoint(
     val label: String,
     val value: Float,
     val maxValue: Float = 10f,

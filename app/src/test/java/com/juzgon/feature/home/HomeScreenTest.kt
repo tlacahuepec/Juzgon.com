@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import com.juzgon.ui.theme.JuzgonTheme
 import org.junit.Assert.assertEquals
@@ -152,15 +154,9 @@ class HomeScreenTest {
         composeRule
             .onNodeWithContentDescription("Home collection summary, 2 categories, 4 items, 3 attributes")
             .assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Export backup").performClick()
-        composeRule.onNodeWithContentDescription("About").performClick()
-        composeRule.onNodeWithContentDescription("AI Settings").performClick()
         composeRule.onAllNodesWithContentDescription("Create category")[0].performClick()
         composeRule.onNodeWithText("Food").performScrollTo().performClick()
 
-        assertTrue(exportClicked)
-        assertTrue(aboutClicked)
-        assertTrue(settingsClicked)
         assertTrue(createClicked)
         assertEquals("Food", openedCategory)
     }
@@ -300,9 +296,7 @@ class HomeScreenTest {
     }
 
     @Test
-    fun exportButtonIsDisplayedAndInvokesCallback() {
-        var exportClicked = false
-
+    fun rendersCleanHeaderWithoutClutterButtons() {
         composeRule.setContent {
             MaterialTheme {
                 HomeScreen(
@@ -320,30 +314,38 @@ class HomeScreenTest {
                             onCreateCategoryClick = {},
                             onCategoryClick = {},
                             onRetry = {},
-                            onExportClick = { exportClicked = true },
                         ),
                 )
             }
         }
 
-        composeRule.onNodeWithContentDescription("Export backup").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Export backup").performClick()
-
-        assertTrue(exportClicked)
+        composeRule.onNodeWithText("Juzgón").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Export backup").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("About").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("AI Settings").assertDoesNotExist()
     }
 
     @Test
-    fun aboutButtonIsDisplayedAndInvokesCallback() {
-        var aboutClicked = false
+    fun clickingSpotlightHeroNavigatesDirectlyToItemDetail() {
+        var navigatedCategory = ""
+        var navigatedItemId = ""
 
         composeRule.setContent {
-            MaterialTheme {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
                 HomeScreen(
                     state =
                         HomeUiState(
                             categories =
                                 listOf(
-                                    HomeCategoryUiModel(name = "Food", attributeCount = 2),
+                                    HomeCategoryUiModel(name = "Formula 1", attributeCount = 6, itemCount = 1),
+                                ),
+                            heroItem =
+                                HomeHeroUiModel(
+                                    name = "Max Verstappen",
+                                    itemId = "max-verstappen",
+                                    tierLabel = "S-Tier",
+                                    scoreText = "9.6/10",
+                                    categoryName = "Formula 1",
                                 ),
                         ),
                     actions =
@@ -353,16 +355,177 @@ class HomeScreenTest {
                             onCreateCategoryClick = {},
                             onCategoryClick = {},
                             onRetry = {},
-                            onAboutClick = { aboutClicked = true },
+                            onNavigateToItem = { cat, id ->
+                                navigatedCategory = cat
+                                navigatedItemId = id
+                            },
                         ),
                 )
             }
         }
 
-        composeRule.onNodeWithContentDescription("About").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("About").performClick()
+        composeRule.onNodeWithText("Max Verstappen").performClick()
+        assertEquals("Formula 1", navigatedCategory)
+        assertEquals("max-verstappen", navigatedItemId)
+    }
 
-        assertTrue(aboutClicked)
+    @Test
+    fun clickingTrendingItemNavigatesDirectlyToItemDetail() {
+        var navigatedCategory = ""
+        var navigatedItemId = ""
+
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Sci-Fi", attributeCount = 4, itemCount = 2),
+                                ),
+                            trendingItems =
+                                listOf(
+                                    HomeTrendingItemUiModel(
+                                        name = "Blade Runner 2049",
+                                        itemId = "blade-runner",
+                                        scoreText = "9.5/10",
+                                        contentDescription = "Blade Runner 2049, score 9.5/10",
+                                        categoryName = "Sci-Fi",
+                                    ),
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                            onNavigateToItem = { cat, id ->
+                                navigatedCategory = cat
+                                navigatedItemId = id
+                            },
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Blade Runner 2049, score 9.5/10").performClick()
+        assertEquals("Sci-Fi", navigatedCategory)
+        assertEquals("blade-runner", navigatedItemId)
+    }
+
+    @Test
+    fun collectionOverviewStatsRemainDisplayed() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            collectionStats =
+                                HomeCollectionStatsUiModel(
+                                    categoryCount = 5,
+                                    itemCount = 42,
+                                    attributeCount = 18,
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Collection overview").assertIsDisplayed()
+        composeRule.onNodeWithText("5 categories").assertIsDisplayed()
+        composeRule.onNodeWithText("42 items").assertIsDisplayed()
+        composeRule.onNodeWithText("18 attributes").assertIsDisplayed()
+    }
+
+    @Test
+    fun spotlightHeroCardDisplaysMiniRadarPreviewAndCategoryTag() {
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories =
+                                listOf(
+                                    HomeCategoryUiModel(name = "Formula 1", attributeCount = 6, itemCount = 1),
+                                ),
+                            heroItem =
+                                HomeHeroUiModel(
+                                    name = "Max Verstappen",
+                                    itemId = "max-verstappen",
+                                    tierLabel = "S-Tier",
+                                    scoreText = "9.6/10",
+                                    categoryName = "Formula 1",
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Max Verstappen").assertIsDisplayed()
+        composeRule.onNodeWithText("Formula 1").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Mini radar canvas preview").assertIsDisplayed()
+    }
+
+    @Test
+    fun lazyColumnScrollsSmoothlyOnSmallScreens() {
+        val longCategoryList =
+            (1..25).map { index ->
+                HomeCategoryUiModel(
+                    name = "Category $index",
+                    attributeCount = index % 5 + 1,
+                    itemCount = index * 2,
+                )
+            }
+
+        composeRule.setContent {
+            JuzgonTheme(darkTheme = true, dynamicColor = false) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            categories = longCategoryList,
+                            heroItem =
+                                HomeHeroUiModel(
+                                    name = "Top Item",
+                                    itemId = "top-1",
+                                    tierLabel = "S-Tier",
+                                    scoreText = "9.9/10",
+                                    categoryName = "Category 1",
+                                ),
+                        ),
+                    actions =
+                        HomeScreenActions(
+                            onSearchQueryChange = {},
+                            onSortOptionSelected = {},
+                            onCreateCategoryClick = {},
+                            onCategoryClick = {},
+                            onRetry = {},
+                        ),
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithTag(HOME_CATEGORY_LIST_TAG)
+            .performScrollToNode(hasText("Category 25"))
+        composeRule.onNodeWithText("Category 25").assertIsDisplayed()
     }
 
     @Test
