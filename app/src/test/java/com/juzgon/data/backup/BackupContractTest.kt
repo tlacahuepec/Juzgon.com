@@ -4,7 +4,6 @@ import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.CategoryItemCount
 import com.juzgon.data.local.dao.CategoryWithAttributes
 import com.juzgon.data.local.dao.ItemDao
-import com.juzgon.data.local.dao.ItemPurgeDao
 import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.dao.RankedItemWithRatings
 import com.juzgon.data.local.dao.ScoreProfileAttributeDao
@@ -35,7 +34,6 @@ import org.robolectric.annotation.Config
 class BackupContractTest {
     private lateinit var categoryDao: ContractCategoryDao
     private lateinit var itemDao: ContractItemDao
-    private lateinit var itemPurgeDao: ContractItemPurgeDao
     private lateinit var scoreProfileDao: ContractScoreProfileDao
     private lateinit var scoreProfileAttributeDao: ContractScoreProfileAttributeDao
     private lateinit var service: JsonBackupService
@@ -45,7 +43,6 @@ class BackupContractTest {
     fun setUp() {
         categoryDao = ContractCategoryDao()
         itemDao = ContractItemDao()
-        itemPurgeDao = ContractItemPurgeDao()
         scoreProfileDao = ContractScoreProfileDao()
         scoreProfileAttributeDao = ContractScoreProfileAttributeDao()
         validator = JsonBackupValidator()
@@ -54,7 +51,6 @@ class BackupContractTest {
                 validator = validator,
                 categoryDao = categoryDao,
                 itemDao = itemDao,
-                itemPurgeDao = itemPurgeDao,
                 scoreProfileDao = scoreProfileDao,
                 scoreProfileAttributeDao = scoreProfileAttributeDao,
                 runInTransaction = { block -> block() },
@@ -451,20 +447,6 @@ class BackupContractTest {
         override suspend fun deleteProfile(id: String) = error("not used")
 
         override suspend fun deleteOrphanedProfiles() = error("not used")
-    }
-
-    private class ContractItemPurgeDao : ItemPurgeDao {
-        override suspend fun softDeleteItemValuesNotIn(
-            itemId: String,
-            keepAttributeIds: List<String>,
-            deletedAt: Long,
-        ) = error("not used")
-
-        override suspend fun purgeOldSoftDeletedValues(cutoff: Long) = error("not used")
-
-        override suspend fun purgeOrphanedRatings() = error("not used")
-
-        override suspend fun purgeOrphanedSoftDeletedValues() = error("not used")
     }
 
     @Suppress("TooManyFunctions")

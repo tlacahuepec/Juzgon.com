@@ -108,7 +108,6 @@ object DataModule {
             validator = validator,
             categoryDao = database.categoryDao(),
             itemDao = database.itemDao(),
-            itemPurgeDao = database.itemPurgeDao(),
             scoreProfileDao = database.scoreProfileDao(),
             scoreProfileAttributeDao = database.scoreProfileAttributeDao(),
             runInTransaction = { block -> database.withTransaction { block() } },
