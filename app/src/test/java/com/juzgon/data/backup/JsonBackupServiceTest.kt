@@ -4,7 +4,6 @@ import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.CategoryItemCount
 import com.juzgon.data.local.dao.CategoryWithAttributes
 import com.juzgon.data.local.dao.ItemDao
-import com.juzgon.data.local.dao.ItemPurgeDao
 import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.dao.RankedItemWithRatings
 import com.juzgon.data.local.dao.ScoreProfileAttributeDao
@@ -35,7 +34,6 @@ import org.robolectric.annotation.Config
 class JsonBackupServiceTest {
     private lateinit var categoryDao: FakeCategoryDao
     private lateinit var itemDao: FakeItemDao
-    private lateinit var itemPurgeDao: FakeItemPurgeDao
     private lateinit var scoreProfileDao: FakeScoreProfileDao
     private lateinit var scoreProfileAttributeDao: FakeScoreProfileAttributeDao
     private lateinit var service: JsonBackupService
@@ -45,7 +43,6 @@ class JsonBackupServiceTest {
     fun setUp() {
         categoryDao = FakeCategoryDao()
         itemDao = FakeItemDao()
-        itemPurgeDao = FakeItemPurgeDao()
         scoreProfileDao = FakeScoreProfileDao()
         scoreProfileAttributeDao = FakeScoreProfileAttributeDao()
         maintenanceRanCount = 0
@@ -54,7 +51,6 @@ class JsonBackupServiceTest {
                 validator = JsonBackupValidator(),
                 categoryDao = categoryDao,
                 itemDao = itemDao,
-                itemPurgeDao = itemPurgeDao,
                 scoreProfileDao = scoreProfileDao,
                 scoreProfileAttributeDao = scoreProfileAttributeDao,
                 runInTransaction = { block -> block() },
@@ -999,37 +995,6 @@ class JsonBackupServiceTest {
         }
 
         override suspend fun deleteOrphanedProfiles(): Int {
-            writeMethodCalled = true
-            return 0
-        }
-    }
-
-    private class FakeItemPurgeDao : ItemPurgeDao {
-        var writeMethodCalled = false
-
-        fun reset() {
-            writeMethodCalled = false
-        }
-
-        override suspend fun softDeleteItemValuesNotIn(
-            itemId: String,
-            keepAttributeIds: List<String>,
-            deletedAt: Long,
-        ) {
-            writeMethodCalled = true
-        }
-
-        override suspend fun purgeOldSoftDeletedValues(cutoff: Long): Int {
-            writeMethodCalled = true
-            return 0
-        }
-
-        override suspend fun purgeOrphanedRatings(): Int {
-            writeMethodCalled = true
-            return 0
-        }
-
-        override suspend fun purgeOrphanedSoftDeletedValues(): Int {
             writeMethodCalled = true
             return 0
         }

@@ -2,7 +2,6 @@ package com.juzgon.data.backup
 
 import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.ItemDao
-import com.juzgon.data.local.dao.ItemPurgeDao
 import com.juzgon.data.local.dao.ScoreProfileAttributeDao
 import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.data.local.entity.AttributeEntity
@@ -22,10 +21,7 @@ import org.json.JSONArray
 class JsonBackupRestorer(
     private val categoryDao: CategoryDao,
     private val itemDao: ItemDao,
-    @Suppress("UnusedPrivateProperty")
-    private val itemPurgeDao: ItemPurgeDao,
     private val scoreProfileDao: ScoreProfileDao,
-    @Suppress("UnusedPrivateProperty")
     private val scoreProfileAttributeDao: ScoreProfileAttributeDao,
 ) {
     suspend fun clearExistingData() {
