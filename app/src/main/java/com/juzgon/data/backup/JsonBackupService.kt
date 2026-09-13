@@ -2,7 +2,6 @@ package com.juzgon.data.backup
 
 import com.juzgon.data.local.dao.CategoryDao
 import com.juzgon.data.local.dao.ItemDao
-import com.juzgon.data.local.dao.ItemPurgeDao
 import com.juzgon.data.local.dao.ScoreProfileAttributeDao
 import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.domain.backup.BackupException
@@ -17,7 +16,6 @@ class JsonBackupService(
     private val validator: BackupValidator,
     private val categoryDao: CategoryDao,
     private val itemDao: ItemDao,
-    private val itemPurgeDao: ItemPurgeDao,
     private val scoreProfileDao: ScoreProfileDao,
     private val scoreProfileAttributeDao: ScoreProfileAttributeDao,
     private val runInTransaction: suspend (suspend () -> Unit) -> Unit,
@@ -27,7 +25,6 @@ class JsonBackupService(
         JsonBackupRestorer(
             categoryDao,
             itemDao,
-            itemPurgeDao,
             scoreProfileDao,
             scoreProfileAttributeDao,
         ),
