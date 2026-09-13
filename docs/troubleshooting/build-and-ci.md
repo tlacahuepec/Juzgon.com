@@ -416,6 +416,27 @@ Both must complete with `BUILD SUCCESSFUL`. The full quality gate used by CI and
 
 This issue repeatedly blocked local verification during the #231 refactor work (see `docs/changes/2026-05-30-issue-231-refactor-suppressions.md` and the PR #241 body).
 
+## Issue 11: Gradle daemon crashes during KSP test compilation
+
+### Symptoms
+
+The Gradle daemon disappears during `:app:kspDebugUnitTestKotlin` with an `hs_err_pid*.log` containing `EXCEPTION_ACCESS_VIOLATION`. This is distinct from the file-lock failure above: the log identifies a compiler worker thread and the build never reaches test execution.
+
+### Fix
+
+Keep `-XX:TieredStopAtLevel=1` in `org.gradle.jvmargs`. It prevents the JVM's C2 compiler from compiling the affected Gradle/KSP workload on this Windows JDK. The existing memory and `CICompilerCount` limits remain in place.
+
+If an older daemon was started before this setting changed, stop it before retrying:
+
+```powershell
+./gradlew --stop
+./gradlew --no-daemon :app:testDebugUnitTest
+```
+
+### Verification
+
+`kspDebugUnitTestKotlin` and `:app:testDebugUnitTest` must complete with `BUILD SUCCESSFUL`; an old crash log alone is not evidence of a new failure.
+
 ## Verification
 
 Run the same quality command used by CI:
