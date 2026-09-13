@@ -90,14 +90,14 @@ The implementation is tracked across 8 focused GitHub issues:
 
 | Issue | Title | Priority | Size | Status |
 |---|---|---|---|---|
-| [#312](https://github.com/tlacahuepec/Juzgon.com/issues/312) | `feat: Navigation Architecture Decoupling & Bottom Nav Routing` | P1 | M | Todo |
-| [#313](https://github.com/tlacahuepec/Juzgon.com/issues/313) | `feat: Dedicated Settings Screen with Database Backup & Gemini Key` | P1 | M | Todo |
-| [#314](https://github.com/tlacahuepec/Juzgon.com/issues/314) | `feat: Home / Discover Dashboard with Minimalist Header & Spotlight Hero` | P1 | L | Todo |
-| [#315](https://github.com/tlacahuepec/Juzgon.com/issues/315) | `feat: Dedicated Catalogs Screen with Search, Type Filter Chips & Grid` | P1 | M | Todo |
-| [#316](https://github.com/tlacahuepec/Juzgon.com/issues/316) | `feat: Category Detail — Add New Persona Grid Card & Luminous Polish` | P1 | M | Todo |
-| [#317](https://github.com/tlacahuepec/Juzgon.com/issues/317) | `feat: Item Form — Luminous Visual Styling & Gradient Score Sliders` | P2 | M | Todo |
-| [#318](https://github.com/tlacahuepec/Juzgon.com/issues/318) | `feat: Item Detail — Visual Polish, Metadata Card & Dead Code Cleanup` | P2 | S | Todo |
-| [#319](https://github.com/tlacahuepec/Juzgon.com/issues/319) | `feat: Verification, Architecture Documentation & Spike #276 Closeout` | P2 | S | Todo |
+| [#312](https://github.com/tlacahuepec/Juzgon.com/issues/312) | `feat: Navigation Architecture Decoupling & Bottom Nav Routing` | P1 | M | Complete |
+| [#313](https://github.com/tlacahuepec/Juzgon.com/issues/313) | `feat: Dedicated Settings Screen with Database Backup & Gemini Key` | P1 | M | Complete |
+| [#314](https://github.com/tlacahuepec/Juzgon.com/issues/314) | `feat: Home / Discover Dashboard with Minimalist Header & Spotlight Hero` | P1 | L | Complete |
+| [#315](https://github.com/tlacahuepec/Juzgon.com/issues/315) | `feat: Dedicated Catalogs Screen with Search, Type Filter Chips & Grid` | P1 | M | Complete |
+| [#316](https://github.com/tlacahuepec/Juzgon.com/issues/316) | `feat: Category Detail — Add New Persona Grid Card & Luminous Polish` | P1 | M | Complete |
+| [#317](https://github.com/tlacahuepec/Juzgon.com/issues/317) | `feat: Item Form — Luminous Visual Styling & Gradient Score Sliders` | P2 | M | Complete |
+| [#318](https://github.com/tlacahuepec/Juzgon.com/issues/318) | `feat: Item Detail — Visual Polish, Metadata Card & Dead Code Cleanup` | P2 | S | Complete |
+| [#319](https://github.com/tlacahuepec/Juzgon.com/issues/319) | `feat: Verification, Architecture Documentation & Spike #276 Closeout` | P2 | S | Complete |
 
 ---
 
