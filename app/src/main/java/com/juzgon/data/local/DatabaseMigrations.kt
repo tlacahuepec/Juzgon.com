@@ -20,6 +20,7 @@ private const val DATABASE_VERSION_14 = 14
 private const val DATABASE_VERSION_15 = 15
 private const val DATABASE_VERSION_16 = 16
 private const val DATABASE_VERSION_17 = 17
+private const val DATABASE_VERSION_18 = 18
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -329,6 +330,13 @@ object DatabaseMigrations {
                         "ON enrichment_suggestion_cache(" +
                         "catalogId, itemIdentity, targetAttributeKey, knownAttributesFingerprint)",
                 )
+            }
+        }
+
+    val MIGRATION_17_18: Migration =
+        object : Migration(DATABASE_VERSION_17, DATABASE_VERSION_18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE attributes ADD COLUMN suggested_values TEXT NOT NULL DEFAULT '[]'")
             }
         }
 }

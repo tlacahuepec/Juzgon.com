@@ -75,6 +75,7 @@ object DataModule {
                     DatabaseMigrations.MIGRATION_14_15,
                     DatabaseMigrations.MIGRATION_15_16,
                     DatabaseMigrations.MIGRATION_16_17,
+                    DatabaseMigrations.MIGRATION_17_18,
                 ).addCallback(
                     object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {

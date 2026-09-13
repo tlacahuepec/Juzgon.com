@@ -51,6 +51,8 @@ data class AttributeEntity(
     val diamondOrder: Int? = null,
     @ColumnInfo(name = "scoring_direction")
     val scoringDirection: String? = null,
+    @ColumnInfo(name = "suggested_values")
+    val suggestedValues: String = "[]",
 )
 
 @Entity(

@@ -127,6 +127,35 @@ class JsonBackupServiceTest {
         }
 
     @Test
+    fun export_includesDropdownSuggestedValues() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("People"),
+                        listOf(
+                            AttributeEntity(
+                                id = "People/Type of Face",
+                                categoryName = "People",
+                                type = "DROPDOWN",
+                                suggestedValues = "[\"Oval\",\"Round\"]",
+                            ),
+                        ),
+                    ),
+                )
+
+            val attribute =
+                JSONObject(service.export())
+                    .getJSONArray("categories")
+                    .getJSONObject(0)
+                    .getJSONArray("attributes")
+                    .getJSONObject(0)
+
+            assertEquals("Oval", attribute.getJSONArray("suggestedValues").getString(0))
+            assertEquals("Round", attribute.getJSONArray("suggestedValues").getString(1))
+        }
+
+    @Test
     fun export_includesItemAndRatings() =
         runTest {
             categoryDao.state.value =

@@ -11,6 +11,7 @@ data class Attribute(
     val displayInDiamond: Boolean = type == AttributeType.NUMBER,
     val diamondOrder: Int? = null,
     val scoringDirection: ScoringDirection? = null,
+    val suggestedValues: List<String> = emptyList(),
 ) {
     val displayName: String get() = id.substringAfter("/")
 
@@ -28,6 +29,9 @@ data class Attribute(
         }
         require(scoringDirection == null || type == AttributeType.DATE) {
             "Scoring direction is only valid for DATE attributes"
+        }
+        require(suggestedValues.isEmpty() || type == AttributeType.DROPDOWN) {
+            "Suggested values are only valid for DROPDOWN attributes"
         }
     }
 }

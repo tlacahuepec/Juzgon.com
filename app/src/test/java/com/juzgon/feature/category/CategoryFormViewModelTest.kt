@@ -69,6 +69,25 @@ class CategoryFormViewModelTest {
         }
 
     @Test
+    fun faceTypePreset_setsNameAndSuggestions_thenTypeChangeClearsSuggestions() =
+        runTest {
+            val key = attributes.single().key
+
+            viewModel.onAttributeTypeChanged(key, AttributeType.DROPDOWN)
+            viewModel.onApplyFaceTypePreset(key)
+
+            assertEquals("Type of Face", attributes.single().name)
+            assertEquals(
+                listOf("Oval", "Round", "Square", "Heart", "Oblong", "Diamond", "Triangle"),
+                attributes.single().suggestedValues,
+            )
+
+            viewModel.onAttributeTypeChanged(key, AttributeType.NOTES)
+
+            assertTrue(attributes.single().suggestedValues.isEmpty())
+        }
+
+    @Test
     fun blankWeightDefaultsToOneOnSave() =
         runTest {
             val key = attributes.single().key

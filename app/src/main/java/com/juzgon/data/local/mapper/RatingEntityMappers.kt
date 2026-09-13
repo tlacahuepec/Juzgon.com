@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.data.local.mapper
 
 import com.juzgon.data.local.dao.CategoryWithAttributes
@@ -15,6 +17,9 @@ import com.juzgon.domain.ItemAttributeValue
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.ScoringDirection
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 fun Category.toEntity(): CategoryEntity =
@@ -36,6 +41,7 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
             displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
             diamondOrder = attribute.diamondOrder,
             scoringDirection = attribute.scoringDirection?.name,
+            suggestedValues = Json.encodeToString(attribute.suggestedValues),
         )
     }
 
@@ -137,5 +143,14 @@ fun AttributeEntity.toDomain(): Attribute {
         displayInDiamond = parsedType == AttributeType.NUMBER && displayInDiamond,
         diamondOrder = diamondOrder,
         scoringDirection = if (parsedType == AttributeType.DATE) parsedDirection else null,
+        suggestedValues = if (parsedType == AttributeType.DROPDOWN) suggestedValues.toStringList() else emptyList(),
     )
 }
+
+private fun String.toStringList(): List<String> =
+    runCatching {
+        Json.decodeFromString<List<String>>(this)
+    }.getOrElse {
+        Timber.w("Invalid suggested values for attribute, defaulting to empty list")
+        emptyList()
+    }

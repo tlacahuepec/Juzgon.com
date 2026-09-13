@@ -62,6 +62,7 @@ class JsonBackupSerializer {
                         put("displayInDiamond", attr.displayInDiamond)
                         attr.diamondOrder?.let { put("diamondOrder", it) }
                         attr.scoringDirection?.let { put("scoringDirection", it) }
+                        if (attr.suggestedValues != "[]") put("suggestedValues", JSONArray(attr.suggestedValues))
                     },
                 )
             }

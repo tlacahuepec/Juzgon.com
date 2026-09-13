@@ -101,6 +101,24 @@ class RatingEntityMappersTest {
     }
 
     @Test
+    fun attributeEntity_roundTrip_preservesDropdownSuggestedValues() {
+        val category =
+            Category(
+                name = "People",
+                attributes =
+                    listOf(
+                        Attribute(
+                            id = "People/Type of Face",
+                            type = AttributeType.DROPDOWN,
+                            suggestedValues = listOf("Oval", "Round"),
+                        ),
+                    ),
+            )
+
+        assertEquals(category, category.toEntity().toDomain(category.toAttributeEntities()))
+    }
+
+    @Test
     fun itemEntity_toDomain_withNoRatings_returnsEmptyScores() {
         val itemEntity = ItemEntity(id = "item-2")
 

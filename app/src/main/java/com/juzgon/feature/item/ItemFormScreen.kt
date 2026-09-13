@@ -41,7 +41,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -630,6 +633,14 @@ private fun ItemAttributeValueField(
                 contentDescription = cd,
             )
         }
+        AttributeType.DROPDOWN -> {
+            SuggestedValueDropdownField(
+                valueInput = valueInput,
+                validationError = validationError,
+                onValueChange = onValueChange,
+                contentDescription = cd,
+            )
+        }
         else -> {
             OutlinedTextField(
                 value = valueInput.valueText,
@@ -644,6 +655,52 @@ private fun ItemAttributeValueField(
                         .fillMaxWidth()
                         .semantics { contentDescription = cd },
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SuggestedValueDropdownField(
+    valueInput: ItemValueInput,
+    validationError: ItemValueValidationError,
+    onValueChange: (String, String) -> Unit,
+    contentDescription: String,
+) {
+    val attribute = valueInput.attribute
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = valueInput.valueText,
+            onValueChange = { onValueChange(attribute.id, it) },
+            label = { Text(attribute.displayName) },
+            isError = validationError.value != null,
+            supportingText = { validationError.value?.let { Text(it) } },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .semantics { this.contentDescription = contentDescription }
+                    .menuAnchor(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            attribute.suggestedValues.forEach { suggestedValue ->
+                DropdownMenuItem(
+                    text = { Text(suggestedValue) },
+                    onClick = {
+                        onValueChange(attribute.id, suggestedValue)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }

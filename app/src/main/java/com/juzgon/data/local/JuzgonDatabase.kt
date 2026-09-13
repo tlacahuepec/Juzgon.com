@@ -37,7 +37,7 @@ import com.juzgon.data.local.entity.ScoreProfileEntity
         ScoreProfileAttributeEntity::class,
         EnrichmentSuggestionCacheEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {

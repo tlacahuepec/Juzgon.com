@@ -674,6 +674,32 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(17, listOf(DatabaseMigrations.MIGRATION_16_17)).close()
     }
 
+    @Test
+    fun migrate17To18_addsSuggestedValuesWithEmptyArrayDefault() {
+        val connection = helper.createDatabase(17)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond) VALUES ('$CATEGORY_NAME/$ATTRIBUTE_ID', '$CATEGORY_NAME', " +
+                    "1.0, 0, 'DROPDOWN', 1, 0)",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(18, listOf(DatabaseMigrations.MIGRATION_17_18)).use { conn ->
+            conn.prepare("SELECT suggested_values FROM attributes").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals("[]", stmt.getText(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate17To18_validatesLatestSchema() {
+        helper.createDatabase(17).close()
+        helper.runMigrationsAndValidate(18, listOf(DatabaseMigrations.MIGRATION_17_18)).close()
+    }
+
     private fun insertV14Category(
         connection: androidx.sqlite.SQLiteConnection,
         name: String,

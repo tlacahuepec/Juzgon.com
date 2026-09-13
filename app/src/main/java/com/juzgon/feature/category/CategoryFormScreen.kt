@@ -79,6 +79,7 @@ fun CategoryFormRoute(
         onAttributeNameChange = viewModel::onAttributeNameChanged,
         onAttributeWeightChange = viewModel::onAttributeWeightChanged,
         onAttributeTypeChange = viewModel::onAttributeTypeChanged,
+        onApplyFaceTypePreset = viewModel::onApplyFaceTypePreset,
         onAttributeRequiredChange = viewModel::onAttributeRequiredChanged,
         onAttributeDisplayInDiamondChange = viewModel::onAttributeDisplayInDiamondChanged,
         onAttributeDiamondOrderChange = viewModel::onAttributeDiamondOrderChanged,
@@ -106,6 +107,7 @@ fun CategoryFormScreen(
     onAttributeNameChange: (Long, String) -> Unit,
     onAttributeWeightChange: (Long, String) -> Unit,
     onAttributeTypeChange: (Long, AttributeType) -> Unit,
+    onApplyFaceTypePreset: (Long) -> Unit = {},
     onAttributeRequiredChange: (Long, Boolean) -> Unit,
     onAttributeDisplayInDiamondChange: (Long, Boolean) -> Unit,
     onAttributeDiamondOrderChange: (Long, String) -> Unit,
@@ -286,6 +288,7 @@ fun CategoryFormScreen(
                     onNameChange = onAttributeNameChange,
                     onWeightChange = onAttributeWeightChange,
                     onTypeChange = onAttributeTypeChange,
+                    onApplyFaceTypePreset = onApplyFaceTypePreset,
                     onRequiredChange = onAttributeRequiredChange,
                     onDisplayInDiamondChange = onAttributeDisplayInDiamondChange,
                     onDiamondOrderChange = onAttributeDiamondOrderChange,
@@ -345,6 +348,7 @@ private fun CategoryAttributeRow(
     onNameChange: (Long, String) -> Unit,
     onWeightChange: (Long, String) -> Unit,
     onTypeChange: (Long, AttributeType) -> Unit,
+    onApplyFaceTypePreset: (Long) -> Unit,
     onRequiredChange: (Long, Boolean) -> Unit,
     onDisplayInDiamondChange: (Long, Boolean) -> Unit,
     onDiamondOrderChange: (Long, String) -> Unit,
@@ -408,6 +412,19 @@ private fun CategoryAttributeRow(
                         },
                     )
                 }
+            }
+        }
+
+        if (attribute.type == AttributeType.DROPDOWN) {
+            OutlinedButton(
+                onClick = { onApplyFaceTypePreset(attribute.key) },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Apply face-type preset to attribute $position"
+                        role = Role.Button
+                    },
+            ) {
+                Text("Apply face-type preset")
             }
         }
 

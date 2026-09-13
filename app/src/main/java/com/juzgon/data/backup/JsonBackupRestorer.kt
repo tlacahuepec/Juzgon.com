@@ -67,6 +67,7 @@ class JsonBackupRestorer(
                             } else {
                                 null
                             },
+                        suggestedValues = attr.optJSONArray("suggestedValues")?.toString() ?: "[]",
                     )
                 }
             if (attrs.isNotEmpty()) categoryDao.upsertAttributes(attrs)
