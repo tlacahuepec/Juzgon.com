@@ -61,6 +61,7 @@ data class RatedItem(
     val scores: List<ScoreEntry>,
     val notes: String = "",
     val values: List<ItemAttributeValue> = emptyList(),
+    val images: List<ItemImage> = emptyList(),
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 ) {
@@ -79,6 +80,43 @@ data class ItemAttributeValue(
     val attribute: Attribute,
     val value: String,
 )
+
+data class ItemImage(
+    val id: String,
+    val attribute: Attribute,
+    val position: Int,
+    val bytes: ByteArray,
+    val mimeType: String? = null,
+    val displayName: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val createdAt: Long = 0L,
+) {
+    override fun equals(other: Any?): Boolean =
+        other is ItemImage &&
+            id == other.id &&
+            attribute == other.attribute &&
+            position == other.position &&
+            bytes.contentEquals(other.bytes) &&
+            mimeType == other.mimeType &&
+            displayName == other.displayName &&
+            width == other.width &&
+            height == other.height &&
+            createdAt == other.createdAt
+
+    override fun hashCode(): Int =
+        listOf(
+            id,
+            attribute,
+            position,
+            bytes.contentHashCode(),
+            mimeType,
+            displayName,
+            width,
+            height,
+            createdAt,
+        ).hashCode()
+}
 
 data class AttributeRankSnapshot(
     val itemId: String,

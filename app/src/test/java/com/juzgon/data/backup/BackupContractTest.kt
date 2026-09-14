@@ -392,6 +392,11 @@ class BackupContractTest {
             newAttributeId: String,
         ) = error("not used")
 
+        override suspend fun renameAttributeIdInItemImages(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
         override suspend fun renameAttributeIdInRankSnapshots(
             oldAttributeId: String,
             newAttributeId: String,
@@ -421,6 +426,15 @@ class BackupContractTest {
 
         override suspend fun upsertItemValues(values: List<ItemValueEntity>) = error("not used")
 
+        override suspend fun upsertImages(images: List<com.juzgon.data.local.entity.ItemImageEntity>) = error("not used")
+
+        override suspend fun deleteImagesNotIn(
+            itemId: String,
+            keepIds: List<String>,
+        ) = error("not used")
+
+        override suspend fun deleteImagesForItem(itemId: String) = error("not used")
+
         override suspend fun deleteItemValuesForItem(itemId: String) = error("not used")
 
         override fun getItemWithRatings(id: String): ItemWithRatings? = error("not used")
@@ -447,6 +461,11 @@ class BackupContractTest {
         override suspend fun deleteProfile(id: String) = error("not used")
 
         override suspend fun deleteOrphanedProfiles() = error("not used")
+
+        override suspend fun updateCategoryName(
+            oldCategoryName: String,
+            newCategoryName: String,
+        ): Int = error("not used")
     }
 
     @Suppress("TooManyFunctions")

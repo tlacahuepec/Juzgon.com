@@ -7,6 +7,7 @@ import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import org.junit.Assert.assertEquals
@@ -61,6 +62,54 @@ class RatingEntityMappersTest {
         val mappedBack = itemEntity.toDomain(ratingEntities, attributesById)
 
         assertEquals(expected, mappedBack)
+    }
+
+    @Test
+    fun ratedItemImageRoundTrip_preservesBinaryMetadataAndAttributeOrder() {
+        val photo = Attribute(id = "photo", type = AttributeType.IMAGE)
+        val thumbnail = Attribute(id = "thumbnail", type = AttributeType.IMAGE)
+        val ratedItem =
+            RatedItem(
+                id = "item-1",
+                scores = emptyList(),
+                images =
+                    listOf(
+                        ItemImage(
+                            id = "thumbnail-1",
+                            attribute = thumbnail,
+                            position = 1,
+                            bytes = byteArrayOf(3, 4),
+                            mimeType = "image/png",
+                            displayName = "thumbnail.png",
+                            width = 16,
+                            height = 16,
+                            createdAt = 123L,
+                        ),
+                        ItemImage(
+                            id = "photo-1",
+                            attribute = photo,
+                            position = 0,
+                            bytes = byteArrayOf(1, 2),
+                            mimeType = "image/jpeg",
+                            displayName = "photo.jpg",
+                            width = 640,
+                            height = 480,
+                            createdAt = 456L,
+                        ),
+                    ),
+            )
+
+        val mappedBack =
+            ratedItem
+                .toItemEntity()
+                .toDomain(
+                    ratings = emptyList(),
+                    attributesById = mapOf(photo.id to photo, thumbnail.id to thumbnail),
+                    imageEntities = ratedItem.toItemImageEntities(),
+                )
+
+        assertEquals(listOf("photo-1", "thumbnail-1"), mappedBack.images.map { it.id })
+        assertEquals(ratedItem.images.sortedBy { it.attribute.id }, mappedBack.images)
     }
 
     @Test

@@ -700,6 +700,43 @@ class JuzgonDatabaseMigrationTest {
         helper.runMigrationsAndValidate(18, listOf(DatabaseMigrations.MIGRATION_17_18)).close()
     }
 
+    @Test
+    fun migrate18To19_createsImageTableAndPreservesLegacyImageValues() {
+        val connection = helper.createDatabase(18)
+        connection.prepare("INSERT INTO categories (name) VALUES ('$CATEGORY_NAME')").use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO attributes (id, category_name, weight, position, type, is_required, " +
+                    "display_in_diamond, suggested_values) VALUES ('$CATEGORY_NAME/Photo', '$CATEGORY_NAME', " +
+                    "1.0, 0, 'IMAGE', 1, 0, '[]')",
+            ).use { it.step() }
+        connection
+            .prepare("INSERT INTO items (id, notes, created_at, updated_at) VALUES ('$ITEM_ID', '', 0, 0)")
+            .use { it.step() }
+        connection
+            .prepare(
+                "INSERT INTO item_values (item_id, attribute_id, value_text) " +
+                    "VALUES ('$ITEM_ID', '$CATEGORY_NAME/Photo', 'content://legacy/photo')",
+            ).use { it.step() }
+        connection.close()
+
+        helper.runMigrationsAndValidate(19, listOf(DatabaseMigrations.MIGRATION_18_19)).use { conn ->
+            conn
+                .prepare(
+                    "SELECT value_text FROM item_values WHERE item_id = '$ITEM_ID' " +
+                        "AND attribute_id = '$CATEGORY_NAME/Photo'",
+                ).use { stmt ->
+                    assertTrue(stmt.step())
+                    assertEquals("content://legacy/photo", stmt.getText(0))
+                }
+            conn
+                .prepare(
+                    "INSERT INTO item_images (id, item_id, attribute_id, position, bytes, created_at) " +
+                        "VALUES ('image-1', '$ITEM_ID', '$CATEGORY_NAME/Photo', 0, X'01', 0)",
+                ).use { it.step() }
+        }
+    }
+
     private fun insertV14Category(
         connection: androidx.sqlite.SQLiteConnection,
         name: String,

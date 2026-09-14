@@ -20,6 +20,7 @@ import com.juzgon.data.local.entity.AttributeRankSnapshotEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.EnrichmentSuggestionCacheEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
@@ -32,12 +33,13 @@ import com.juzgon.data.local.entity.ScoreProfileEntity
         ItemEntity::class,
         RatingEntity::class,
         ItemValueEntity::class,
+        ItemImageEntity::class,
         AttributeRankSnapshotEntity::class,
         ScoreProfileEntity::class,
         ScoreProfileAttributeEntity::class,
         EnrichmentSuggestionCacheEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 abstract class JuzgonDatabase : RoomDatabase() {

@@ -18,7 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.social.SocialNetworkCodec
 import com.juzgon.domain.social.SocialNetworkEntry
-import com.juzgon.domain.social.SocialPlatformIcons
+import com.juzgon.ui.social.SocialPlatformIcons
 
 @Composable
 internal fun SocialNetworkListSection(value: String) {

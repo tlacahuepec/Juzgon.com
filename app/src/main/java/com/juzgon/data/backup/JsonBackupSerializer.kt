@@ -81,6 +81,9 @@ class JsonBackupSerializer {
                         ?: iwr.values
                             .firstOrNull()
                             ?.let { attributeToCategory[it.attributeId] }
+                        ?: iwr.images
+                            .firstOrNull()
+                            ?.let { attributeToCategory[it.attributeId] }
                             .orEmpty()
                 put(
                     JSONObject().apply {

@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Juzgon"
 include(":app")
+include(":domain")

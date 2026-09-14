@@ -13,6 +13,7 @@ import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.AttributeRankSnapshotEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,8 @@ data class ItemWithRatings(
         entity = ItemValueEntity::class,
     )
     val values: List<ItemValueEntity>,
+    @Relation(parentColumn = "id", entityColumn = "item_id", entity = ItemImageEntity::class)
+    val images: List<ItemImageEntity> = emptyList(),
 )
 
 data class RankedItemWithRatings(
@@ -118,6 +121,12 @@ interface CategoryDao {
         newAttributeId: String,
     )
 
+    @Query("UPDATE item_images SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
+    suspend fun renameAttributeIdInItemImages(
+        oldAttributeId: String,
+        newAttributeId: String,
+    )
+
     @Query("UPDATE attribute_rank_snapshots SET attribute_id = :newAttributeId WHERE attribute_id = :oldAttributeId")
     suspend fun renameAttributeIdInRankSnapshots(
         oldAttributeId: String,
@@ -137,6 +146,8 @@ interface CategoryDao {
             UNION ALL
             SELECT attribute_id FROM item_values
                 WHERE attribute_id IN (:attributeIds) AND deleted_at IS NULL
+            UNION ALL
+            SELECT attribute_id FROM item_images WHERE attribute_id IN (:attributeIds)
         )
         """,
     )
@@ -144,9 +155,15 @@ interface CategoryDao {
 
     @Query(
         """
-        SELECT a.category_name, COUNT(DISTINCT r.item_id) AS item_count
+        SELECT a.category_name, COUNT(DISTINCT all_items.item_id) AS item_count
         FROM attributes a
-        LEFT JOIN ratings r ON r.attribute_id = a.id
+        LEFT JOIN (
+            SELECT attribute_id, item_id FROM ratings
+            UNION
+            SELECT attribute_id, item_id FROM item_values WHERE deleted_at IS NULL
+            UNION
+            SELECT attribute_id, item_id FROM item_images
+        ) all_items ON all_items.attribute_id = a.id
         GROUP BY a.category_name
         """,
     )
@@ -186,9 +203,17 @@ interface ItemDao {
                 0.0
             ) AS aggregate_score
         FROM items
-        INNER JOIN ratings ON ratings.item_id = items.id
-        INNER JOIN attributes ON attributes.id = ratings.attribute_id
-        WHERE attributes.category_name = :categoryName AND attributes.type = 'NUMBER'
+        LEFT JOIN ratings ON ratings.item_id = items.id
+        LEFT JOIN attributes ON attributes.id = ratings.attribute_id
+            AND attributes.category_name = :categoryName
+            AND attributes.type = 'NUMBER'
+        WHERE items.id IN (
+            SELECT r.item_id FROM ratings r INNER JOIN attributes a ON a.id = r.attribute_id WHERE a.category_name = :categoryName
+            UNION
+            SELECT iv.item_id FROM item_values iv INNER JOIN attributes a ON a.id = iv.attribute_id WHERE a.category_name = :categoryName AND iv.deleted_at IS NULL
+            UNION
+            SELECT ii.item_id FROM item_images ii INNER JOIN attributes a ON a.id = ii.attribute_id WHERE a.category_name = :categoryName
+        )
         GROUP BY items.id
         ORDER BY aggregate_score DESC, items.id ASC
         """,
@@ -203,6 +228,18 @@ interface ItemDao {
 
     @Upsert
     suspend fun upsertItemValues(values: List<ItemValueEntity>)
+
+    @Upsert
+    suspend fun upsertImages(images: List<ItemImageEntity>)
+
+    @Query("DELETE FROM item_images WHERE item_id = :itemId AND id NOT IN (:keepIds)")
+    suspend fun deleteImagesNotIn(
+        itemId: String,
+        keepIds: List<String>,
+    )
+
+    @Query("DELETE FROM item_images WHERE item_id = :itemId")
+    suspend fun deleteImagesForItem(itemId: String)
 
     @Query("DELETE FROM item_values WHERE item_id = :itemId")
     suspend fun deleteItemValuesForItem(itemId: String)

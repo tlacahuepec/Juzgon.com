@@ -35,6 +35,12 @@ interface ScoreProfileDao {
         """,
     )
     suspend fun deleteOrphanedProfiles(): Int
+
+    @Query("UPDATE score_profiles SET category_name = :newCategoryName WHERE category_name = :oldCategoryName")
+    suspend fun updateCategoryName(
+        oldCategoryName: String,
+        newCategoryName: String,
+    ): Int
 }
 
 @Dao

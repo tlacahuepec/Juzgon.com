@@ -120,6 +120,9 @@ fun ItemFormRoute(
                             width = metadata.width,
                             height = metadata.height,
                             displayName = metadata.displayName,
+                            bytes =
+                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                    ?: return@mapNotNull null,
                         )
                     }
                 }
@@ -584,7 +587,7 @@ private fun ItemAttributeValueField(
                         .fillMaxWidth()
                         .semantics { contentDescription = cd },
             ) {
-                Text(text = attributeId, style = MaterialTheme.typography.bodyLarge)
+                Text(text = valueInput.attribute.displayName, style = MaterialTheme.typography.bodyLarge)
                 Switch(
                     checked = valueInput.valueText == "true",
                     onCheckedChange = { checked -> onValueChange(attributeId, checked.toString()) },
@@ -602,6 +605,7 @@ private fun ItemAttributeValueField(
         AttributeType.NATIONALITY -> {
             NationalityMultiSelectField(
                 attributeId = attributeId,
+                displayName = valueInput.attribute.displayName,
                 valueText = valueInput.valueText,
                 onValueChange = onValueChange,
                 isError = validationError.value != null,
@@ -618,6 +622,7 @@ private fun ItemAttributeValueField(
         AttributeType.SKIN_TYPE -> {
             SkinTypeValueField(
                 attributeId = attributeId,
+                displayName = valueInput.attribute.displayName,
                 selectedValue = valueInput.valueText,
                 onValueChange = onValueChange,
                 validationError = validationError,
@@ -645,7 +650,7 @@ private fun ItemAttributeValueField(
             OutlinedTextField(
                 value = valueInput.valueText,
                 onValueChange = { onValueChange(attributeId, it) },
-                label = { Text(attributeId) },
+                label = { Text(valueInput.attribute.displayName) },
                 isError = validationError.value != null,
                 supportingText = {
                     validationError.value?.let { Text(it) }
@@ -807,12 +812,13 @@ private fun SkinTypeValueField(
     selectedValue: String,
     onValueChange: (String, String) -> Unit,
     validationError: ItemValueValidationError,
+    displayName: String = attributeId.substringAfter("/"),
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(text = attributeId.substringAfter("/"), style = MaterialTheme.typography.bodyLarge)
+        Text(text = displayName, style = MaterialTheme.typography.bodyLarge)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
@@ -888,7 +894,7 @@ private fun ImageAttributeValueField(
                 .fillMaxWidth()
                 .semantics { contentDescription = "$attributeId image value" },
     ) {
-        Text(text = attributeId, style = MaterialTheme.typography.bodyLarge)
+        Text(text = valueInput.attribute.displayName, style = MaterialTheme.typography.bodyLarge)
         if (valueInput.imageReferences.isNotEmpty()) {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -980,6 +986,7 @@ private fun ImageAttributePreview(
                     imageBitmapFromValue(
                         contentResolver = context.contentResolver,
                         value = imageReference.thumbnailUri,
+                        bytes = imageReference.bytes,
                         maxDimensionPx = 384,
                     )
                 }
@@ -1067,8 +1074,16 @@ private fun ContentResolver.imageBounds(uri: Uri): Pair<Int, Int>? {
 private fun imageBitmapFromValue(
     contentResolver: ContentResolver,
     value: String,
+    bytes: ByteArray?,
     maxDimensionPx: Int,
 ) = runCatching {
+    if (bytes != null) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val sampleSize = bounds.sampleSizeFor(maxDimensionPx)
+        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        return@runCatching BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+    }
     val uri = Uri.parse(value)
     val bounds =
         BitmapFactory.Options().apply {

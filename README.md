@@ -11,14 +11,14 @@ Juzgón is a modern Android app where users create custom rating systems for any
 - **Multi-perspective score profiles**: Score the same items through different attribute weighting profiles (e.g., evaluating a player as a "Striker" vs "Playmaker").
 - **Visual ranking & radar charts**: Canvas-rendered diamond/radar charts, gradient score bars, glowing cards, and real-time aggregate score calculations.
 - **AI-powered attribute enrichment**: Google Gemini API integration with Google Search Grounding to automatically discover and suggest metadata values (birth dates, positions, nationalities).
-- **Data integrity & portable backups**: Room database (v17) with incremental migrations, automated foreign-key integrity repairs, and versioned JSON export/import.
+- **Data integrity & portable backups**: Room database (v19) with incremental migrations, automated integrity repairs, legacy JSON import/export, and ZIP archives for image-backed backups.
 - **Interactive UI prototype**: Interactive web prototype located in **[docs/design/prototype](docs/design/prototype/README.md)** simulating the complete luminous user experience.
 
 ## Architecture
 
 This project strictly adheres to Clean Architecture:
 - **Presentation Layer** (`ui`, `feature`, `navigation`): Jetpack Compose, Material 3, and custom visual tokens.
-- **Domain Layer** (`domain`): Core models, calculations, and use cases with zero framework dependencies.
+- **Domain Layer** (`:domain`): Core models, calculations, repository contracts, and use cases with no Android dependency.
 - **Data Layer** (`data`): Room database, encrypted API key storage, Gemini REST client, and backup serializer.
 
 Architectural boundaries are validated at compile-time by `./gradlew :app:checkDependencyBoundaries` (`feature` cannot import `data`, `domain` cannot import `feature` or `data`).

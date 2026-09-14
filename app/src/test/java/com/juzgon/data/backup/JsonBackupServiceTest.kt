@@ -11,11 +11,14 @@ import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
 import com.juzgon.data.local.entity.ScoreProfileEntity
 import com.juzgon.domain.backup.BackupException
+import com.juzgon.domain.backup.BackupValidationResult
+import com.juzgon.domain.backup.BackupValidator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -28,6 +31,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -309,6 +314,268 @@ class JsonBackupServiceTest {
             assertFalse(categoryDao.writeMethodCalled)
             assertFalse(itemDao.writeMethodCalled)
             assertFalse(scoreProfileDao.writeMethodCalled)
+        }
+
+    @Test
+    fun exportArchive_emptyDatabase_hasValidatedManifestAndDataEntries() =
+        runTest {
+            val entries = readZip(service.exportArchive())
+            val manifest = JSONObject(entries.getValue("manifest.json").toString(Charsets.UTF_8))
+            val data = JSONObject(entries.getValue("data.json").toString(Charsets.UTF_8))
+
+            assertEquals(setOf("manifest.json", "data.json"), entries.keys)
+            assertEquals(1, manifest.getInt("formatVersion"))
+            assertEquals("Juzgon", manifest.getString("app"))
+            assertEquals(5, manifest.getInt("schemaVersion"))
+            assertEquals("data.json", manifest.getJSONObject("data").getString("path"))
+            assertEquals(0, manifest.getJSONArray("images").length())
+            assertEquals(0, manifest.getJSONArray("warnings").length())
+            assertEquals(5, data.getInt("version"))
+            assertEquals(manifest.getJSONObject("data").getString("sha256"), entries.getValue("data.json").sha256())
+        }
+
+    @Test
+    fun exportArchive_preservesImageBytesAndMetadataWithChecksums() =
+        runTest {
+            val imageBytes = byteArrayOf(1, 2, 3, 4)
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("alice"),
+                        emptyList(),
+                        emptyList(),
+                        listOf(
+                            ItemImageEntity(
+                                id = "image-1",
+                                itemId = "alice",
+                                attributeId = "People/Photo",
+                                position = 2,
+                                bytes = imageBytes,
+                                mimeType = "image/png",
+                                displayName = "portrait.png",
+                                width = 800,
+                                height = 600,
+                                createdAt = 42L,
+                            ),
+                        ),
+                    ),
+                )
+
+            val entries = readZip(service.exportArchive())
+            val manifest = JSONObject(entries.getValue("manifest.json").toString(Charsets.UTF_8))
+            val image = manifest.getJSONArray("images").getJSONObject(0)
+
+            assertEquals(imageBytes.toList(), entries.getValue("images/image-1").toList())
+            assertEquals("image-1", image.getString("id"))
+            assertEquals("alice", image.getString("itemId"))
+            assertEquals("People/Photo", image.getString("attributeId"))
+            assertEquals(2, image.getInt("position"))
+            assertEquals("image/png", image.getString("mimeType"))
+            assertEquals("portrait.png", image.getString("displayName"))
+            assertEquals(800, image.getInt("width"))
+            assertEquals(600, image.getInt("height"))
+            assertEquals(42L, image.getLong("createdAt"))
+            assertEquals(entries.getValue("images/image-1").sha256(), image.getString("sha256"))
+        }
+
+    @Test
+    fun exportArchive_sortsImageEntriesAndDoesNotMutateSourceData() =
+        runTest {
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("item"),
+                        emptyList(),
+                        emptyList(),
+                        listOf(
+                            ItemImageEntity("z", "item", "Photo", 1, byteArrayOf(1)),
+                            ItemImageEntity("a", "item", "Photo", 0, byteArrayOf(2)),
+                        ),
+                    ),
+                )
+
+            val entries = readZip(service.exportArchive())
+
+            assertEquals(listOf("manifest.json", "data.json", "images/a", "images/z"), entries.keys.toList())
+            assertFalse(categoryDao.writeMethodCalled)
+            assertFalse(itemDao.writeMethodCalled)
+            assertFalse(scoreProfileDao.writeMethodCalled)
+        }
+
+    @Test
+    fun exportArchive_rejectsAnInvalidJsonPayloadBeforeWritingAnArchive() =
+        runTest {
+            service =
+                JsonBackupService(
+                    validator =
+                        object : BackupValidator {
+                            override fun validate(json: String): BackupValidationResult =
+                                BackupValidationResult(listOf("forced validation failure"))
+                        },
+                    categoryDao = categoryDao,
+                    itemDao = itemDao,
+                    scoreProfileDao = scoreProfileDao,
+                    scoreProfileAttributeDao = scoreProfileAttributeDao,
+                    runInTransaction = { block -> block() },
+                )
+
+            val result = runCatching { service.exportArchive() }
+
+            assertTrue(result.exceptionOrNull() is BackupException)
+            assertTrue(result.exceptionOrNull()?.message?.contains("forced validation failure") == true)
+        }
+
+    @Test
+    fun importArchive_roundTripRestoresCategoriesItemsRatingsAndImages() =
+        runTest {
+            val imageBytes = byteArrayOf(10, 20, 30)
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Cars"),
+                        listOf(
+                            AttributeEntity(
+                                id = "Cars/Speed",
+                                categoryName = "Cars",
+                                weight = 1.0,
+                                position = 0,
+                                type = "NUMBER",
+                            ),
+                        ),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("Roadster"),
+                        ratings = listOf(RatingEntity(itemId = "Roadster", attributeId = "Cars/Speed", score = 9)),
+                        values = emptyList(),
+                        images =
+                            listOf(
+                                ItemImageEntity(
+                                    id = "img-1",
+                                    itemId = "Roadster",
+                                    attributeId = "Cars/Speed",
+                                    position = 0,
+                                    bytes = imageBytes,
+                                    mimeType = "image/png",
+                                    displayName = "roadster.png",
+                                    createdAt = 100L,
+                                ),
+                            ),
+                    ),
+                )
+
+            val archive = service.exportArchive()
+            categoryDao.reset()
+            itemDao.reset()
+
+            service.importArchive(archive)
+
+            assertEquals(1, categoryDao.upsertedCategories.size)
+            assertEquals("Cars", categoryDao.upsertedCategories[0].name)
+            assertEquals(1, itemDao.upsertedItems.size)
+            assertEquals("Roadster", itemDao.upsertedItems[0].id)
+            assertEquals(1, itemDao.upsertedRatings.size)
+            assertEquals(9, itemDao.upsertedRatings[0].score)
+            assertEquals(1, itemDao.upsertedImages.size)
+            assertEquals("img-1", itemDao.upsertedImages[0].id)
+            assertEquals(imageBytes.toList(), itemDao.upsertedImages[0].bytes.toList())
+            assertEquals(1, maintenanceRanCount)
+        }
+
+    @Test
+    fun importArchive_roundTripPreservesCategoryForImageOnlyItem() =
+        runTest {
+            categoryDao.state.value =
+                listOf(
+                    CategoryWithAttributes(
+                        CategoryEntity("Media"),
+                        listOf(AttributeEntity("Photo", "Media", 1.0, 0, type = "IMAGE")),
+                    ),
+                )
+            itemDao.state.value =
+                listOf(
+                    ItemWithRatings(
+                        ItemEntity("album-1"),
+                        ratings = emptyList(),
+                        values = emptyList(),
+                        images = listOf(ItemImageEntity("image-1", "album-1", "Photo", 0, byteArrayOf(1))),
+                    ),
+                )
+
+            val archive = service.exportArchive()
+            val data = JSONObject(readZip(archive).getValue("data.json").toString(Charsets.UTF_8))
+            assertEquals("Media", data.getJSONArray("items").getJSONObject(0).getString("categoryName"))
+
+            categoryDao.reset()
+            itemDao.reset()
+            service.importArchive(archive)
+            assertEquals("Media/Photo", itemDao.upsertedImages.single().attributeId)
+        }
+
+    @Test
+    fun importArchive_missingManifest_throwsBackupException() =
+        runTest {
+            val emptyZip =
+                java.io.ByteArrayOutputStream().use { out ->
+                    java.util.zip.ZipOutputStream(out).use { zip ->
+                        zip.putNextEntry(java.util.zip.ZipEntry("dummy.txt"))
+                        zip.write("hello".toByteArray())
+                        zip.closeEntry()
+                    }
+                    out.toByteArray()
+                }
+
+            val result = runCatching { service.importArchive(emptyZip) }
+
+            assertTrue(result.exceptionOrNull() is BackupException)
+            assertTrue(result.exceptionOrNull()?.message?.contains("manifest.json") == true)
+        }
+
+    @Test
+    fun importArchive_dataChecksumMismatch_throwsBackupException() =
+        runTest {
+            val badChecksumZip =
+                java.io.ByteArrayOutputStream().use { out ->
+                    java.util.zip.ZipOutputStream(out).use { zip ->
+                        val manifest =
+                            """{"formatVersion":1,"data":{"path":"data.json","sha256":"badhash"},"images":[]}"""
+                        zip.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+                        zip.write(manifest.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                        zip.putNextEntry(java.util.zip.ZipEntry("data.json"))
+                        zip.write("""{"version":5,"app":"Juzgon"}""".toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                    }
+                    out.toByteArray()
+                }
+
+            val result = runCatching { service.importArchive(badChecksumZip) }
+
+            assertTrue(result.exceptionOrNull() is BackupException)
+            assertTrue(result.exceptionOrNull()?.message?.contains("checksum") == true)
+        }
+
+    @Test
+    fun importArchive_unsupportedFormatVersion_throwsBackupException() =
+        runTest {
+            val badVersionZip =
+                java.io.ByteArrayOutputStream().use { out ->
+                    java.util.zip.ZipOutputStream(out).use { zip ->
+                        val manifest =
+                            """{"formatVersion":99,"data":{"path":"data.json","sha256":""},"images":[]}"""
+                        zip.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+                        zip.write(manifest.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                    }
+                    out.toByteArray()
+                }
+
+            val result = runCatching { service.importArchive(badVersionZip) }
+
+            assertTrue(result.exceptionOrNull() is BackupException)
+            assertTrue(result.exceptionOrNull()?.message?.contains("format version") == true)
         }
 
     @Test
@@ -861,6 +1128,19 @@ class JsonBackupServiceTest {
         """{"version":$version,"app":"Juzgon","exportedAt":"2026-01-01T00:00:00Z",""" +
             """"categories":$categories,"items":$items,"scoreProfiles":$scoreProfiles}"""
 
+    private fun readZip(archive: ByteArray): LinkedHashMap<String, ByteArray> =
+        LinkedHashMap<String, ByteArray>().also { entries ->
+            ZipInputStream(ByteArrayInputStream(archive)).use { zip ->
+                generateSequence { zip.nextEntry }.forEach { entry -> entries[entry.name] = zip.readBytes() }
+            }
+        }
+
+    private fun ByteArray.sha256(): String =
+        java.security.MessageDigest
+            .getInstance("SHA-256")
+            .digest(this)
+            .joinToString("") { "%02x".format(it) }
+
     // --- Fakes ---
 
     private class FakeCategoryDao : CategoryDao {
@@ -923,6 +1203,11 @@ class JsonBackupServiceTest {
             newAttributeId: String,
         ) = error("not used")
 
+        override suspend fun renameAttributeIdInItemImages(
+            oldAttributeId: String,
+            newAttributeId: String,
+        ) = error("not used")
+
         override suspend fun renameAttributeIdInRankSnapshots(
             oldAttributeId: String,
             newAttributeId: String,
@@ -941,6 +1226,7 @@ class JsonBackupServiceTest {
         val upsertedItems = mutableListOf<ItemEntity>()
         val upsertedRatings = mutableListOf<RatingEntity>()
         val upsertedValues = mutableListOf<ItemValueEntity>()
+        val upsertedImages = mutableListOf<ItemImageEntity>()
         val deletedItemIds = mutableListOf<String>()
         var writeMethodCalled = false
 
@@ -948,6 +1234,7 @@ class JsonBackupServiceTest {
             upsertedItems.clear()
             upsertedRatings.clear()
             upsertedValues.clear()
+            upsertedImages.clear()
             deletedItemIds.clear()
             writeMethodCalled = false
         }
@@ -976,6 +1263,22 @@ class JsonBackupServiceTest {
         override suspend fun upsertItemValues(values: List<ItemValueEntity>) {
             writeMethodCalled = true
             upsertedValues += values
+        }
+
+        override suspend fun upsertImages(images: List<ItemImageEntity>) {
+            writeMethodCalled = true
+            upsertedImages += images
+        }
+
+        override suspend fun deleteImagesNotIn(
+            itemId: String,
+            keepIds: List<String>,
+        ) {
+            writeMethodCalled = true
+        }
+
+        override suspend fun deleteImagesForItem(itemId: String) {
+            writeMethodCalled = true
         }
 
         override suspend fun deleteItemValuesForItem(itemId: String) {
@@ -1024,6 +1327,14 @@ class JsonBackupServiceTest {
         }
 
         override suspend fun deleteOrphanedProfiles(): Int {
+            writeMethodCalled = true
+            return 0
+        }
+
+        override suspend fun updateCategoryName(
+            oldCategoryName: String,
+            newCategoryName: String,
+        ): Int {
             writeMethodCalled = true
             return 0
         }
