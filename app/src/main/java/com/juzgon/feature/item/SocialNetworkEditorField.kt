@@ -34,7 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.social.SocialPlatform
-import com.juzgon.domain.social.SocialPlatformIcons
+import com.juzgon.ui.social.SocialPlatformIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -20,11 +20,4 @@ class FakeEnrichmentSuggestionCacheRepository : EnrichmentSuggestionCacheReposit
         clearCalled = true
         store.clear()
     }
-
-    fun reset() {
-        store.clear()
-        lastGetKey = null
-        lastPutResult = null
-        clearCalled = false
-    }
 }

@@ -208,6 +208,72 @@ class ItemFormModelsTest {
         assertEquals(0, ratedItem.values.size)
     }
 
+    @Test
+    fun legacyImageReferenceRemainsAnItemValueWhenSaving() {
+        val state =
+            imageFormState(
+                valueInput =
+                    ItemValueInput(
+                        attribute = Attribute("Photo", type = AttributeType.IMAGE),
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "legacy",
+                                    sourceUri = "content://images/legacy",
+                                    mimeType = "image/png",
+                                ),
+                            ),
+                    ),
+            )
+
+        val ratedItem = state.toRatedItem()
+
+        assertEquals(1, ratedItem.values.size)
+        assertEquals(
+            "Photo",
+            ratedItem.values
+                .single()
+                .attribute.id,
+        )
+        assertTrue(
+            ratedItem.values
+                .single()
+                .value
+                .startsWith("imgref:v1|"),
+        )
+        assertTrue(ratedItem.images.isEmpty())
+    }
+
+    @Test
+    fun byteBackedImageReferenceBecomesAnImageAssetWhenSaving() {
+        val state =
+            imageFormState(
+                valueInput =
+                    ItemValueInput(
+                        attribute = Attribute("Photo", type = AttributeType.IMAGE),
+                        imageReferences =
+                            listOf(
+                                ItemImageReference(
+                                    id = "stored",
+                                    sourceUri = "database://stored",
+                                    bytes = byteArrayOf(4, 5),
+                                ),
+                            ),
+                    ),
+            )
+
+        val ratedItem = state.toRatedItem()
+
+        assertTrue(ratedItem.values.isEmpty())
+        assertEquals(1, ratedItem.images.size)
+        assertTrue(
+            ratedItem.images
+                .single()
+                .bytes
+                .contentEquals(byteArrayOf(4, 5)),
+        )
+    }
+
     // --- Tests for date picker conversion helpers (added per requirement to cover previously untested code) ---
     @Test
     fun isoToDatePickerMillis_returnsNonNullForValidIso() {

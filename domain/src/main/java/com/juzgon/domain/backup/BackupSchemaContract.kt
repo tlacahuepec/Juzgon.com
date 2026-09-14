@@ -61,5 +61,6 @@ object BackupSchemaContract {
     const val SCORE_PROFILE_ID_FIELD = "id"
 
     val REQUIRED_ATTRIBUTE_FIELDS = setOf("id", "weight", "position", "type")
-    val OPTIONAL_ATTRIBUTE_FIELDS = setOf("isRequired", "displayInDiamond", "diamondOrder", "scoringDirection")
+    val OPTIONAL_ATTRIBUTE_FIELDS =
+        setOf("isRequired", "displayInDiamond", "diamondOrder", "scoringDirection", "suggestedValues")
 }

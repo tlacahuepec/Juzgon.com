@@ -20,6 +20,8 @@ private const val DATABASE_VERSION_14 = 14
 private const val DATABASE_VERSION_15 = 15
 private const val DATABASE_VERSION_16 = 16
 private const val DATABASE_VERSION_17 = 17
+private const val DATABASE_VERSION_18 = 18
+private const val DATABASE_VERSION_19 = 19
 
 object DatabaseMigrations {
     val MIGRATION_1_2: Migration =
@@ -329,6 +331,27 @@ object DatabaseMigrations {
                         "ON enrichment_suggestion_cache(" +
                         "catalogId, itemIdentity, targetAttributeKey, knownAttributesFingerprint)",
                 )
+            }
+        }
+
+    val MIGRATION_17_18: Migration =
+        object : Migration(DATABASE_VERSION_17, DATABASE_VERSION_18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE attributes ADD COLUMN suggested_values TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
+
+    val MIGRATION_18_19: Migration =
+        object : Migration(DATABASE_VERSION_18, DATABASE_VERSION_19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE item_images (id TEXT NOT NULL PRIMARY KEY, item_id TEXT NOT NULL, " +
+                        "attribute_id TEXT NOT NULL, position INTEGER NOT NULL, bytes BLOB NOT NULL, " +
+                        "mime_type TEXT, display_name TEXT, width INTEGER, height INTEGER, " +
+                        "created_at INTEGER NOT NULL, FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE)",
+                )
+                db.execSQL("CREATE INDEX index_item_images_item_id ON item_images(item_id)")
+                db.execSQL("CREATE INDEX index_item_images_attribute_id ON item_images(attribute_id)")
             }
         }
 }

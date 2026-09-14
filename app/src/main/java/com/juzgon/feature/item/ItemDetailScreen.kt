@@ -301,6 +301,7 @@ private fun FullImagePreviewDialog(
                     imageBitmapFromValue(
                         contentResolver = context.contentResolver,
                         value = imageReference.sourceUri,
+                        bytes = imageReference.bytes,
                         maxDimensionPx = 2048,
                     )
                 }
@@ -1077,6 +1078,7 @@ private fun ImageAttributePreview(
                     imageBitmapFromValue(
                         contentResolver = context.contentResolver,
                         value = imageReference.thumbnailUri,
+                        bytes = imageReference.bytes,
                         maxDimensionPx = 512,
                     )
                 }
@@ -1123,8 +1125,16 @@ private fun ImageAttributePreview(
 private fun imageBitmapFromValue(
     contentResolver: android.content.ContentResolver,
     value: String,
+    bytes: ByteArray?,
     maxDimensionPx: Int,
 ) = runCatching {
+    if (bytes != null) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val sampleSize = bounds.sampleSizeFor(maxDimensionPx)
+        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        return@runCatching BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+    }
     val uri = Uri.parse(value)
     val bounds =
         BitmapFactory.Options().apply {

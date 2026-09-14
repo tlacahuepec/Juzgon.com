@@ -151,6 +151,15 @@ class JsonBackupValidator : BackupValidator {
                         "has invalid scoringDirection: '$direction'"
                 }
             }
+            if (attr.has("suggestedValues")) {
+                if (type != AttributeType.DROPDOWN.name) {
+                    errors +=
+                        "Attribute '$resolvedId' in category '$categoryName' " +
+                        "has suggestedValues but is not DROPDOWN"
+                } else if (attr.optJSONArray("suggestedValues") == null) {
+                    errors += "Attribute '$resolvedId' in category '$categoryName' has non-array suggestedValues"
+                }
+            }
             attributeIndex[resolvedId] =
                 AttributeInfo(
                     type = type,

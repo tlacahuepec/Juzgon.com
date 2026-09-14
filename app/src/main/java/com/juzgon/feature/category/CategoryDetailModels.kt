@@ -13,11 +13,11 @@ import com.juzgon.domain.RatingSystem
 import com.juzgon.domain.ScoreProfile
 import com.juzgon.domain.SkinTypeValues
 import com.juzgon.domain.social.SocialNetworkCodec
-import com.juzgon.domain.social.SocialPlatformIcons
 import com.juzgon.domain.usecase.CalculateProfileRankedItemsUseCase
 import com.juzgon.feature.home.tierFromScore
 import com.juzgon.feature.item.decodeItemImageReferences
 import com.juzgon.ui.components.GridCardAttribute
+import com.juzgon.ui.social.SocialPlatformIcons
 import java.util.Locale
 
 enum class CategoryDetailViewMode { LIST, GRID }
@@ -631,11 +631,12 @@ private fun RatedItem.primaryImageValue(category: Category): String? =
     category.attributes
         .firstOrNull { it.type == AttributeType.IMAGE }
         ?.let { imgAttr ->
-            values
-                .firstOrNull { it.attribute.id == imgAttr.id }
-                ?.value
-                ?.takeIf { it.isNotBlank() }
-                ?.let { decodeItemImageReferences(it).firstOrNull()?.sourceUri }
+            images.firstOrNull { it.attribute.id == imgAttr.id }?.let { "database://${it.id}" }
+                ?: values
+                    .firstOrNull { it.attribute.id == imgAttr.id }
+                    ?.value
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { decodeItemImageReferences(it).firstOrNull()?.sourceUri }
         }
 
 private fun Int.toAttributeSummary(): String =

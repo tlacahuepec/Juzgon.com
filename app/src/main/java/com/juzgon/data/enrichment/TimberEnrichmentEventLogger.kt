@@ -12,7 +12,7 @@ class TimberEnrichmentEventLogger
             originalStatus: String,
             confidence: String?,
         ) {
-            EnrichmentLogger.rejected(attributeKey, reason, originalStatus, confidence)
+            EnrichmentLogger.rejected(reason, originalStatus, confidence)
         }
 
         override fun accepted(
@@ -20,13 +20,13 @@ class TimberEnrichmentEventLogger
             itemId: String,
             suggestedValue: String,
         ) {
-            EnrichmentLogger.accepted(attributeKey, itemId, suggestedValue)
+            EnrichmentLogger.accepted()
         }
 
         override fun dismissed(
             attributeKey: String,
             itemId: String,
         ) {
-            EnrichmentLogger.dismissed(attributeKey, itemId)
+            EnrichmentLogger.dismissed()
         }
     }

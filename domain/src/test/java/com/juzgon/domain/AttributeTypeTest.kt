@@ -18,6 +18,26 @@ class AttributeTypeTest {
     }
 
     @Test
+    fun `FaceTypeValues expose seven standard non-rankable dropdown choices`() {
+        assertEquals(
+            listOf("Oval", "Round", "Square", "Heart", "Oblong", "Diamond", "Triangle"),
+            FaceTypeValues.all,
+        )
+        assertFalse(
+            Attribute(
+                id = "People/Type of Face",
+                type = AttributeType.DROPDOWN,
+                suggestedValues = FaceTypeValues.all,
+            ).isRankable,
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `suggested values require dropdown type`() {
+        Attribute(id = "People/Type of Face", suggestedValues = FaceTypeValues.all)
+    }
+
+    @Test
     fun `isRankable false for SKIN_TYPE`() {
         val attribute = Attribute(id = "People/Skin Type", type = AttributeType.SKIN_TYPE)
 

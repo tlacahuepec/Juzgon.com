@@ -3,6 +3,7 @@
 package com.juzgon.feature.category
 
 import com.juzgon.domain.AttributeType
+import com.juzgon.domain.FaceTypeValues
 import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.RatedItemRepository
 import kotlinx.coroutines.flow.first
@@ -125,6 +126,16 @@ class CategoryAttributesCoordinator(
             TypeChangeResult.Applied
         }
 
+    fun applyFaceTypePreset(key: Long) {
+        update(key) { attribute ->
+            if (attribute.type == AttributeType.DROPDOWN) {
+                attribute.copy(name = "Type of Face", suggestedValues = FaceTypeValues.all)
+            } else {
+                attribute
+            }
+        }
+    }
+
     fun confirmTypeChange() {
         val key = pendingTypeChangeKey ?: return
         val type = pendingTypeChange ?: return
@@ -192,6 +203,7 @@ class CategoryAttributesCoordinator(
             displayInDiamond = rankable && displayInDiamond,
             diamondOrderText = if (rankable) diamondOrderText else "",
             scoringDirection = newDirection,
+            suggestedValues = if (type == AttributeType.DROPDOWN) suggestedValues else emptyList(),
         )
     }
 

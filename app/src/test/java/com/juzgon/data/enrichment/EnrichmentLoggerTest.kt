@@ -31,88 +31,49 @@ class EnrichmentLoggerTest {
     }
 
     @Test
-    fun rejected_logsWarningWithCorrectFormat() {
-        EnrichmentLogger.rejected(
-            attributeKey = "birthDate",
-            reason = "VALIDATION_FAILED",
-            originalStatus = "FOUND",
-            confidence = "LOW",
-        )
+    fun rejected_logsStructuredReasonWithoutAttributeContent() {
+        EnrichmentLogger.rejected("VALIDATION_FAILED", "FOUND", "LOW")
 
         val entry = tree.logs.single()
         assertEquals(Log.WARN, entry.priority)
         assertEquals("JuzgonEnrichment", entry.tag)
-        assertTrue(entry.message.contains("attribute=birthDate"))
+        assertTrue(!entry.message.contains("birthDate"))
         assertTrue(entry.message.contains("reason=VALIDATION_FAILED"))
         assertTrue(entry.message.contains("status=FOUND"))
         assertTrue(entry.message.contains("confidence=LOW"))
     }
 
     @Test
-    fun accepted_logsDebugWithCorrectFormat() {
-        EnrichmentLogger.accepted(
-            attributeKey = "birthDate",
-            itemId = "item-123",
-            suggestedValue = "1987-06-24",
-        )
+    fun accepted_doesNotLogItemOrSuggestedValue() {
+        EnrichmentLogger.accepted()
 
         val entry = tree.logs.single()
         assertEquals(Log.DEBUG, entry.priority)
         assertEquals("JuzgonEnrichment", entry.tag)
-        assertTrue(entry.message.contains("attribute=birthDate"))
-        assertTrue(entry.message.contains("itemId=item-123"))
-        assertTrue(entry.message.contains("suggestedValue=1987-06-24"))
+        assertTrue(!entry.message.contains("birthDate"))
+        assertTrue(!entry.message.contains("item-123"))
+        assertTrue(!entry.message.contains("1987-06-24"))
     }
 
     @Test
-    fun dismissed_logsDebugWithCorrectFormat() {
-        EnrichmentLogger.dismissed(
-            attributeKey = "birthDate",
-            itemId = "item-123",
-        )
+    fun dismissed_doesNotLogItemOrAttributeContent() {
+        EnrichmentLogger.dismissed()
 
         val entry = tree.logs.single()
         assertEquals(Log.DEBUG, entry.priority)
         assertEquals("JuzgonEnrichment", entry.tag)
-        assertTrue(entry.message.contains("attribute=birthDate"))
-        assertTrue(entry.message.contains("itemId=item-123"))
+        assertTrue(!entry.message.contains("birthDate"))
+        assertTrue(!entry.message.contains("item-123"))
     }
 
     @Test
     fun noLogContainsApiKeyPattern() {
-        EnrichmentLogger.started(
-            provider = "Gemini",
-            attributeKey = "birthDate",
-            catalogType = "PERSON",
-        )
-        EnrichmentLogger.succeeded(
-            provider = "Gemini",
-            attributeKey = "birthDate",
-            confidence = "HIGH",
-            sourceCount = 2,
-            durationMs = 1234L,
-        )
-        EnrichmentLogger.failed(
-            provider = "Gemini",
-            attributeKey = "birthDate",
-            failureCode = "RATE_LIMITED",
-            durationMs = 1234L,
-        )
-        EnrichmentLogger.rejected(
-            attributeKey = "birthDate",
-            reason = "VALIDATION_FAILED",
-            originalStatus = "FOUND",
-            confidence = "LOW",
-        )
-        EnrichmentLogger.accepted(
-            attributeKey = "birthDate",
-            itemId = "item-123",
-            suggestedValue = "1987-06-24",
-        )
-        EnrichmentLogger.dismissed(
-            attributeKey = "birthDate",
-            itemId = "item-123",
-        )
+        EnrichmentLogger.started("Gemini")
+        EnrichmentLogger.succeeded("Gemini", "HIGH", 2, 1234L)
+        EnrichmentLogger.failed("Gemini", "RATE_LIMITED", 1234L)
+        EnrichmentLogger.rejected("VALIDATION_FAILED", "FOUND", "LOW")
+        EnrichmentLogger.accepted()
+        EnrichmentLogger.dismissed()
 
         val apiKeyPattern = Regex("AIza[0-9A-Za-z_-]{35}")
         tree.logs.forEach { entry ->
@@ -120,6 +81,20 @@ class EnrichmentLoggerTest {
                 "Log should not contain API key pattern: ${entry.message}",
                 !apiKeyPattern.containsMatchIn(entry.message),
             )
+        }
+    }
+
+    @Test
+    fun promptAndResponseLogsContainOnlyPayloadLengths() {
+        val privatePrompt = "Name: Jane Doe; key: AIzaSySensitive"
+        val privateResponse = "Jane Doe was born 1990-01-01"
+
+        EnrichmentLogger.promptSent("Gemini", privatePrompt)
+        EnrichmentLogger.responseReceived("Gemini", privateResponse)
+
+        tree.logs.forEach { entry ->
+            assertTrue(!entry.message.contains(privatePrompt))
+            assertTrue(!entry.message.contains(privateResponse))
         }
     }
 }

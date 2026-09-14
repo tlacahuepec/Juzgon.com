@@ -3,6 +3,7 @@ package com.juzgon.feature.item
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.ItemAttributeValue
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import java.time.Instant
@@ -51,6 +52,7 @@ data class SelectedImageMetadata(
     val width: Int?,
     val height: Int?,
     val displayName: String?,
+    val bytes: ByteArray? = null,
 )
 
 data class ItemFormUiState(
@@ -105,49 +107,75 @@ data class ItemFormUiState(
         RatedItem(
             id = title.trim(),
             notes = notes.trim(),
-            scores =
-                scores
-                    .filter { it.scoreText.isNotBlank() }
-                    .map { scoreInput ->
-                        ScoreEntry(
-                            attribute = scoreInput.attribute,
-                            score = checkNotNull(scoreInput.scoreText.toIntOrNull()),
-                        )
-                    },
-            values =
-                values
-                    .mapNotNull { valueInput ->
-                        when {
-                            valueInput.attribute.type == AttributeType.IMAGE -> {
-                                val encodedImages = encodeItemImageReferences(valueInput.imageReferences)
-                                encodedImages
-                                    .takeIf { it.isNotBlank() }
-                                    ?.let { value ->
-                                        ItemAttributeValue(
-                                            attribute = valueInput.attribute,
-                                            value = value,
-                                        )
-                                    }
-                            }
-                            valueInput.attribute.type == AttributeType.DATE && valueInput.valueText.isNotBlank() -> {
-                                if (isValidDateFormat(valueInput.valueText)) {
-                                    ItemAttributeValue(
-                                        attribute = valueInput.attribute,
-                                        value = valueInput.valueText.trim(),
-                                    )
-                                } else {
-                                    null
-                                }
-                            }
-                            valueInput.valueText.isNotBlank() ->
-                                ItemAttributeValue(
-                                    attribute = valueInput.attribute,
-                                    value = valueInput.valueText.trim(),
-                                )
-                            else -> null
-                        }
-                    },
+            scores = buildScores(),
+            values = buildValues(),
+            images = buildImages(),
         )
+
+    private fun buildScores(): List<ScoreEntry> =
+        scores
+            .filter { it.scoreText.isNotBlank() }
+            .map { scoreInput ->
+                ScoreEntry(
+                    attribute = scoreInput.attribute,
+                    score = checkNotNull(scoreInput.scoreText.toIntOrNull()),
+                )
+            }
+
+    private fun buildValues(): List<ItemAttributeValue> =
+        values.mapNotNull { valueInput ->
+            when {
+                valueInput.attribute.type == AttributeType.IMAGE -> {
+                    val legacyReferences = valueInput.imageReferences.filter { it.bytes == null }
+                    if (legacyReferences.isNotEmpty()) {
+                        ItemAttributeValue(
+                            attribute = valueInput.attribute,
+                            value = encodeItemImageReferences(legacyReferences),
+                        )
+                    } else {
+                        null
+                    }
+                }
+                valueInput.attribute.type == AttributeType.DATE && valueInput.valueText.isNotBlank() -> {
+                    if (isValidDateFormat(valueInput.valueText)) {
+                        ItemAttributeValue(
+                            attribute = valueInput.attribute,
+                            value = valueInput.valueText.trim(),
+                        )
+                    } else {
+                        null
+                    }
+                }
+                valueInput.valueText.isNotBlank() ->
+                    ItemAttributeValue(
+                        attribute = valueInput.attribute,
+                        value = valueInput.valueText.trim(),
+                    )
+                else -> null
+            }
+        }
+
+    private fun buildImages(): List<ItemImage> =
+        values.flatMap { valueInput ->
+            if (valueInput.attribute.type != AttributeType.IMAGE) {
+                emptyList()
+            } else {
+                valueInput.imageReferences.mapIndexedNotNull { index, reference ->
+                    val bytes = reference.bytes ?: return@mapIndexedNotNull null
+                    ItemImage(
+                        id = reference.id,
+                        attribute = valueInput.attribute,
+                        position = index,
+                        bytes = bytes,
+                        mimeType = reference.mimeType,
+                        displayName = reference.displayName,
+                        width = reference.width,
+                        height = reference.height,
+                        createdAt = reference.createdAt,
+                    )
+                }
+            }
+        }
 }
 
 private fun ItemScoreInput.scoreError(): String? {

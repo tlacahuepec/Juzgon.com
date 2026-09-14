@@ -14,8 +14,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.juzgon.domain.BuildMetadata
 import com.juzgon.domain.backup.BackupService
-import com.juzgon.domain.backup.BackupValidationResult
-import com.juzgon.domain.backup.BackupValidator
 import com.juzgon.domain.enrichment.SecureApiKeyStore
 import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
@@ -100,6 +98,47 @@ class SettingsScreenTest {
 
         composeRule.onNodeWithContentDescription("Export backup").performClick()
         assertTrue(exportClicked)
+    }
+
+    @Test
+    fun clickingImportButtonInvokesCallback() {
+        var importClicked = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    buildMetadata = testMetadata,
+                    geminiKeyState = GeminiKeyState.NO_KEY,
+                    maskedGeminiKey = null,
+                    isExporting = false,
+                    onExportBackup = {},
+                    onImportBackup = { importClicked = true },
+                    onNavigateToGeminiKey = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Import backup").performScrollTo().performClick()
+        assertTrue(importClicked)
+    }
+
+    @Test
+    fun clickingAboutDetailsOpensDialog() {
+        composeRule.setContent {
+            MaterialTheme {
+                SettingsScreen(
+                    buildMetadata = testMetadata,
+                    geminiKeyState = GeminiKeyState.NO_KEY,
+                    maskedGeminiKey = null,
+                    isExporting = false,
+                    onExportBackup = {},
+                    onNavigateToGeminiKey = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("View about dialog").performScrollTo().performClick()
+        composeRule.onNodeWithText("About Juzgon").assertIsDisplayed()
     }
 
     @Test
@@ -272,7 +311,7 @@ class SettingsScreenTest {
     fun settingsRouteRendersAndRefreshesGeminiKey() {
         val fakeKeyStore = FakeKeyStore()
         val geminiVm = GeminiKeySettingsViewModel(fakeKeyStore)
-        val exportVm = ExportBackupViewModel(FakeTestBackupService, FakeTestBackupValidator)
+        val exportVm = ExportBackupViewModel(FakeTestBackupService)
         val aboutVm = AboutViewModel { testMetadata }
 
         var navigatedToGemini = false
@@ -324,9 +363,5 @@ class SettingsScreenTest {
         override suspend fun export(): String = "{}"
 
         override suspend fun import(json: String) = Unit
-    }
-
-    private object FakeTestBackupValidator : BackupValidator {
-        override fun validate(json: String) = BackupValidationResult()
     }
 }

@@ -3,7 +3,7 @@ package com.juzgon.domain.enrichment
 class FakeAttributeEnrichmentProvider : AttributeEnrichmentProvider {
     var nextResult: AttributeEnrichmentResult =
         AttributeEnrichmentResult(
-            status = EnrichmentStatus.NOT_FOUND,
+            EnrichmentStatus.NOT_FOUND,
         )
     var lastRequest: AttributeEnrichmentRequest? = null
 

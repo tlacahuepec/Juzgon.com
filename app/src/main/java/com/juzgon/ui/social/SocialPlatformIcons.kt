@@ -1,6 +1,7 @@
-package com.juzgon.domain.social
+package com.juzgon.ui.social
 
 import com.juzgon.R
+import com.juzgon.domain.social.SocialPlatform
 
 object SocialPlatformIcons {
     fun iconRes(platform: SocialPlatform): Int =

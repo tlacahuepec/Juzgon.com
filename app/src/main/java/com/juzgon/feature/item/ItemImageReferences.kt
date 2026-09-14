@@ -31,6 +31,7 @@ data class ItemImageReference(
     val height: Int? = null,
     val createdAt: Long = 0L,
     val displayName: String? = null,
+    val bytes: ByteArray? = null,
 )
 
 @Suppress("LongParameterList")
@@ -42,6 +43,7 @@ internal fun buildImageReference(
     height: Int?,
     displayName: String?,
     createdAt: Long,
+    bytes: ByteArray? = null,
 ): ItemImageReference =
     ItemImageReference(
         id = buildImageReferenceId(sourceUri = sourceUri, createdAt = createdAt),
@@ -53,6 +55,7 @@ internal fun buildImageReference(
         height = height,
         createdAt = createdAt,
         displayName = displayName,
+        bytes = bytes,
     )
 
 @Suppress("ReturnCount")

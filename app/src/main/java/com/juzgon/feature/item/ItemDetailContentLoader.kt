@@ -56,16 +56,18 @@ class ItemDetailContentLoader(
             rankedAttributes = rankedAttributeCards(attributeScores, previousSnapshots),
             diamondChartPoints = itemAttributeDiamondChartPoints(attributeScores),
             attributeValues =
-                item.values.map { valueEntry ->
-                    ItemDetailAttributeValue(
-                        label = valueEntry.attribute.displayName,
-                        value = valueEntry.value,
-                        type = valueEntry.attribute.type,
-                        displayValue = formatAttributeValue(valueEntry.attribute.type, valueEntry.value),
-                        imageReferences = imageReferencesByAttributeId[valueEntry.attribute.id].orEmpty(),
-                        ageText = dateProcessor.computeAgeText(valueEntry),
-                    )
-                },
+                (item.values + item.images.map { image -> com.juzgon.domain.ItemAttributeValue(image.attribute, "") })
+                    .distinctBy { it.attribute.id }
+                    .map { valueEntry ->
+                        ItemDetailAttributeValue(
+                            label = valueEntry.attribute.displayName,
+                            value = valueEntry.value,
+                            type = valueEntry.attribute.type,
+                            displayValue = formatAttributeValue(valueEntry.attribute.type, valueEntry.value),
+                            imageReferences = imageReferencesByAttributeId[valueEntry.attribute.id].orEmpty(),
+                            ageText = dateProcessor.computeAgeText(valueEntry),
+                        )
+                    },
             notes = item.notes,
             isLoading = false,
             profileBreakdown = profileBreakdown,
@@ -104,15 +106,29 @@ class ItemDetailContentLoader(
         return numberScores + dateScores
     }
 
-    private fun buildImageReferences(item: com.juzgon.domain.RatedItem): Map<String, List<ItemImageReference>> =
-        item.values.associate { valueEntry ->
-            valueEntry.attribute.id to
-                if (valueEntry.attribute.type == AttributeType.IMAGE) {
-                    decodeItemImageReferences(valueEntry.value)
-                } else {
-                    emptyList()
+    private fun buildImageReferences(item: com.juzgon.domain.RatedItem): Map<String, List<ItemImageReference>> {
+        val persistedImages =
+            item.images.groupBy { it.attribute.id }.mapValues { (_, images) ->
+                images.sortedBy { it.position }.map { image ->
+                    ItemImageReference(
+                        id = image.id,
+                        sourceUri = "database://${image.id}",
+                        mimeType = image.mimeType,
+                        sizeBytes = image.bytes.size.toLong(),
+                        width = image.width,
+                        height = image.height,
+                        createdAt = image.createdAt,
+                        displayName = image.displayName,
+                        bytes = image.bytes,
+                    )
                 }
-        }
+            }
+        val legacyImages =
+            item.values
+                .filter { it.attribute.type == AttributeType.IMAGE && it.attribute.id !in persistedImages }
+                .associate { valueEntry -> valueEntry.attribute.id to decodeItemImageReferences(valueEntry.value) }
+        return persistedImages + legacyImages
+    }
 
     @Suppress("ReturnCount")
     private suspend fun resolveProfileBreakdown(

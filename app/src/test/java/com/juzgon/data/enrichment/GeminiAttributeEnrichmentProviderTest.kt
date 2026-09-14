@@ -144,6 +144,29 @@ class GeminiAttributeEnrichmentProviderTest {
             assertTrue(fakeApiClient.lastUseGrounding)
         }
 
+    @Test
+    fun enrichAttribute_mergesGroundingSources() =
+        runTest {
+            fakeKeyStore.savedKey = "test-key"
+            fakeApiClient.nextResponse =
+                """{"status":"FOUND","value":"1987-06-24","confidence":"HIGH","sources":[]}"""
+            fakeApiClient.nextGroundingMetadata =
+                GeminiGroundingMetadata(
+                    groundingChunks =
+                        listOf(
+                            GeminiGroundingChunk(
+                                web = GeminiWebChunk(title = "Messi Bio", uri = "https://example.com/messi"),
+                            ),
+                        ),
+                )
+
+            val result = provider.enrichAttribute(testRequest())
+
+            assertEquals(1, result.sources.size)
+            assertEquals("Messi Bio", result.sources[0].title)
+            assertEquals("https://example.com/messi", result.sources[0].url)
+        }
+
     private fun testRequest() =
         AttributeEnrichmentRequest(
             catalogId = "cat-1",

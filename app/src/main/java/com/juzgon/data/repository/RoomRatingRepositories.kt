@@ -3,12 +3,14 @@ package com.juzgon.data.repository
 import androidx.room.withTransaction
 import com.juzgon.data.local.JuzgonDatabase
 import com.juzgon.data.local.dao.ItemWithRatings
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.mapper.toAttributeEntities
 import com.juzgon.data.local.mapper.toDomain
 import com.juzgon.data.local.mapper.toEntity
 import com.juzgon.data.local.mapper.toItemEntity
+import com.juzgon.data.local.mapper.toItemImageEntities
 import com.juzgon.data.local.mapper.toItemValueEntities
 import com.juzgon.data.local.mapper.toRatingEntities
 import com.juzgon.domain.AppClock
@@ -135,6 +137,10 @@ class RoomCategoryRepository(
                     .toSet()
             val attributeIdsBeingRemoved = (oldAttributeIds - renamedAttributeIds.keys).toList()
             requireNoOrphanedDependents(attributeIdsBeingRemoved)
+            scoreProfileDao.updateCategoryName(
+                oldCategoryName = originalName,
+                newCategoryName = category.name,
+            )
             categoryDao.deleteCategoryByName(originalName)
             scoreProfileDao.deleteOrphanedProfiles()
             itemPurgeDao.purgeOrphanedRatings()
@@ -161,6 +167,10 @@ class RoomCategoryRepository(
                 newAttributeId = newAttributeId,
             )
             categoryDao.renameAttributeIdInItemValues(
+                oldAttributeId = oldAttributeId,
+                newAttributeId = newAttributeId,
+            )
+            categoryDao.renameAttributeIdInItemImages(
                 oldAttributeId = oldAttributeId,
                 newAttributeId = newAttributeId,
             )
@@ -315,6 +325,12 @@ class RoomRatedItemRepository(
             if (keepAttributeIds.isNotEmpty()) {
                 itemPurgeDao.softDeleteItemValuesNotIn(ratedItem.id, keepAttributeIds, updatedAt)
             }
+            val imageEntities = ratedItem.toItemImageEntities()
+            val keepImageIds = imageEntities.map { it.id }
+            itemDao.deleteImagesNotIn(ratedItem.id, keepImageIds)
+            if (imageEntities.isNotEmpty()) {
+                itemDao.upsertImages(imageEntities)
+            }
         }
     }
 
@@ -353,6 +369,11 @@ class RoomRatedItemRepository(
             if (valueEntities.isNotEmpty()) {
                 itemDao.upsertItemValues(valueEntities)
             }
+            val imageEntities = ratedItem.toItemImageEntities()
+            if (imageEntities.isNotEmpty()) {
+                itemDao.upsertImages(imageEntities)
+            }
+            itemDao.deleteImagesForItem(originalId)
             val copiedSnapshots =
                 snapshotDao
                     .getSnapshotsForItem(originalId)
@@ -379,7 +400,19 @@ class RoomRatedItemRepository(
     private fun ItemWithRatings.hasSameSavedContent(ratedItem: RatedItem): Boolean =
         item.notes == ratedItem.notes &&
             ratings.toRatingSnapshot() == ratedItem.toRatingEntities().toRatingSnapshot() &&
-            values.toValueSnapshot() == ratedItem.toItemValueEntities().toValueSnapshot()
+            values.toValueSnapshot() == ratedItem.toItemValueEntities().toValueSnapshot() &&
+            images.hasSameImages(ratedItem.toItemImageEntities())
+
+    private fun List<ItemImageEntity>.hasSameImages(other: List<ItemImageEntity>): Boolean {
+        val imagesById = other.associateBy { it.id }
+        return size == other.size &&
+            all { saved ->
+                imagesById[saved.id]?.let { candidate ->
+                    // Compare array contents explicitly, then use data-class equality for all metadata.
+                    saved.bytes.contentEquals(candidate.bytes) && saved.copy(bytes = candidate.bytes) == candidate
+                } == true
+            }
+    }
 
     private fun List<RatingEntity>.toRatingSnapshot(): List<Pair<String, Int>> =
         map { rating -> rating.attributeId to rating.score }

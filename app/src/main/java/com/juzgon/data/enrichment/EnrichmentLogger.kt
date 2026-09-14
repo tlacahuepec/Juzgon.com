@@ -5,16 +5,10 @@ import timber.log.Timber
 object EnrichmentLogger {
     private const val TAG = "JuzgonEnrichment"
 
-    fun started(
-        provider: String,
-        attributeKey: String,
-        catalogType: String?,
-    ) {
+    fun started(provider: String) {
         Timber.tag(TAG).d(
-            "Enrichment started provider=%s attribute=%s catalogType=%s",
+            "Enrichment started provider=%s",
             provider,
-            attributeKey,
-            catalogType,
         )
     }
 
@@ -23,9 +17,9 @@ object EnrichmentLogger {
         prompt: String,
     ) {
         Timber.tag(TAG).d(
-            "Enrichment prompt provider=%s\n---\n%s\n---",
+            "Enrichment prompt prepared provider=%s length=%d",
             provider,
-            prompt,
+            prompt.length,
         )
     }
 
@@ -34,23 +28,21 @@ object EnrichmentLogger {
         responseText: String,
     ) {
         Timber.tag(TAG).d(
-            "Enrichment response provider=%s\n---\n%s\n---",
+            "Enrichment response received provider=%s length=%d",
             provider,
-            responseText,
+            responseText.length,
         )
     }
 
     fun succeeded(
         provider: String,
-        attributeKey: String,
         confidence: String,
         sourceCount: Int,
         durationMs: Long,
     ) {
         Timber.tag(TAG).d(
-            "Enrichment succeeded provider=%s attribute=%s confidence=%s sourceCount=%d durationMs=%d",
+            "Enrichment succeeded provider=%s confidence=%s sourceCount=%d durationMs=%d",
             provider,
-            attributeKey,
             confidence,
             sourceCount,
             durationMs,
@@ -59,57 +51,39 @@ object EnrichmentLogger {
 
     fun failed(
         provider: String,
-        attributeKey: String,
         failureCode: String,
         durationMs: Long,
-        errorDetail: String? = null,
     ) {
         Timber.tag(TAG).w(
-            "Enrichment failed provider=%s attribute=%s failureCode=%s durationMs=%d detail=%s",
+            "Enrichment failed provider=%s failureCode=%s durationMs=%d",
             provider,
-            attributeKey,
             failureCode,
             durationMs,
-            errorDetail ?: "none",
         )
     }
 
     fun rejected(
-        attributeKey: String,
         reason: String,
         originalStatus: String,
         confidence: String?,
     ) {
         Timber.tag(TAG).w(
-            "Enrichment rejected attribute=%s reason=%s status=%s confidence=%s",
-            attributeKey,
+            "Enrichment rejected reason=%s status=%s confidence=%s",
             reason,
             originalStatus,
             confidence ?: "UNKNOWN",
         )
     }
 
-    fun accepted(
-        attributeKey: String,
-        itemId: String,
-        suggestedValue: String,
-    ) {
+    fun accepted() {
         Timber.tag(TAG).d(
-            "Enrichment accepted attribute=%s itemId=%s suggestedValue=%s",
-            attributeKey,
-            itemId,
-            suggestedValue,
+            "Enrichment suggestion accepted",
         )
     }
 
-    fun dismissed(
-        attributeKey: String,
-        itemId: String,
-    ) {
+    fun dismissed() {
         Timber.tag(TAG).d(
-            "Enrichment dismissed attribute=%s itemId=%s",
-            attributeKey,
-            itemId,
+            "Enrichment suggestion dismissed",
         )
     }
 }
