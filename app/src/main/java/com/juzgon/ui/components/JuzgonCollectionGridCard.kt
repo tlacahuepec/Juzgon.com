@@ -82,6 +82,7 @@ internal fun JuzgonCollectionGridCard(
             modifier
                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 .clip(cardShape)
+                .border(1.dp, Color.White.copy(alpha = 0.08f), cardShape)
                 .background(tokens.palette.elevatedBackground)
                 .clickable(onClick = onClick)
                 .semantics(mergeDescendants = true) { contentDescription = description },
@@ -238,8 +239,9 @@ private fun GridCardAttributes(attributes: List<GridCardAttribute>) {
         val tokens = JuzgonVisualTheme.tokens
         Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
         attributes.take(MAX_ATTRIBUTE_ROWS).forEach { attr ->
+            val labelText = if (attr.emoji.isNotBlank()) "${attr.emoji} ${attr.label}" else attr.label
             Text(
-                text = "${attr.emoji} ${attr.label} \u2605 ${attr.scoreText}",
+                text = "$labelText \u2605 ${attr.scoreText}",
                 color = tokens.palette.textSoft,
                 style = MaterialTheme.typography.labelSmall,
             )

@@ -1,7 +1,8 @@
-@file:Suppress("FunctionName", "TooManyFunctions", "LongParameterList")
+@file:Suppress("FunctionName", "TooManyFunctions", "LongParameterList", "MagicNumber")
 
 package com.juzgon.feature.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
@@ -49,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.juzgon.ui.components.JuzgonAvatar
 import com.juzgon.ui.components.JuzgonHeroCard
 import com.juzgon.ui.components.JuzgonItemThumbnail
 import com.juzgon.ui.components.JuzgonSegmentedFilter
@@ -430,15 +434,15 @@ private fun CategoryRow(
     val summary = buildCategorySummary(category.itemCount, category.attributeCount)
     val shape = RoundedCornerShape(tokens.shapes.cardCornerRadius)
 
-    Column(
+    Surface(
+        color = tokens.palette.elevatedBackground,
+        shape = shape,
+        border = BorderStroke(1.dp, Color(0x14FFFFFF)),
         modifier =
             Modifier
                 .fillMaxWidth()
                 .sizeIn(minHeight = 48.dp)
-                .background(
-                    color = tokens.palette.elevatedBackground,
-                    shape = shape,
-                ).clickable(
+                .clickable(
                     onClickLabel = "Open category ${category.name}",
                     role = Role.Button,
                 ) {
@@ -446,20 +450,32 @@ private fun CategoryRow(
                 }.semantics(mergeDescendants = true) {
                     contentDescription = "Open category ${category.name}, $summary"
                     role = Role.Button
-                }.padding(tokens.spacing.large),
+                },
     ) {
-        Text(
-            text = category.name,
-            color = tokens.palette.textStrong,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
-        Text(
-            text = summary,
-            color = tokens.palette.textSoft,
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(tokens.spacing.medium),
+            modifier = Modifier.padding(tokens.spacing.large),
+        ) {
+            JuzgonAvatar(
+                name = category.name,
+                size = 44.dp,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = category.name,
+                    color = tokens.palette.textStrong,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
+                Text(
+                    text = summary,
+                    color = tokens.palette.textSoft,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 
@@ -535,7 +551,12 @@ private fun HomeHeroSection(
         categoryTag = hero.categoryName,
         onClick = { onNavigateToItem(hero.categoryName, hero.itemId) },
         radarPreview = { MiniRadarPreview(points = hero.radarPoints) },
-        image = { Text(hero.name.take(1)) },
+        image = {
+            JuzgonAvatar(
+                name = hero.name,
+                size = 72.dp,
+            )
+        },
     )
 }
 
@@ -563,7 +584,12 @@ private fun HomeTrendingRow(
                     scoreText = item.scoreText,
                     contentDescription = item.contentDescription,
                     onClick = { onItemClick(item.categoryName, item.itemId) },
-                    image = { Text(item.name.take(1)) },
+                    image = {
+                        JuzgonAvatar(
+                            name = item.name,
+                            size = 44.dp,
+                        )
+                    },
                 )
             }
         }

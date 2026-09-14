@@ -44,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -73,6 +74,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.SkinTypeValue
 import com.juzgon.domain.SkinTypeValues
+import com.juzgon.ui.components.JuzgonAvatar
 import com.juzgon.ui.components.JuzgonGlowRing
 import com.juzgon.ui.components.JuzgonGradientScoreBar
 import com.juzgon.ui.components.JuzgonRadarChart
@@ -139,10 +141,18 @@ fun ItemDetailScreen(
         )
     }
 
+    val tokens = JuzgonVisualTheme.tokens
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.itemId.ifBlank { "Item" }) },
+                title = {
+                    Text(
+                        text = state.itemId.ifBlank { "Item" },
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.palette.textStrong,
+                    )
+                },
                 navigationIcon = {
                     IconButton(
                         onClick = onBackClick,
@@ -157,6 +167,7 @@ fun ItemDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
+                            tint = tokens.palette.textStrong,
                         )
                     }
                 },
@@ -175,6 +186,7 @@ fun ItemDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = null,
+                                tint = tokens.palette.textMuted,
                             )
                         }
                         IconButton(
@@ -190,10 +202,15 @@ fun ItemDetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Delete,
                                 contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
                 },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = tokens.palette.baseBackground,
+                    ),
             )
         },
         modifier = modifier,
@@ -648,23 +665,11 @@ private fun PrimaryImageSection(
                 contentDescription = "$itemId avatar",
                 modifier = Modifier.sizeIn(minWidth = 100.dp, minHeight = 100.dp),
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialTheme.shapes.small,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .semantics { contentDescription = "$itemId image placeholder" },
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Text(text = "No image", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
+                JuzgonAvatar(
+                    name = itemId,
+                    size = 100.dp,
+                    contentDescription = "$itemId image placeholder",
+                )
             }
         } else {
             JuzgonGlowRing(

@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "TooManyFunctions", "MagicNumber")
 
 package com.juzgon.feature.item
 
@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +29,8 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,6 +41,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -49,13 +53,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +82,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -247,10 +255,19 @@ fun ItemFormScreen(
         )
     }
 
+    val tokens = JuzgonVisualTheme.tokens
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.mode == ItemFormMode.Edit) "Edit item" else "Add item") },
+                title = {
+                    Text(
+                        text = if (state.mode == ItemFormMode.Edit) "Edit item" else "Add item",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = tokens.palette.textStrong,
+                    )
+                },
                 navigationIcon = {
                     IconButton(
                         onClick = onBackClick,
@@ -265,6 +282,7 @@ fun ItemFormScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
+                            tint = tokens.palette.textStrong,
                         )
                     }
                 },
@@ -283,10 +301,15 @@ fun ItemFormScreen(
                             Icon(
                                 imageVector = Icons.Filled.Delete,
                                 contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
                 },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = tokens.palette.baseBackground,
+                    ),
             )
         },
         modifier = modifier,
@@ -350,27 +373,27 @@ private fun ItemFormContent(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
             modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             JuzgonGlowRing(
                 contentDescription = "Avatar preview",
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(36.dp),
                 ringThickness = 2.dp,
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
 
@@ -380,16 +403,31 @@ private fun ItemFormContent(
             )
         }
 
+        val tokens = JuzgonVisualTheme.tokens
         OutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
             enabled = state.titleEditable,
             label = { Text("Item title") },
             isError = titleError != null,
-            supportingText = {
-                titleError?.let { Text(it) }
-            },
+            supportingText =
+                if (titleError != null) {
+                    { Text(titleError) }
+                } else {
+                    null
+                },
             singleLine = true,
+            shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = tokens.palette.panelBackground,
+                    unfocusedContainerColor = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                    focusedBorderColor = tokens.palette.primaryGlow,
+                    unfocusedBorderColor = Color(0x1FFFFFFF),
+                    focusedTextColor = tokens.palette.textStrong,
+                    unfocusedTextColor = tokens.palette.textStrong,
+                    cursorColor = tokens.palette.primaryGlow,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -402,6 +440,17 @@ private fun ItemFormContent(
             value = state.notes,
             onValueChange = onNotesChange,
             label = { Text("Notes") },
+            shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = tokens.palette.panelBackground,
+                    unfocusedContainerColor = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                    focusedBorderColor = tokens.palette.primaryGlow,
+                    unfocusedBorderColor = Color(0x1FFFFFFF),
+                    focusedTextColor = tokens.palette.textStrong,
+                    unfocusedTextColor = tokens.palette.textStrong,
+                    cursorColor = tokens.palette.primaryGlow,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -443,29 +492,52 @@ private fun ItemFormContent(
 
         Button(
             onClick = onEnrichWithAiClick,
+            shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = tokens.palette.secondaryGlow.copy(alpha = 0.25f),
+                    contentColor = tokens.palette.textStrong,
+                ),
+            border = BorderStroke(1.dp, tokens.palette.secondaryGlow),
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .height(48.dp)
                     .semantics {
                         contentDescription = "Auto-fill with Gemini AI"
                         role = Role.Button
                     },
         ) {
-            Text("\u2728 Auto-fill with Gemini AI")
+            Text(
+                text = "\u2728 Auto-fill with Gemini AI",
+                fontWeight = FontWeight.SemiBold,
+            )
         }
 
         Button(
             onClick = onSaveClick,
             enabled = state.saveEnabled,
+            shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = tokens.palette.primaryGlow,
+                    contentColor = tokens.palette.textStrong,
+                    disabledContainerColor = tokens.palette.panelBackground,
+                    disabledContentColor = tokens.palette.textMuted,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .height(48.dp)
                     .semantics {
                         contentDescription = "Save item"
                         role = Role.Button
                     },
         ) {
-            Text(if (state.isSaving) "Saving" else "Save item")
+            Text(
+                text = if (state.isSaving) "Saving" else "Save item",
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -478,86 +550,130 @@ private fun ItemScoreField(
     onScoreIncrement: (String) -> Unit,
     onScoreDecrement: (String) -> Unit,
 ) {
+    val tokens = JuzgonVisualTheme.tokens
     val attributeId = scoreInput.attribute.id
     val label = "$attributeId score"
     val sliderValue = scoreInput.scoreText.toIntOrNull()?.toFloat() ?: SCORE_MIN.toFloat()
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (scoreInput.scoreText.isNotBlank()) {
+    Surface(
+        color = tokens.palette.elevatedBackground,
+        shape = RoundedCornerShape(tokens.shapes.cardCornerRadius),
+        border = BorderStroke(1.dp, Color(0x1FFFFFFF)),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Row(
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "★ ${scoreInput.scoreText}",
+                    text = attributeId,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.palette.textStrong,
                 )
+                if (scoreInput.scoreText.isNotBlank()) {
+                    Text(
+                        text = "★ ${scoreInput.scoreText}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.palette.ratingAccent,
+                    )
+                }
             }
-        }
-        Slider(
-            value = sliderValue,
-            onValueChange = { onScoreChange(attributeId, it.toInt().toString()) },
-            valueRange = SCORE_MIN.toFloat()..SCORE_MAX.toFloat(),
-            steps = SCORE_MAX - SCORE_MIN - 1,
-            colors =
-                SliderDefaults.colors(
-                    thumbColor = JuzgonVisualTheme.tokens.palette.contrastAccent,
-                    activeTrackColor = JuzgonVisualTheme.tokens.palette.primaryGlow,
-                    inactiveTrackColor = JuzgonVisualTheme.tokens.palette.panelBackground,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "$attributeId slider" },
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = { onScoreDecrement(attributeId) },
+
+            Slider(
+                value = sliderValue,
+                onValueChange = { onScoreChange(attributeId, it.toInt().toString()) },
+                valueRange = SCORE_MIN.toFloat()..SCORE_MAX.toFloat(),
+                steps = SCORE_MAX - SCORE_MIN - 1,
+                colors =
+                    SliderDefaults.colors(
+                        thumbColor = tokens.palette.primaryGlowStrong,
+                        activeTrackColor = tokens.palette.primaryGlow,
+                        inactiveTrackColor = tokens.palette.panelBackground,
+                    ),
                 modifier =
                     Modifier
-                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .semantics {
-                            contentDescription = "Decrease $label"
-                            role = Role.Button
-                        },
-            ) {
-                Text(text = "−", style = MaterialTheme.typography.titleLarge)
-            }
-            OutlinedTextField(
-                value = scoreInput.scoreText,
-                onValueChange = { onScoreChange(attributeId, it) },
-                label = { Text(label) },
-                isError = validationError.score != null,
-                supportingText = {
-                    validationError.score?.let { Text(it) }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .semantics {
-                            contentDescription = label
-                        },
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "$attributeId slider" },
             )
-            IconButton(
-                onClick = { onScoreIncrement(attributeId) },
-                modifier =
-                    Modifier
-                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .semantics {
-                            contentDescription = "Increase $label"
-                            role = Role.Button
-                        },
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
+                IconButton(
+                    onClick = { onScoreDecrement(attributeId) },
+                    modifier =
+                        Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .background(tokens.palette.panelBackground, shape = CircleShape)
+                            .border(1.dp, Color(0x1FFFFFFF), CircleShape)
+                            .semantics {
+                                contentDescription = "Decrease $label"
+                                role = Role.Button
+                            },
+                ) {
+                    Text(
+                        text = "−",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = tokens.palette.textStrong,
+                    )
+                }
+                OutlinedTextField(
+                    value = scoreInput.scoreText,
+                    onValueChange = { onScoreChange(attributeId, it) },
+                    label = { Text(label) },
+                    isError = validationError.score != null,
+                    supportingText =
+                        if (validationError.score != null) {
+                            { Text(validationError.score) }
+                        } else {
+                            null
+                        },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    shape = RoundedCornerShape(tokens.shapes.pillCornerRadius),
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = tokens.palette.panelBackground,
+                            unfocusedContainerColor = tokens.palette.panelBackground.copy(alpha = 0.6f),
+                            focusedBorderColor = tokens.palette.primaryGlow,
+                            unfocusedBorderColor = Color(0x1FFFFFFF),
+                            focusedTextColor = tokens.palette.textStrong,
+                            unfocusedTextColor = tokens.palette.textStrong,
+                            cursorColor = tokens.palette.primaryGlow,
+                        ),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .semantics {
+                                contentDescription = label
+                            },
                 )
+                IconButton(
+                    onClick = { onScoreIncrement(attributeId) },
+                    modifier =
+                        Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .background(tokens.palette.panelBackground, shape = CircleShape)
+                            .border(1.dp, Color(0x1FFFFFFF), CircleShape)
+                            .semantics {
+                                contentDescription = "Increase $label"
+                                role = Role.Button
+                            },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = tokens.palette.primaryGlow,
+                    )
+                }
             }
         }
     }
