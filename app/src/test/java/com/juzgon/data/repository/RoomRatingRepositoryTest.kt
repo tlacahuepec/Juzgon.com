@@ -9,9 +9,11 @@ import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.ScoreProfile
+import com.juzgon.domain.ScoringDirection
 import com.juzgon.domain.repository.CategoryRepository
 import com.juzgon.domain.repository.RatedItemRepository
 import com.juzgon.domain.repository.ScoreProfileRepository
@@ -451,6 +453,127 @@ class RoomRatingRepositoryTest {
         }
 
     @Test
+    fun saveRatedItem_persistsAndRemovesOnlyTheRequestedBinaryImages() =
+        runTest {
+            val score = Attribute("Score")
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            categoryRepository.saveCategory(Category("Media", attributes = listOf(score, photo)))
+            val image =
+                ItemImage(
+                    id = "image-1",
+                    attribute = photo,
+                    position = 0,
+                    bytes = byteArrayOf(1, 2, 3),
+                    mimeType = "image/jpeg",
+                    displayName = "cover.jpg",
+                    width = 640,
+                    height = 480,
+                    createdAt = 123L,
+                )
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem("album-1", scores = listOf(ScoreEntry(score, 8)), images = listOf(image)),
+            )
+
+            val saved = ratedItemRepository.observeRatedItem("album-1").first()
+            assertEquals(listOf(image), saved?.images)
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem("album-1", scores = listOf(ScoreEntry(score, 8)), images = emptyList()),
+            )
+
+            assertEquals(emptyList<ItemImage>(), ratedItemRepository.observeRatedItem("album-1").first()?.images)
+        }
+
+    @Test
+    fun saveRatedItem_updatesImageBytesAndMetadataButSkipsIdenticalContent() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            categoryRepository.saveCategory(Category("Media", attributes = listOf(photo)))
+            val image = ItemImage("image-1", photo, 0, byteArrayOf(1, 2, 3))
+            val item = RatedItem("album-1", scores = emptyList(), images = listOf(image))
+            ratedItemRepository.saveRatedItem(item)
+
+            currentTime = 2_000L
+            val replacement = image.copy(bytes = byteArrayOf(3, 2, 1))
+            ratedItemRepository.saveRatedItem(item.copy(images = listOf(replacement)))
+            assertEquals(listOf(replacement), ratedItemRepository.observeRatedItem(item.id).first()?.images)
+            assertEquals(currentTime, ratedItemRepository.observeRatedItem(item.id).first()?.updatedAt)
+
+            currentTime = 3_000L
+            val withMetadata = replacement.copy(width = 640, height = 480, createdAt = 123L)
+            ratedItemRepository.saveRatedItem(item.copy(images = listOf(withMetadata)))
+            assertEquals(listOf(withMetadata), ratedItemRepository.observeRatedItem(item.id).first()?.images)
+            assertEquals(currentTime, ratedItemRepository.observeRatedItem(item.id).first()?.updatedAt)
+
+            currentTime = 4_000L
+            ratedItemRepository.saveRatedItem(item.copy(images = listOf(withMetadata.copy(bytes = withMetadata.bytes.copyOf()))))
+            assertEquals(3_000L, ratedItemRepository.observeRatedItem(item.id).first()?.updatedAt)
+        }
+
+    @Test
+    fun saveRatedItem_preservesLegacyImageValueWhenSavingUnrelatedChanges() =
+        runTest {
+            val score = Attribute("Score")
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            categoryRepository.saveCategory(Category("Media", attributes = listOf(score, photo)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "album-1",
+                    scores = listOf(ScoreEntry(score, 8)),
+                    values = listOf(ItemAttributeValue(photo, "content://legacy/cover")),
+                ),
+            )
+
+            ratedItemRepository.saveRatedItem(
+                RatedItem(id = "album-1", scores = listOf(ScoreEntry(score, 9))),
+            )
+
+            val saved = ratedItemRepository.observeRatedItem("album-1").first()
+            assertEquals(9, saved?.scores?.single()?.score)
+            assertEquals("content://legacy/cover", saved?.values?.single()?.value)
+        }
+
+    @Test
+    fun renameCategory_renamesPersistedImageAttributeReference() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE)
+            categoryRepository.saveCategory(Category("Media", attributes = listOf(photo)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "album-1",
+                    scores = emptyList(),
+                    images =
+                        listOf(
+                            ItemImage(
+                                id = "image-1",
+                                attribute = photo,
+                                position = 0,
+                                bytes = byteArrayOf(1),
+                            ),
+                        ),
+                ),
+            )
+
+            val cover = Attribute("Cover", type = AttributeType.IMAGE)
+            categoryRepository.renameCategory(
+                originalName = "Media",
+                category = Category("Media", attributes = listOf(cover)),
+                renamedAttributeIds = mapOf("Photo" to "Cover"),
+            )
+
+            val saved = ratedItemRepository.observeRatedItem("album-1").first()
+            assertEquals(
+                "Cover",
+                saved
+                    ?.images
+                    ?.single()
+                    ?.attribute
+                    ?.id,
+            )
+        }
+
+    @Test
     fun renameCategory_fullAttributeMapPreservesScoreProfileAttributes() =
         runTest {
             val speed = Attribute("Speed")
@@ -542,6 +665,73 @@ class RoomRatingRepositoryTest {
 
             val category = categoryRepository.observeCategory("Cars").first()
             assertEquals(listOf("Speed"), category?.attributes?.map { it.id })
+        }
+
+    @Test
+    fun renameCategory_renamingCategoryNamePreservesScoreProfiles() =
+        runTest {
+            val speed = Attribute("Speed")
+            val handling = Attribute("Handling")
+            categoryRepository.saveCategory(Category("Cars", attributes = listOf(speed, handling)))
+            scoreProfileRepository.saveProfile(
+                ScoreProfile(
+                    id = "profile-1",
+                    categoryName = "Cars",
+                    name = "Performance",
+                    includedAttributeIds = listOf("Speed", "Handling"),
+                ),
+            )
+
+            categoryRepository.renameCategory(
+                originalName = "Cars",
+                category = Category("Vehicles", attributes = listOf(Attribute("Pace"), Attribute("Grip"))),
+                renamedAttributeIds = mapOf("Speed" to "Pace", "Handling" to "Grip"),
+            )
+
+            val oldProfiles = scoreProfileRepository.observeProfilesForCategory("Cars").first()
+            assertEquals(0, oldProfiles.size)
+
+            val newProfiles = scoreProfileRepository.observeProfilesForCategory("Vehicles").first()
+            assertEquals(1, newProfiles.size)
+            assertEquals("Vehicles", newProfiles.first().categoryName)
+            assertEquals(listOf("Grip", "Pace"), newProfiles.first().includedAttributeIds.sorted())
+        }
+
+    @Test
+    fun observeRankedItems_includesItemsWithOnlyDateAttributes() =
+        runTest {
+            val releaseDate =
+                Attribute(
+                    id = "Movies/Release Date",
+                    type = AttributeType.DATE,
+                    scoringDirection = ScoringDirection.NEWER_IS_BETTER,
+                )
+            categoryRepository.saveCategory(Category("Movies", attributes = listOf(releaseDate)))
+            ratedItemRepository.saveRatedItem(
+                RatedItem(
+                    id = "Inception",
+                    scores = emptyList(),
+                    values = listOf(ItemAttributeValue(releaseDate, "2010-07-16")),
+                ),
+            )
+
+            val rankedItems = ratedItemRepository.observeRankedItems("Movies").first()
+            assertEquals(1, rankedItems.size)
+            assertEquals("Inception", rankedItems.first().item.id)
+            assertEquals(
+                1,
+                rankedItems
+                    .first()
+                    .item.scores.size,
+            )
+            assertEquals(
+                "Release Date",
+                rankedItems
+                    .first()
+                    .item.scores
+                    .first()
+                    .attribute.displayName,
+            )
         }
 
     private companion object {

@@ -17,7 +17,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Run lint and static analysis
-        run: ./gradlew :app:ktlintCheck :app:detekt :app:spotlessCheck :app:checkDependencyBoundaries
+        run: ./gradlew :domain:ktlintCheck :domain:detekt :domain:spotlessCheck :app:ktlintCheck :app:detekt :app:spotlessCheck :app:checkDependencyBoundaries
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -30,4 +30,4 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest
+        run: ./gradlew :domain:test :app:testDebugUnitTest

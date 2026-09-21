@@ -17,9 +17,9 @@ class FakeEnrichmentEventLogger : EnrichmentEventLogger {
     ) {
         logs.add(
             LogEntry(
-                type = "rejected",
-                attributeKey = attributeKey,
-                extra = mapOf("reason" to reason, "originalStatus" to originalStatus, "confidence" to confidence),
+                "rejected",
+                attributeKey,
+                mapOf("reason" to reason, "originalStatus" to originalStatus, "confidence" to confidence),
             ),
         )
     }
@@ -31,9 +31,9 @@ class FakeEnrichmentEventLogger : EnrichmentEventLogger {
     ) {
         logs.add(
             LogEntry(
-                type = "accepted",
-                attributeKey = attributeKey,
-                extra = mapOf("itemId" to itemId, "suggestedValue" to suggestedValue),
+                "accepted",
+                attributeKey,
+                mapOf("itemId" to itemId, "suggestedValue" to suggestedValue),
             ),
         )
     }
@@ -42,12 +42,6 @@ class FakeEnrichmentEventLogger : EnrichmentEventLogger {
         attributeKey: String,
         itemId: String,
     ) {
-        logs.add(
-            LogEntry(
-                type = "dismissed",
-                attributeKey = attributeKey,
-                extra = mapOf("itemId" to itemId),
-            ),
-        )
+        logs.add(LogEntry("dismissed", attributeKey, mapOf("itemId" to itemId)))
     }
 }

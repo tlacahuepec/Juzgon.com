@@ -11,16 +11,21 @@ import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
 
+data class GeminiContentResult(
+    val text: String,
+    val groundingMetadata: GeminiGroundingMetadata? = null,
+)
+
 open class GeminiApiClient
     @Inject
     constructor() {
         private val json = Json { ignoreUnknownKeys = true }
 
-        open suspend fun generateContent(
+        open suspend fun generateContentWithMetadata(
             apiKey: String,
             prompt: String,
             useGrounding: Boolean = true,
-        ): String =
+        ): GeminiContentResult =
             withContext(Dispatchers.IO) {
                 val url = URL("$BASE_URL/models/$MODEL:generateContent?key=$apiKey")
                 val conn = (url.openConnection() as HttpURLConnection)
@@ -37,8 +42,17 @@ open class GeminiApiClient
                     throw GeminiApiException(code, error)
                 }
                 val responseJson = conn.inputStream.bufferedReader().readText()
-                extractTextFromResponse(responseJson)
+                GeminiContentResult(
+                    text = extractTextFromResponse(responseJson),
+                    groundingMetadata = extractGroundingMetadata(responseJson),
+                )
             }
+
+        open suspend fun generateContent(
+            apiKey: String,
+            prompt: String,
+            useGrounding: Boolean = true,
+        ): String = generateContentWithMetadata(apiKey, prompt, useGrounding).text
 
         fun buildRequestBody(
             prompt: String,

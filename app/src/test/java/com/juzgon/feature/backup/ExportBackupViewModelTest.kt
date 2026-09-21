@@ -2,12 +2,10 @@ package com.juzgon.feature.backup
 
 import com.juzgon.domain.backup.BackupException
 import com.juzgon.domain.backup.BackupService
-import com.juzgon.domain.backup.BackupValidationResult
-import com.juzgon.domain.backup.BackupValidator
 import com.juzgon.feature.home.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -19,30 +17,28 @@ class ExportBackupViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var backupService: FakeBackupService
-    private lateinit var backupValidator: FakeBackupValidator
     private lateinit var viewModel: ExportBackupViewModel
 
     @Before
     fun setUp() {
         backupService = FakeBackupService()
-        backupValidator = FakeBackupValidator()
-        viewModel = ExportBackupViewModel(backupService, backupValidator)
+        viewModel = ExportBackupViewModel(backupService)
     }
 
     @Test
-    fun exportProducesJsonPayload() =
+    fun exportProducesArchivePayload() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
+            backupService.archiveResult = byteArrayOf(1, 2, 3)
 
             viewModel.export()
 
-            assertEquals("""{"version":2}""", viewModel.state.value.exportedJson)
+            assertArrayEquals(byteArrayOf(1, 2, 3), viewModel.state.value.exportedArchive)
         }
 
     @Test
     fun exportSetsSuccessState() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
+            backupService.archiveResult = byteArrayOf(1)
 
             viewModel.export()
 
@@ -57,78 +53,102 @@ class ExportBackupViewModelTest {
             viewModel.export()
 
             assertEquals("Export failed", viewModel.state.value.errorMessage)
-            assertNull(viewModel.state.value.exportedJson)
+            assertNull(viewModel.state.value.exportedArchive)
         }
 
     @Test
     fun onExportConsumedResetsState() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
+            backupService.archiveResult = byteArrayOf(1)
             viewModel.export()
 
             viewModel.onExportConsumed()
 
-            assertNull(viewModel.state.value.exportedJson)
+            assertNull(viewModel.state.value.exportedArchive)
             assertEquals(false, viewModel.state.value.isExportComplete)
         }
 
     @Test
-    fun exportCallsValidatorWithExportedJson() =
+    fun exportCallsArchiveService() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
+            backupService.archiveResult = byteArrayOf(1)
 
             viewModel.export()
 
-            assertEquals("""{"version":2}""", backupValidator.lastValidatedJson)
+            assertEquals(1, backupService.exportArchiveCalls)
         }
 
     @Test
-    fun exportSetsErrorWhenValidationFails() =
+    fun importWithZipArchiveCallsImportArchive() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
-            backupValidator.result = BackupValidationResult(listOf("Missing field: app"))
+            val zipHeader = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x00)
 
-            viewModel.export()
+            viewModel.import(zipHeader)
 
-            assertNull(viewModel.state.value.exportedJson)
-            assertFalse(viewModel.state.value.isExportComplete)
-            assertTrue(
-                viewModel.state.value.errorMessage!!
-                    .contains("Missing field: app"),
-            )
+            assertEquals(1, backupService.importArchiveCalls)
+            assertTrue(viewModel.state.value.isImportComplete)
         }
 
     @Test
-    fun exportSetsCompleteOnlyWhenValid() =
+    fun importWithRawJsonCallsImport() =
         runTest {
-            backupService.exportResult = """{"version":2}"""
-            backupValidator.result = BackupValidationResult()
+            val jsonBytes = """{"app":"Juzgon"}""".toByteArray(Charsets.UTF_8)
 
-            viewModel.export()
+            viewModel.import(jsonBytes)
 
-            assertTrue(viewModel.state.value.isExportComplete)
-            assertEquals("""{"version":2}""", viewModel.state.value.exportedJson)
+            assertEquals(1, backupService.importJsonCalls)
+            assertTrue(viewModel.state.value.isImportComplete)
+        }
+
+    @Test
+    fun importSetsErrorOnFailure() =
+        runTest {
+            backupService.shouldThrow = true
+            val zipHeader = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
+
+            viewModel.import(zipHeader)
+
+            assertEquals("Operation failed", viewModel.state.value.errorMessage)
+            assertEquals(false, viewModel.state.value.isImportComplete)
+        }
+
+    @Test
+    fun onImportConsumedResetsState() =
+        runTest {
+            val zipHeader = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
+            viewModel.import(zipHeader)
+
+            viewModel.onImportConsumed()
+
+            assertEquals(false, viewModel.state.value.isImportComplete)
+            assertNull(viewModel.state.value.errorMessage)
         }
 
     private class FakeBackupService : BackupService {
-        var exportResult: String = ""
+        var archiveResult = byteArrayOf()
         var shouldThrow: Boolean = false
+        var exportArchiveCalls: Int = 0
+        var importArchiveCalls: Int = 0
+        var importJsonCalls: Int = 0
 
         override suspend fun export(): String {
-            if (shouldThrow) throw BackupException("Export failed")
-            return exportResult
+            error("not used")
         }
 
-        override suspend fun import(json: String) = error("not used")
-    }
+        override suspend fun exportArchive(): ByteArray {
+            exportArchiveCalls += 1
+            if (shouldThrow) throw BackupException("Export failed")
+            return archiveResult
+        }
 
-    private class FakeBackupValidator : BackupValidator {
-        var result = BackupValidationResult()
-        var lastValidatedJson: String? = null
+        override suspend fun importArchive(archive: ByteArray) {
+            importArchiveCalls += 1
+            if (shouldThrow) throw BackupException("Operation failed")
+        }
 
-        override fun validate(json: String): BackupValidationResult {
-            lastValidatedJson = json
-            return result
+        override suspend fun import(json: String) {
+            importJsonCalls += 1
+            if (shouldThrow) throw BackupException("Operation failed")
         }
     }
 }

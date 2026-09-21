@@ -7,6 +7,7 @@ import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import org.junit.Assert.assertEquals
@@ -64,6 +65,54 @@ class RatingEntityMappersTest {
     }
 
     @Test
+    fun ratedItemImageRoundTrip_preservesBinaryMetadataAndAttributeOrder() {
+        val photo = Attribute(id = "photo", type = AttributeType.IMAGE)
+        val thumbnail = Attribute(id = "thumbnail", type = AttributeType.IMAGE)
+        val ratedItem =
+            RatedItem(
+                id = "item-1",
+                scores = emptyList(),
+                images =
+                    listOf(
+                        ItemImage(
+                            id = "thumbnail-1",
+                            attribute = thumbnail,
+                            position = 1,
+                            bytes = byteArrayOf(3, 4),
+                            mimeType = "image/png",
+                            displayName = "thumbnail.png",
+                            width = 16,
+                            height = 16,
+                            createdAt = 123L,
+                        ),
+                        ItemImage(
+                            id = "photo-1",
+                            attribute = photo,
+                            position = 0,
+                            bytes = byteArrayOf(1, 2),
+                            mimeType = "image/jpeg",
+                            displayName = "photo.jpg",
+                            width = 640,
+                            height = 480,
+                            createdAt = 456L,
+                        ),
+                    ),
+            )
+
+        val mappedBack =
+            ratedItem
+                .toItemEntity()
+                .toDomain(
+                    ratings = emptyList(),
+                    attributesById = mapOf(photo.id to photo, thumbnail.id to thumbnail),
+                    imageEntities = ratedItem.toItemImageEntities(),
+                )
+
+        assertEquals(listOf("photo-1", "thumbnail-1"), mappedBack.images.map { it.id })
+        assertEquals(ratedItem.images.sortedBy { it.attribute.id }, mappedBack.images)
+    }
+
+    @Test
     fun categoryWithNoAttributes_mapsToEmptyAttributeEntityList() {
         val category = Category(name = "Empty", attributes = emptyList())
 
@@ -98,6 +147,24 @@ class RatingEntityMappersTest {
         val mappedBack = category.toEntity().toDomain(category.toAttributeEntities())
 
         assertEquals(category, mappedBack)
+    }
+
+    @Test
+    fun attributeEntity_roundTrip_preservesDropdownSuggestedValues() {
+        val category =
+            Category(
+                name = "People",
+                attributes =
+                    listOf(
+                        Attribute(
+                            id = "People/Type of Face",
+                            type = AttributeType.DROPDOWN,
+                            suggestedValues = listOf("Oval", "Round"),
+                        ),
+                    ),
+            )
+
+        assertEquals(category, category.toEntity().toDomain(category.toAttributeEntities()))
     }
 
     @Test

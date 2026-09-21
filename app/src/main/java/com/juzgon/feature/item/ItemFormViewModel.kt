@@ -4,8 +4,12 @@ package com.juzgon.feature.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juzgon.domain.Attribute
 import com.juzgon.domain.AttributeType
 import com.juzgon.domain.Category
+import com.juzgon.domain.ItemAttributeValue
+import com.juzgon.domain.ItemImage
+import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.enrichment.EnrichmentEventLogger
 import com.juzgon.domain.enrichment.EnrichmentSupportRules
 import com.juzgon.domain.enrichment.usecase.SuggestAttributeValueUseCase
@@ -109,32 +113,61 @@ class ItemFormViewModel
                     originalItemId = item.id,
                     title = item.id,
                     notes = item.notes,
-                    scores =
-                        numberAttrs.map { attribute ->
-                            ItemScoreInput(
-                                attribute = attribute,
-                                scoreText = scoresByAttributeId[attribute.id]?.score?.toString().orEmpty(),
-                            )
-                        },
-                    values =
-                        otherAttrs.map { attribute ->
-                            val existingValue = valuesByAttributeId[attribute.id]?.value
-                            val defaultValue = if (attribute.type == AttributeType.BOOLEAN) "false" else ""
-                            if (attribute.type == AttributeType.IMAGE) {
-                                ItemValueInput(
-                                    attribute = attribute,
-                                    imageReferences = decodeItemImageReferences(existingValue.orEmpty()),
-                                )
-                            } else {
-                                ItemValueInput(
-                                    attribute = attribute,
-                                    valueText = existingValue ?: defaultValue,
-                                )
-                            }
-                        },
+                    scores = buildScoreInputs(numberAttrs, scoresByAttributeId),
+                    values = buildValueInputs(otherAttrs, valuesByAttributeId, item.images),
                     isLoading = false,
                 )
         }
+
+        private fun buildScoreInputs(
+            attributes: List<Attribute>,
+            scoresByAttributeId: Map<String, ScoreEntry>,
+        ): List<ItemScoreInput> =
+            attributes.map { attribute ->
+                ItemScoreInput(
+                    attribute = attribute,
+                    scoreText = scoresByAttributeId[attribute.id]?.score?.toString().orEmpty(),
+                )
+            }
+
+        private fun buildValueInputs(
+            attributes: List<Attribute>,
+            valuesByAttributeId: Map<String, ItemAttributeValue>,
+            images: List<ItemImage>,
+        ): List<ItemValueInput> =
+            attributes.map { attribute ->
+                val existingValue = valuesByAttributeId[attribute.id]?.value
+                val defaultValue = if (attribute.type == AttributeType.BOOLEAN) "false" else ""
+                if (attribute.type == AttributeType.IMAGE) {
+                    val persistedImages =
+                        images
+                            .filter { it.attribute.id == attribute.id }
+                            .sortedBy { it.position }
+                    ItemValueInput(
+                        attribute = attribute,
+                        imageReferences =
+                            persistedImages
+                                .map { image ->
+                                    ItemImageReference(
+                                        id = image.id,
+                                        sourceUri = "database://${image.id}",
+                                        mimeType = image.mimeType,
+                                        sizeBytes = image.bytes.size.toLong(),
+                                        width = image.width,
+                                        height = image.height,
+                                        createdAt = image.createdAt,
+                                        displayName = image.displayName,
+                                        bytes = image.bytes,
+                                    )
+                                }.ifEmpty { decodeItemImageReferences(existingValue.orEmpty()) },
+                    )
+                } else {
+                    ItemValueInput(
+                        attribute = attribute,
+                        valueText = existingValue ?: defaultValue,
+                    )
+                }
+            }
 
         private fun showLoadError(message: String) {
             mutableState.update {
@@ -232,6 +265,7 @@ class ItemFormViewModel
                                             height = selectedImage.height,
                                             displayName = selectedImage.displayName,
                                             createdAt = System.currentTimeMillis(),
+                                            bytes = selectedImage.bytes,
                                         )
                                 }
                                 valueInput.copy(imageReferences = existingReferences)

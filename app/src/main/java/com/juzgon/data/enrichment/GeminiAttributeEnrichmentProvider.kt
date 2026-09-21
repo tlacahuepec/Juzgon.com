@@ -6,6 +6,7 @@ import com.juzgon.domain.enrichment.AttributeEnrichmentProvider
 import com.juzgon.domain.enrichment.AttributeEnrichmentRequest
 import com.juzgon.domain.enrichment.AttributeEnrichmentResult
 import com.juzgon.domain.enrichment.EnrichmentFailureCode
+import com.juzgon.domain.enrichment.EnrichmentSource
 import com.juzgon.domain.enrichment.EnrichmentStatus
 import com.juzgon.domain.enrichment.SecureApiKeyStore
 import java.io.IOException
@@ -24,47 +25,38 @@ class GeminiAttributeEnrichmentProvider
                 apiKeyStore.getGeminiApiKey()
                     ?: return errorResult(EnrichmentFailureCode.MISSING_API_KEY)
 
-            EnrichmentLogger.started(
-                provider = PROVIDER_NAME,
-                attributeKey = request.targetAttributeKey,
-                catalogType = request.catalogType?.name,
-            )
+            EnrichmentLogger.started(provider = PROVIDER_NAME)
 
             val startTime = System.currentTimeMillis()
             return try {
                 val prompt = promptBuilder.build(request)
                 EnrichmentLogger.promptSent(PROVIDER_NAME, prompt)
-                val responseText = apiClient.generateContent(apiKey, prompt, useGrounding = true)
-                EnrichmentLogger.responseReceived(PROVIDER_NAME, responseText)
-                val result = responseParser.parse(responseText)
-                logResult(result, request.targetAttributeKey, startTime)
+                val contentResult = apiClient.generateContentWithMetadata(apiKey, prompt, useGrounding = true)
+                EnrichmentLogger.responseReceived(PROVIDER_NAME, contentResult.text)
+                val parsedResult = responseParser.parse(contentResult.text)
+                val result = mergeGroundingSources(parsedResult, contentResult.groundingMetadata)
+                logResult(result, startTime)
                 result
             } catch (e: IOException) {
                 timber.log.Timber.e(e, "Network error during enrichment")
                 logFailure(
                     EnrichmentFailureCode.NETWORK_ERROR,
-                    request.targetAttributeKey,
                     startTime,
-                    "IOException: ${e.message}",
                 )
                 errorResult(EnrichmentFailureCode.NETWORK_ERROR)
             } catch (e: GeminiApiException) {
-                timber.log.Timber.e(e, "Gemini API error: HTTP ${e.httpCode} body=${e.body}")
+                timber.log.Timber.e(e, "Gemini API error: HTTP ${e.httpCode}")
                 val failureCode = mapHttpCode(e.httpCode)
                 logFailure(
                     failureCode,
-                    request.targetAttributeKey,
                     startTime,
-                    "HTTP ${e.httpCode}: ${e.body.take(MAX_ERROR_DETAIL_LENGTH)}",
                 )
                 errorResult(failureCode)
             } catch (e: Exception) {
                 timber.log.Timber.e(e, "Unexpected enrichment error: ${e.javaClass.simpleName}")
                 logFailure(
                     EnrichmentFailureCode.PROVIDER_ERROR,
-                    request.targetAttributeKey,
                     startTime,
-                    "${e.javaClass.simpleName}: ${e.message}",
                 )
                 errorResult(EnrichmentFailureCode.PROVIDER_ERROR)
             }
@@ -79,14 +71,12 @@ class GeminiAttributeEnrichmentProvider
 
         private fun logResult(
             result: AttributeEnrichmentResult,
-            attributeKey: String,
             startTime: Long,
         ) {
             val durationMs = System.currentTimeMillis() - startTime
             if (result.status == EnrichmentStatus.FOUND || result.status == EnrichmentStatus.NOT_FOUND) {
                 EnrichmentLogger.succeeded(
                     provider = PROVIDER_NAME,
-                    attributeKey = attributeKey,
                     confidence = result.confidence?.name ?: "UNKNOWN",
                     sourceCount = result.sources.size,
                     durationMs = durationMs,
@@ -94,7 +84,6 @@ class GeminiAttributeEnrichmentProvider
             } else {
                 EnrichmentLogger.failed(
                     provider = PROVIDER_NAME,
-                    attributeKey = attributeKey,
                     failureCode = result.failureCode?.name ?: result.status.name,
                     durationMs = durationMs,
                 )
@@ -103,17 +92,32 @@ class GeminiAttributeEnrichmentProvider
 
         private fun logFailure(
             failureCode: EnrichmentFailureCode,
-            attributeKey: String,
             startTime: Long,
-            errorDetail: String? = null,
         ) {
             EnrichmentLogger.failed(
                 provider = PROVIDER_NAME,
-                attributeKey = attributeKey,
                 failureCode = failureCode.name,
                 durationMs = System.currentTimeMillis() - startTime,
-                errorDetail = errorDetail,
             )
+        }
+
+        private fun mergeGroundingSources(
+            result: AttributeEnrichmentResult,
+            metadata: GeminiGroundingMetadata?,
+        ): AttributeEnrichmentResult {
+            val groundingSources =
+                metadata?.groundingChunks?.mapNotNull { chunk ->
+                    chunk.web?.let { web ->
+                        EnrichmentSource(
+                            title = web.title,
+                            url = web.uri,
+                        )
+                    }
+                } ?: emptyList()
+            if (groundingSources.isEmpty()) return result
+            val existingUrls = result.sources.mapNotNull { it.url }.toSet()
+            val newSources = groundingSources.filter { it.url !in existingUrls }
+            return result.copy(sources = result.sources + newSources)
         }
 
         private fun errorResult(failureCode: EnrichmentFailureCode) =
@@ -127,6 +131,5 @@ class GeminiAttributeEnrichmentProvider
             const val HTTP_UNAUTHORIZED = 401
             const val HTTP_FORBIDDEN = 403
             const val HTTP_TOO_MANY_REQUESTS = 429
-            const val MAX_ERROR_DETAIL_LENGTH = 200
         }
     }

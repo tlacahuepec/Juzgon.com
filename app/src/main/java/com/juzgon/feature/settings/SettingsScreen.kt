@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "LongMethod", "LongParameterList")
+@file:Suppress("FunctionName", "LongMethod", "LongParameterList", "CyclomaticComplexMethod")
 
 package com.juzgon.feature.settings
 
@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -43,8 +45,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -61,6 +65,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.juzgon.domain.BuildMetadata
+import com.juzgon.feature.about.AboutDialog
 import com.juzgon.feature.about.AboutViewModel
 import com.juzgon.feature.backup.ExportBackupViewModel
 import com.juzgon.ui.theme.JuzgonVisualTheme
@@ -100,10 +105,10 @@ fun SettingsRoute(
     }
 
     val safLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
             if (uri != null) {
-                val json = exportState.exportedJson
-                if (json == null) {
+                val archive = exportState.exportedArchive
+                if (archive == null) {
                     exportViewModel.onExportConsumed()
                     return@rememberLauncherForActivityResult
                 }
@@ -112,7 +117,7 @@ fun SettingsRoute(
                         context.contentResolver.openOutputStream(uri)
                             ?: throw IOException("Unable to open output stream for selected file")
                     stream.use { outputStream ->
-                        outputStream.write(json.toByteArray(Charsets.UTF_8))
+                        outputStream.write(archive)
                     }
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Backup exported successfully")
@@ -129,10 +134,81 @@ fun SettingsRoute(
             }
         }
 
+    var pendingImportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var showImportConfirmDialog by remember { mutableStateOf(false) }
+
+    val importSafLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                try {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes != null && bytes.isNotEmpty()) {
+                        pendingImportBytes = bytes
+                        showImportConfirmDialog = true
+                    } else {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Selected file is empty")
+                        }
+                    }
+                } catch (e: IOException) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Failed to read selected file: ${e.message}")
+                    }
+                }
+            }
+        }
+
+    if (showImportConfirmDialog && pendingImportBytes != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportConfirmDialog = false
+                pendingImportBytes = null
+            },
+            title = { Text("Import backup?") },
+            text = {
+                Text(
+                    "Importing a backup will replace all current categories, " +
+                        "items, and score profiles with data from the backup file.",
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val bytes = pendingImportBytes
+                        showImportConfirmDialog = false
+                        pendingImportBytes = null
+                        if (bytes != null) {
+                            exportViewModel.import(bytes)
+                        }
+                    },
+                ) {
+                    Text("Import")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImportConfirmDialog = false
+                        pendingImportBytes = null
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    LaunchedEffect(exportState.isImportComplete) {
+        if (exportState.isImportComplete) {
+            snackbarHostState.showSnackbar("Backup imported successfully")
+            exportViewModel.onImportConsumed()
+        }
+    }
+
     LaunchedEffect(exportState.isExportComplete) {
-        if (exportState.isExportComplete && exportState.exportedJson != null) {
+        if (exportState.isExportComplete && exportState.exportedArchive != null) {
             val dateStr = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            safLauncher.launch("juzgon-backup-$dateStr.juzgon.json")
+            safLauncher.launch("juzgon-backup-$dateStr.juzgon.zip")
         }
     }
 
@@ -149,6 +225,17 @@ fun SettingsRoute(
         maskedGeminiKey = geminiState.maskedKey,
         isExporting = exportState.isExporting,
         onExportBackup = { exportViewModel.export() },
+        isImporting = exportState.isImporting,
+        onImportBackup = {
+            importSafLauncher.launch(
+                arrayOf(
+                    "application/zip",
+                    "application/json",
+                    "application/octet-stream",
+                    "*/*",
+                ),
+            )
+        },
         onNavigateToGeminiKey = onNavigateToGeminiKey,
         onBackClick = onBackClick,
         modifier = modifier,
@@ -166,11 +253,21 @@ fun SettingsScreen(
     onExportBackup: () -> Unit,
     onNavigateToGeminiKey: () -> Unit,
     modifier: Modifier = Modifier,
+    isImporting: Boolean = false,
+    onImportBackup: () -> Unit = {},
     onBackClick: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val tokens = JuzgonVisualTheme.tokens
     val scrollState = rememberScrollState()
+    var showAboutDialog by remember { mutableStateOf(false) }
+
+    if (showAboutDialog) {
+        AboutDialog(
+            metadata = buildMetadata,
+            onDismiss = { showAboutDialog = false },
+        )
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -225,6 +322,8 @@ fun SettingsScreen(
             DatabaseBackupSection(
                 isExporting = isExporting,
                 onExportBackup = onExportBackup,
+                isImporting = isImporting,
+                onImportBackup = onImportBackup,
             )
 
             GeminiAiSection(
@@ -235,6 +334,7 @@ fun SettingsScreen(
 
             AboutSection(
                 buildMetadata = buildMetadata,
+                onAboutClick = { showAboutDialog = true },
             )
 
             Spacer(modifier = Modifier.height(tokens.spacing.extraLarge))
@@ -246,6 +346,8 @@ fun SettingsScreen(
 private fun DatabaseBackupSection(
     isExporting: Boolean,
     onExportBackup: () -> Unit,
+    isImporting: Boolean = false,
+    onImportBackup: () -> Unit = {},
 ) {
     val tokens = JuzgonVisualTheme.tokens
 
@@ -272,15 +374,15 @@ private fun DatabaseBackupSection(
             Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.medium)) {
                 Text(
                     text =
-                        "Export database backup as a JSON file containing all categories, " +
-                            "items, and custom score profiles.",
+                        "Export database backup as a JSON or ZIP archive containing all categories, " +
+                            "items, ratings, images, and custom score profiles.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = tokens.palette.textSoft,
                 )
 
                 Button(
                     onClick = onExportBackup,
-                    enabled = !isExporting,
+                    enabled = !isExporting && !isImporting,
                     colors =
                         ButtonDefaults.buttonColors(
                             containerColor = tokens.palette.primaryGlow,
@@ -311,6 +413,35 @@ private fun DatabaseBackupSection(
                         )
                         Spacer(modifier = Modifier.size(tokens.spacing.small))
                         Text(text = "Export backup", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = onImportBackup,
+                    enabled = !isExporting && !isImporting,
+                    colors =
+                        ButtonDefaults.outlinedButtonColors(
+                            contentColor = tokens.palette.contrastAccent,
+                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .sizeIn(minHeight = 48.dp)
+                            .semantics {
+                                contentDescription = "Import backup"
+                                role = Role.Button
+                            },
+                ) {
+                    if (isImporting) {
+                        CircularProgressIndicator(
+                            color = tokens.palette.contrastAccent,
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(modifier = Modifier.size(tokens.spacing.small))
+                        Text(text = "Importing...")
+                    } else {
+                        Text(text = "Import backup", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -397,7 +528,10 @@ private fun GeminiAiSection(
 }
 
 @Composable
-private fun AboutSection(buildMetadata: BuildMetadata) {
+private fun AboutSection(
+    buildMetadata: BuildMetadata,
+    onAboutClick: () -> Unit = {},
+) {
     val tokens = JuzgonVisualTheme.tokens
 
     Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.small)) {
@@ -459,6 +593,26 @@ private fun AboutSection(buildMetadata: BuildMetadata) {
                     style = MaterialTheme.typography.bodySmall,
                     color = tokens.palette.textSoft,
                 )
+
+                Spacer(modifier = Modifier.height(tokens.spacing.extraSmall))
+
+                OutlinedButton(
+                    onClick = onAboutClick,
+                    colors =
+                        ButtonDefaults.outlinedButtonColors(
+                            contentColor = tokens.palette.contrastAccent,
+                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .sizeIn(minHeight = 44.dp)
+                            .semantics {
+                                contentDescription = "View about dialog"
+                                role = Role.Button
+                            },
+                ) {
+                    Text(text = "App Info Details", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

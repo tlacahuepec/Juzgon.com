@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.juzgon.data.local.mapper
 
 import com.juzgon.data.local.dao.CategoryWithAttributes
@@ -5,6 +7,7 @@ import com.juzgon.data.local.dao.ItemWithRatings
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.domain.Attribute
@@ -12,9 +15,13 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
 import com.juzgon.domain.ScoringDirection
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 fun Category.toEntity(): CategoryEntity =
@@ -36,6 +43,7 @@ fun Category.toAttributeEntities(): List<AttributeEntity> =
             displayInDiamond = attribute.type == AttributeType.NUMBER && attribute.displayInDiamond,
             diamondOrder = attribute.diamondOrder,
             scoringDirection = attribute.scoringDirection?.name,
+            suggestedValues = Json.encodeToString(attribute.suggestedValues),
         )
     }
 
@@ -80,10 +88,27 @@ fun RatedItem.toItemValueEntities(): List<ItemValueEntity> =
         ItemValueEntity(itemId = id, attributeId = valueEntry.attribute.id, valueText = valueEntry.value)
     }
 
+fun RatedItem.toItemImageEntities(): List<ItemImageEntity> =
+    images.map { image ->
+        ItemImageEntity(
+            id = image.id,
+            itemId = id,
+            attributeId = image.attribute.id,
+            position = image.position,
+            bytes = image.bytes,
+            mimeType = image.mimeType,
+            displayName = image.displayName,
+            width = image.width,
+            height = image.height,
+            createdAt = image.createdAt,
+        )
+    }
+
 fun ItemEntity.toDomain(
     ratings: List<RatingEntity>,
     attributesById: Map<String, Attribute>,
     valueEntities: List<ItemValueEntity> = emptyList(),
+    imageEntities: List<ItemImageEntity> = emptyList(),
 ): RatedItem {
     val scoreEntries =
         ratings.sortedBy { it.attributeId }.map { rating ->
@@ -104,6 +129,24 @@ fun ItemEntity.toDomain(
         scores = scoreEntries,
         notes = notes,
         values = values,
+        images =
+            imageEntities
+                .sortedWith(compareBy<ItemImageEntity> { it.attributeId }.thenBy { it.position })
+                .mapNotNull {
+                    attributesById[it.attributeId]?.let { attribute ->
+                        ItemImage(
+                            it.id,
+                            attribute,
+                            it.position,
+                            it.bytes,
+                            it.mimeType,
+                            it.displayName,
+                            it.width,
+                            it.height,
+                            it.createdAt,
+                        )
+                    }
+                },
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
@@ -114,6 +157,7 @@ fun ItemWithRatings.toDomain(attributesById: Map<String, Attribute>): RatedItem 
         ratings = ratings,
         attributesById = attributesById,
         valueEntities = values.filter { it.deletedAt == null },
+        imageEntities = images,
     )
 
 fun AttributeEntity.toDomain(): Attribute {
@@ -137,5 +181,14 @@ fun AttributeEntity.toDomain(): Attribute {
         displayInDiamond = parsedType == AttributeType.NUMBER && displayInDiamond,
         diamondOrder = diamondOrder,
         scoringDirection = if (parsedType == AttributeType.DATE) parsedDirection else null,
+        suggestedValues = if (parsedType == AttributeType.DROPDOWN) suggestedValues.toStringList() else emptyList(),
     )
 }
+
+private fun String.toStringList(): List<String> =
+    runCatching {
+        Json.decodeFromString<List<String>>(this)
+    }.getOrElse {
+        Timber.w("Invalid suggested values for attribute, defaulting to empty list")
+        emptyList()
+    }

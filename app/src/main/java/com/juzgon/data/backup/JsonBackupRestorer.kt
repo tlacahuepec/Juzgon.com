@@ -7,6 +7,7 @@ import com.juzgon.data.local.dao.ScoreProfileDao
 import com.juzgon.data.local.entity.AttributeEntity
 import com.juzgon.data.local.entity.CategoryEntity
 import com.juzgon.data.local.entity.ItemEntity
+import com.juzgon.data.local.entity.ItemImageEntity
 import com.juzgon.data.local.entity.ItemValueEntity
 import com.juzgon.data.local.entity.RatingEntity
 import com.juzgon.data.local.entity.ScoreProfileAttributeEntity
@@ -67,6 +68,7 @@ class JsonBackupRestorer(
                             } else {
                                 null
                             },
+                        suggestedValues = attr.optJSONArray("suggestedValues")?.toString() ?: "[]",
                     )
                 }
             if (attrs.isNotEmpty()) categoryDao.upsertAttributes(attrs)
@@ -140,6 +142,12 @@ class JsonBackupRestorer(
                 }
             scoreProfileDao.upsertProfile(profile)
             scoreProfileAttributeDao.saveProfileWithAttributes(profile, attributes)
+        }
+    }
+
+    suspend fun restoreImages(images: List<ItemImageEntity>) {
+        if (images.isNotEmpty()) {
+            itemDao.upsertImages(images)
         }
     }
 }

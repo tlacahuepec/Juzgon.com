@@ -7,6 +7,7 @@ import com.juzgon.domain.AttributeType
 import com.juzgon.domain.CatalogType
 import com.juzgon.domain.Category
 import com.juzgon.domain.ItemAttributeValue
+import com.juzgon.domain.ItemImage
 import com.juzgon.domain.RankedRatedItem
 import com.juzgon.domain.RatedItem
 import com.juzgon.domain.ScoreEntry
@@ -292,6 +293,40 @@ class ItemFormViewModelTest {
             assertEquals(listOf("content://images/jetta"), decodedImageReferences.map { it.sourceUri })
             assertEquals(null, ratedItemRepository.savedItem)
             assertTrue(currentState.saveCompleted)
+        }
+
+    @Test
+    fun editModeLoadsByteBackedImagesBeforeLegacyReferences() =
+        runTest {
+            val photo = Attribute("Photo", type = AttributeType.IMAGE, isRequired = false)
+            categoryRepository.categories.value = listOf(Category("Cars", attributes = listOf(speed, brakes, photo)))
+            ratedItemRepository.item.value =
+                RatedItem(
+                    id = "Jetta",
+                    scores = listOf(ScoreEntry(speed, 6), ScoreEntry(brakes, 7)),
+                    values = listOf(ItemAttributeValue(photo, "content://images/legacy")),
+                    images =
+                        listOf(
+                            ItemImage(
+                                id = "stored-photo",
+                                attribute = photo,
+                                position = 0,
+                                bytes = byteArrayOf(7, 8),
+                                mimeType = "image/png",
+                            ),
+                        ),
+                )
+
+            viewModel.loadCategory("Cars", itemId = "Jetta")
+            advanceUntilIdle()
+
+            val reference =
+                currentState.values
+                    .single()
+                    .imageReferences
+                    .single()
+            assertEquals("database://stored-photo", reference.sourceUri)
+            assertTrue(reference.bytes!!.contentEquals(byteArrayOf(7, 8)))
         }
 
     @Test
@@ -629,6 +664,7 @@ class ItemFormViewModelTest {
                             width = 1200,
                             height = 800,
                             displayName = "roadster.png",
+                            bytes = byteArrayOf(1, 2, 3),
                         ),
                     ),
             )
@@ -644,14 +680,11 @@ class ItemFormViewModelTest {
             advanceUntilIdle()
 
             val saved = ratedItemRepository.savedItem!!
-            val savedImage = saved.values.single()
+            assertTrue(saved.values.isEmpty())
+            val savedImage = saved.images.single()
             assertEquals("Photo", savedImage.attribute.id)
-            assertTrue(savedImage.value.startsWith("imgref:v1|"))
-            assertFalse(savedImage.value.contains("byteArray", ignoreCase = true))
-            val decoded = decodeItemImageReferences(savedImage.value)
-            assertEquals(1, decoded.size)
-            assertEquals("content://images/roadster", decoded.single().sourceUri)
-            assertEquals("image/png", decoded.single().mimeType)
+            assertTrue(savedImage.bytes.contentEquals(byteArrayOf(1, 2, 3)))
+            assertEquals("image/png", savedImage.mimeType)
         }
 
     @Test
@@ -675,6 +708,7 @@ class ItemFormViewModelTest {
                             width = null,
                             height = null,
                             displayName = "roadster.png",
+                            bytes = byteArrayOf(1),
                         ),
                     ),
             )
@@ -718,6 +752,7 @@ class ItemFormViewModelTest {
                             width = 1200,
                             height = 800,
                             displayName = "roadster.png",
+                            bytes = byteArrayOf(1),
                         ),
                     ),
             )
@@ -755,6 +790,7 @@ class ItemFormViewModelTest {
                     width = 10,
                     height = 10,
                     displayName = "roadster.png",
+                    bytes = byteArrayOf(1),
                 )
             viewModel.onImagesSelected(attributeId = "Photo", selectedImages = listOf(selectedImage))
             val firstImageId =

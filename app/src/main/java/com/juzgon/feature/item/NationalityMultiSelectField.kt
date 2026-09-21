@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.juzgon.domain.NationalityDataset
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Suppress("LongParameterList")
 @Composable
 internal fun NationalityMultiSelectField(
     attributeId: String,
@@ -34,6 +35,7 @@ internal fun NationalityMultiSelectField(
     onValueChange: (String, String) -> Unit,
     isError: Boolean,
     errorText: String?,
+    displayName: String = attributeId.substringAfter("/"),
 ) {
     val state = remember(valueText) { NationalityMultiSelectState(valueText) }
 
@@ -68,7 +70,7 @@ internal fun NationalityMultiSelectField(
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = { text -> state.onSearchQueryChange(text) },
-            label = { Text(if (state.selectedCodes.isEmpty()) attributeId else "Add nationality") },
+            label = { Text(if (state.selectedCodes.isEmpty()) displayName else "Add nationality") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(state.expanded) },
             isError = isError,
             supportingText = { errorText?.let { Text(it) } },

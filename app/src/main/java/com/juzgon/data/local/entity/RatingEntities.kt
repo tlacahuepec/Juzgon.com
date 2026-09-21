@@ -51,6 +51,8 @@ data class AttributeEntity(
     val diamondOrder: Int? = null,
     @ColumnInfo(name = "scoring_direction")
     val scoringDirection: String? = null,
+    @ColumnInfo(name = "suggested_values")
+    val suggestedValues: String = "[]",
 )
 
 @Entity(
@@ -112,6 +114,42 @@ data class ItemValueEntity(
     val valueText: String,
     @ColumnInfo(name = "deleted_at")
     val deletedAt: Long? = null,
+)
+
+@Entity(
+    tableName = "item_images",
+    foreignKeys = [
+        ForeignKey(
+            entity = ItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["item_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["item_id"]), Index(value = ["attribute_id"])],
+)
+data class ItemImageEntity(
+    @PrimaryKey
+    @ColumnInfo(name = "id")
+    val id: String,
+    @ColumnInfo(name = "item_id")
+    val itemId: String,
+    @ColumnInfo(name = "attribute_id")
+    val attributeId: String,
+    @ColumnInfo(name = "position")
+    val position: Int,
+    @ColumnInfo(name = "bytes")
+    val bytes: ByteArray,
+    @ColumnInfo(name = "mime_type")
+    val mimeType: String? = null,
+    @ColumnInfo(name = "display_name")
+    val displayName: String? = null,
+    @ColumnInfo(name = "width")
+    val width: Int? = null,
+    @ColumnInfo(name = "height")
+    val height: Int? = null,
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long = 0L,
 )
 
 @Entity(

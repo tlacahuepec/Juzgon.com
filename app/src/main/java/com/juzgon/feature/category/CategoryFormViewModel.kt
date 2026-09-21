@@ -119,6 +119,11 @@ class CategoryFormViewModel
             }
         }
 
+        fun onApplyFaceTypePreset(key: Long) {
+            attributesCoordinator.applyFaceTypePreset(key)
+            syncAttributesFromCoordinator()
+        }
+
         fun onAttributeRequiredChanged(
             key: Long,
             isRequired: Boolean,
