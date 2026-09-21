@@ -1,0 +1,61 @@
+# Engineering Constitution Rules
+# Full document: https://github.com/tlacahuepec/Constitution/blob/main/CONSTITUTION.md
+
+# Immutable Rules
+- Verification-first is mandatory: use TDD for executable code and VDD for non-executable artifacts
+- Never push directly to main or develop
+- All changes go through PRs with CI passing
+- No secrets ever in the repository
+- No force-pushes on any branch — protected or feature (history is immutable once pushed)
+- No git commit --amend or rebase after remote push — create a new commit
+- One logical change per PR (one issue per branch)
+- CI must pass before any merge
+
+# Verification Protocol for Executable Code
+- Write a failing test that defines the expected behavior
+- Run the test and confirm it fails
+- Write the minimum code to make the test pass
+- Run the test and confirm it passes
+- Refactor if needed, ensuring tests still pass
+
+# Verification Protocol for Artifacts / Workflows / Docs
+- Write or update the spec, checklist, schema, README, or acceptance criteria first
+- Define validation before changing the artifact
+- Automate validation where practical
+- Document manual validation in the PR when automation is not practical
+- Preserve reproducibility and safety
+
+# Workflow
+- Check README.md for project tier (🔧 Tier 2 — Personal Tool)
+- Synchronize base: always git fetch origin and pull latest develop before branching
+- Branch using feat/, fix/, hotfix/, or release/ prefix
+- Keep feature branch synced with develop regularly during development
+- Commit messages: imperative mood, reference issue, < 72 chars
+- Before pushing: run linter, formatter, tests, and boundary checks
+- PR must include: issue link, summary, test or validation plan, checklist
+
+# Prohibited
+- Never commit directly to main or develop
+- Never force-push or amend pushed commits
+- Never mix refactoring and feature behavior changes in the same PR
+- Never create catch-all utils/ or common/ files
+- Never exceed folder depth of 4 levels from source root
+- Never bypass CI or skip hooks
+- Never suppress lint, PMD, or static analysis warnings — fix the issue
+- Never self-approve PRs
+- Never commit secrets or .env files
+- Never commit large model files, generated output batches, private images, or machine-specific artifacts
+- Never make destructive changes without human authorization
+- Never skip tests or validation because the repository has no traditional production code
+
+# Always
+- Read CONSTITUTION.md before starting significant work
+- Check project tier in README.md
+- Add tests for executable code (TDD)
+- Add validation for non-executable artifacts (VDD)
+- Write characterization tests before refactoring existing code
+- Package by Feature and enforce Clean Architecture inward dependency flow
+- Follow the Boy Scout Rule only on local touched lines
+- Use SOLID principles where software design is involved
+- Prefer small focused changes
+- Follow existing patterns in the repository
