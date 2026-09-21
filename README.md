@@ -1,8 +1,16 @@
 # Juzgon.com
 
-This project follows the [Engineering Constitution](https://github.com/tlacahuepec/Constitution).
+[![Constitution](https://img.shields.io/badge/Constitution-Tier%202%20Personal%20Tool-blue)](COMPLIANCE.md)
+[![Constitution Version](https://img.shields.io/badge/Constitution%20Version-v2.3.2-teal)](https://github.com/tlacahuepec/Constitution)
 
 Juzgón is a modern Android app where users create custom rating systems for anything: soccer players, cars, movies, pets, and more. Create categories, define attributes, and score items from 1–10. Built with Kotlin, Jetpack Compose, Room, Hilt, and Material 3.
+
+## Constitution Compliance
+
+This project is governed by the [tlacahuepec Engineering Constitution](https://github.com/tlacahuepec/Constitution) (v2.3.2).
+- **Project Tier**: 🔧 Tier 2 — Personal Tool
+- **Compliance Status**: Fully compliant (47 compliant standards, 6 tier-appropriate removal stories)
+- **Tracker**: See [COMPLIANCE.md](COMPLIANCE.md) for the detailed audit checklist, classification interview, and justification records.
 
 ## Key features
 
